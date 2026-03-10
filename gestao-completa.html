@@ -1,0 +1,2161 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SAGE 2026 - Gestão Completa</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="manifest" href="manifest.json" />
+    <style>
+      /* Estilos específicos da página de gestão */
+      .gestao-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+
+      .gestao-header {
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--primary-dark) 100%
+        );
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow);
+        color: white;
+        text-align: center;
+        position: relative;
+      }
+
+      .gestao-header img {
+        height: 80px;
+        width: auto;
+        margin-bottom: 1rem;
+      }
+
+      .gestao-header h1 {
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .gestao-header p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+      }
+
+      .back-button {
+        position: absolute;
+        top: 1.5rem;
+        left: 1.5rem;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 30px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: var(--transition);
+        text-decoration: none;
+      }
+
+      .back-button:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .gestao-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+        background: var(--bg-white);
+        padding: 0.5rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow);
+      }
+
+      .gestao-tab-btn {
+        flex: 1;
+        padding: 1rem;
+        border: none;
+        background: none;
+        color: var(--text-light);
+        font-size: 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: var(--transition);
+      }
+
+      .gestao-tab-btn:hover {
+        background: var(--bg-light);
+        color: var(--primary);
+      }
+
+      .gestao-tab-btn.active {
+        background: var(--primary);
+        color: white;
+      }
+
+      .gestao-tab-content {
+        background: var(--bg-white);
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        box-shadow: var(--shadow);
+      }
+
+      .gestao-tab-pane {
+        display: none;
+      }
+
+      .gestao-tab-pane.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Estilos da aba PROFESSORES */
+      .professores-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .search-box {
+        flex: 2;
+        display: flex;
+        align-items: center;
+        background: var(--bg-light);
+        border-radius: 30px;
+        padding: 0.5rem 1rem;
+        border: 2px solid var(--bg-gray);
+      }
+
+      .search-box i {
+        color: var(--text-light);
+        margin-right: 0.5rem;
+      }
+
+      .search-box input {
+        flex: 1;
+        border: none;
+        background: none;
+        outline: none;
+        font-size: 1rem;
+        color: var(--text-dark);
+      }
+
+      .professores-actions {
+        display: flex;
+        gap: 1rem;
+      }
+
+      .professores-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+      }
+
+      .professor-card {
+        background: var(--bg-white);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        border-left: 4px solid var(--primary);
+        box-shadow: var(--shadow);
+        transition: var(--transition);
+      }
+
+      .professor-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+      }
+
+      .professor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+      }
+
+      .professor-info h3 {
+        color: var(--primary);
+        font-size: 1.2rem;
+        margin: 0 0 0.3rem 0;
+      }
+
+      .professor-info p {
+        margin: 0;
+        color: var(--text-light);
+        font-size: 0.95rem;
+      }
+
+      .professor-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .eletivas-lista {
+        margin: 1rem 0;
+        padding: 1rem;
+        background: var(--bg-light);
+        border-radius: 8px;
+      }
+
+      .eletivas-lista h4 {
+        margin: 0 0 0.5rem 0;
+        color: var(--text-dark);
+        font-size: 0.95rem;
+      }
+
+      .eletiva-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--bg-gray);
+        font-size: 0.9rem;
+      }
+
+      .eletiva-item:last-child {
+        border-bottom: none;
+      }
+
+      .eletiva-nome {
+        font-weight: 600;
+        color: var(--primary);
+      }
+
+      .eletiva-detalhes {
+        color: var(--text-light);
+        font-size: 0.85rem;
+      }
+
+      /* Filtros */
+      .filtros-container {
+        background: var(--bg-light);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .tempo-btn {
+        padding: 0.5rem 1.5rem;
+        border: 2px solid var(--primary);
+        background: none;
+        color: var(--primary);
+        border-radius: 30px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: var(--transition);
+        margin-right: 0.3rem;
+        margin-bottom: 0.3rem;
+      }
+
+      .tempo-btn:hover {
+        background: var(--primary-light);
+        color: white;
+        border-color: var(--primary-light);
+      }
+
+      .tempo-btn.active {
+        background: var(--primary);
+        color: white;
+      }
+
+      .semestre-selector {
+        width: 100%;
+        padding: 0.5rem;
+        border: 2px solid var(--bg-gray);
+        border-radius: 8px;
+        font-size: 1rem;
+        background: var(--bg-white);
+      }
+
+      /* Botão Info */
+      .btn-info {
+        background: var(--info);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.3rem 0.6rem;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: var(--transition);
+      }
+
+      .btn-info:hover {
+        background: #138496;
+        transform: scale(1.05);
+      }
+
+      /* Loading */
+      .gestor-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      .gestor-loader.active {
+        display: flex;
+      }
+
+      .loader-content {
+        background: var(--bg-white);
+        padding: 2rem;
+        border-radius: var(--border-radius);
+        text-align: center;
+        box-shadow: var(--shadow-hover);
+      }
+
+      .loader-spinner {
+        border: 4px solid var(--bg-gray);
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Estilos do modal de conflitos */
+      .conflitos-container {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 2px solid var(--bg-gray);
+        border-radius: 8px;
+        padding: 0.5rem;
+      }
+
+      .conflito-item {
+        padding: 0.8rem;
+        margin-bottom: 0.5rem;
+        border-radius: 4px;
+        border-left: 4px solid transparent;
+      }
+
+      .conflito-item.fixa {
+        border-left-color: var(--danger);
+        background: rgba(178, 34, 34, 0.05);
+      }
+
+      .conflito-item.mista {
+        border-left-color: var(--warning);
+        background: rgba(255, 193, 7, 0.05);
+      }
+
+      .conflito-item h4 {
+        margin: 0 0 0.3rem 0;
+        color: var(--text-dark);
+      }
+
+      .conflito-item p {
+        margin: 0.2rem 0;
+        font-size: 0.9rem;
+      }
+
+      .conflito-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+      }
+
+      /* Estilos do modal de tempos */
+      .tempo-edit-item {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: var(--bg-light);
+        border-radius: 8px;
+        border-left: 4px solid var(--primary);
+      }
+
+      .tempo-label {
+        min-width: 50px;
+        font-weight: bold;
+        color: var(--primary);
+      }
+
+      .tempo-dia {
+        min-width: 150px;
+      }
+
+      .tempo-series {
+        flex: 1;
+      }
+
+      .tempo-series label {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+      }
+
+      /* Estilos do modal de liberação */
+      .eletiva-liberacao-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.8rem;
+        border-bottom: 1px solid var(--bg-gray);
+      }
+
+      .eletiva-liberacao-item:last-child {
+        border-bottom: none;
+      }
+
+      /* Responsividade */
+      @media (max-width: 768px) {
+        .gestao-tabs {
+          flex-direction: column;
+        }
+
+        .professores-header {
+          flex-direction: column;
+        }
+
+        .professores-actions {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .professores-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .tempo-edit-item {
+          flex-direction: column;
+        }
+
+        .tempo-dia {
+          width: 100%;
+        }
+
+        .tempo-series {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gestao-container">
+      <!-- Header -->
+      <div class="gestao-header">
+        <a href="gestor.html" class="back-button">
+          <i class="fas fa-arrow-left"></i> VOLTAR
+        </a>
+        <img src="assets/logo-escola.png" alt="SAGE Logo" />
+        <h1>DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS</h1>
+        <p>EEMTI Filgueiras Lima - Inep: 23142804</p>
+      </div>
+
+      <!-- Abas da Gestão -->
+      <div class="gestao-tabs">
+        <button class="gestao-tab-btn" onclick="mudarTabGestao('professores')">
+          <i class="fas fa-chalkboard-teacher"></i> PROFESSORES
+        </button>
+        <button class="gestao-tab-btn" onclick="mudarTabGestao('eletivas')">
+          <i class="fas fa-book"></i> ELETIVAS
+        </button>
+        <button class="gestao-tab-btn" onclick="mudarTabGestao('estudantes')">
+          <i class="fas fa-users"></i> ESTUDANTES
+        </button>
+        <button class="gestao-tab-btn active" onclick="mudarTabGestao('dados')">
+          <i class="fas fa-database"></i> DADOS
+        </button>
+      </div>
+
+      <!-- Conteúdo das Tabs -->
+      <div class="gestao-tab-content">
+        <!-- ABA 1: PROFESSORES -->
+        <div id="tab-professores" class="gestao-tab-pane">
+          <h2>👤 GESTÃO DE PROFESSORES</h2>
+
+          <!-- Cabeçalho com busca e ações -->
+          <div class="professores-header">
+            <div class="search-box">
+              <i class="fas fa-search"></i>
+              <input
+                type="text"
+                id="buscaProfessor"
+                placeholder="Buscar professor por nome ou email..."
+                oninput="filtrarProfessores()"
+              />
+            </div>
+            <div class="professores-actions">
+              <button
+                class="btn-primary"
+                onclick="abrirModalAdicionarProfessor()"
+              >
+                <i class="fas fa-plus"></i> ADICIONAR
+              </button>
+              <button
+                class="btn-secondary"
+                onclick="imprimirListaProfessores()"
+              >
+                <i class="fas fa-print"></i> IMPRIMIR
+              </button>
+            </div>
+          </div>
+
+          <!-- Contador -->
+          <h3
+            id="contadorProfessores"
+            style="margin-bottom: 1rem; color: var(--text-light)"
+          >
+            (0 professores encontrados)
+          </h3>
+
+          <!-- Grid de Professores -->
+          <div id="professoresGrid" class="professores-grid">
+            <!-- Cards serão inseridos via JavaScript -->
+          </div>
+        </div>
+
+        <!-- ABA 2: ELETIVAS -->
+        <div id="tab-eletivas" class="gestao-tab-pane">
+          <h2>📚 GESTÃO DE ELETIVAS</h2>
+
+          <!-- Busca -->
+          <div style="margin-bottom: 1rem">
+            <div class="search-box" style="width: 100%">
+              <i class="fas fa-search"></i>
+              <input
+                type="text"
+                id="buscaEletiva"
+                placeholder="Buscar por nome, código ou professor..."
+                oninput="filtrarEletivas()"
+              />
+            </div>
+          </div>
+
+          <!-- Filtros -->
+          <div class="filtros-container" style="margin-bottom: 2rem">
+            <div style="margin-bottom: 1rem">
+              <strong>📌 FILTRAR POR:</strong>
+            </div>
+
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+                margin-bottom: 1rem;
+              "
+            >
+              <div>
+                <label style="display: block; margin-bottom: 0.3rem"
+                  >TEMPO:</label
+                >
+                <div style="display: flex; gap: 0.3rem; flex-wrap: wrap">
+                  <button
+                    class="tempo-btn active"
+                    onclick="filtrarPorTempoEletiva('TODOS')"
+                  >
+                    TODOS
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEletiva('T1')"
+                  >
+                    T1
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEletiva('T2')"
+                  >
+                    T2
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEletiva('T3')"
+                  >
+                    T3
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEletiva('T4')"
+                  >
+                    T4
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEletiva('T5')"
+                  >
+                    T5
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label style="display: block; margin-bottom: 0.3rem"
+                  >PROFESSOR:</label
+                >
+                <select
+                  id="filtroProfessorEletiva"
+                  class="semestre-selector"
+                  onchange="filtrarEletivas()"
+                >
+                  <option value="">Todos os professores</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="display: block; margin-bottom: 0.3rem"
+                  >LOCAL:</label
+                >
+                <select
+                  id="filtroLocalEletiva"
+                  class="semestre-selector"
+                  onchange="filtrarEletivas()"
+                >
+                  <option value="">Todos os locais</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end">
+              <button class="btn-primary" onclick="filtrarEletivas()">
+                <i class="fas fa-search"></i> APLICAR FILTROS
+              </button>
+              <button class="btn-secondary" onclick="limparFiltrosEletivas()">
+                <i class="fas fa-eraser"></i> LIMPAR
+              </button>
+            </div>
+          </div>
+
+          <!-- Ações -->
+          <div style="display: flex; gap: 1rem; margin-bottom: 2rem">
+            <button class="btn-primary" onclick="abrirModalCriarEletiva()">
+              <i class="fas fa-plus"></i> CRIAR NOVA ELETIVA
+            </button>
+            <button class="btn-secondary" onclick="imprimirListaEletivas()">
+              <i class="fas fa-print"></i> IMPRIMIR LISTA
+            </button>
+          </div>
+
+          <!-- Contador -->
+          <h3
+            id="contadorEletivas"
+            style="margin-bottom: 1rem; color: var(--text-light)"
+          >
+            (0 eletivas encontradas)
+          </h3>
+
+          <!-- Grid de Eletivas -->
+          <div id="eletivasGrid" class="professores-grid">
+            <!-- Cards serão inseridos via JavaScript -->
+          </div>
+        </div>
+
+        <!-- ABA 3: ESTUDANTES -->
+        <div id="tab-estudantes" class="gestao-tab-pane">
+          <h2>🎓 GESTÃO DE ESTUDANTES</h2>
+
+          <!-- Busca -->
+          <div style="margin-bottom: 1rem">
+            <div class="search-box" style="width: 100%">
+              <i class="fas fa-search"></i>
+              <input
+                type="text"
+                id="buscaEstudante"
+                placeholder="Buscar por nome ou SIGE..."
+                oninput="filtrarEstudantes()"
+              />
+            </div>
+          </div>
+
+          <!-- Filtros -->
+          <div class="filtros-container" style="margin-bottom: 2rem">
+            <div style="margin-bottom: 1rem">
+              <strong>📌 FILTRAR POR:</strong>
+            </div>
+
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+                margin-bottom: 1rem;
+              "
+            >
+              <div>
+                <label style="display: block; margin-bottom: 0.3rem"
+                  >TEMPO:</label
+                >
+                <div style="display: flex; gap: 0.3rem; flex-wrap: wrap">
+                  <button
+                    class="tempo-btn active"
+                    onclick="filtrarPorTempoEstudante('TODOS')"
+                  >
+                    TODOS
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEstudante('T1')"
+                  >
+                    T1
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEstudante('T2')"
+                  >
+                    T2
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEstudante('T3')"
+                  >
+                    T3
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEstudante('T4')"
+                  >
+                    T4
+                  </button>
+                  <button
+                    class="tempo-btn"
+                    onclick="filtrarPorTempoEstudante('T5')"
+                  >
+                    T5
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label style="display: block; margin-bottom: 0.3rem"
+                  >TURMA:</label
+                >
+                <select
+                  id="filtroTurmaEstudante"
+                  class="semestre-selector"
+                  onchange="filtrarEstudantes()"
+                >
+                  <option value="">Todas as turmas</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="display: block; margin-bottom: 0.3rem"
+                  >ELETIVA:</label
+                >
+                <select
+                  id="filtroEletivaEstudante"
+                  class="semestre-selector"
+                  onchange="filtrarEstudantes()"
+                >
+                  <option value="">Todas as eletivas</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end">
+              <button class="btn-primary" onclick="filtrarEstudantes()">
+                <i class="fas fa-search"></i> APLICAR FILTROS
+              </button>
+              <button class="btn-secondary" onclick="limparFiltrosEstudantes()">
+                <i class="fas fa-eraser"></i> LIMPAR
+              </button>
+            </div>
+          </div>
+
+          <!-- Ações -->
+          <div style="display: flex; gap: 1rem; margin-bottom: 2rem">
+            <button
+              class="btn-primary"
+              onclick="abrirModalAdicionarEstudante()"
+            >
+              <i class="fas fa-plus"></i> ADICIONAR NOVO ESTUDANTE
+            </button>
+            <button class="btn-secondary" onclick="imprimirListaEstudantes()">
+              <i class="fas fa-print"></i> IMPRIMIR LISTA
+            </button>
+          </div>
+
+          <!-- Contador -->
+          <h3
+            id="contadorEstudantes"
+            style="margin-bottom: 1rem; color: var(--text-light)"
+          >
+            (0 estudantes encontrados)
+          </h3>
+
+          <!-- Tabela de Estudantes -->
+          <div style="overflow-x: auto">
+            <table class="alunos-table" style="width: 100%">
+              <thead>
+                <tr>
+                  <th>NOME</th>
+                  <th>TURMA</th>
+                  <th>SIGE</th>
+                  <th>ELETIVAS</th>
+                  <th style="width: 200px">AÇÕES</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaEstudantesBody">
+                <!-- Linhas serão inseridas via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Paginação -->
+          <div
+            style="
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              gap: 1rem;
+              margin-top: 2rem;
+            "
+          >
+            <button
+              class="btn-secondary"
+              onclick="mudarPaginaEstudantes('anterior')"
+              id="btnPaginaAnterior"
+              disabled
+            >
+              <i class="fas fa-chevron-left"></i> ANTERIOR
+            </button>
+            <span id="infoPaginaEstudantes">Página 1 de 1</span>
+            <button
+              class="btn-secondary"
+              onclick="mudarPaginaEstudantes('proxima')"
+              id="btnPaginaProxima"
+              disabled
+            >
+              PRÓXIMA <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ABA 4: DADOS -->
+        <div id="tab-dados" class="gestao-tab-pane active">
+          <h2>📁 CONFIGURAÇÕES GLOBAIS E DADOS</h2>
+
+          <!-- Seção de Importação SAGE -->
+          <div class="filtros-container" style="margin-bottom: 2rem">
+            <h3 style="margin-bottom: 1rem">📋 COLAR JSON DO SAGE ELETIVAS</h3>
+            <p style="margin-bottom: 1rem; color: var(--text-light)">
+              Execute o script no Google Sheets, copie o JSON gerado e cole
+              abaixo:
+            </p>
+
+            <textarea
+              id="jsonInput"
+              rows="8"
+              style="
+                width: 100%;
+                font-family: monospace;
+                padding: 0.8rem;
+                border: 2px solid var(--bg-gray);
+                border-radius: 8px;
+                margin-bottom: 1rem;
+              "
+              placeholder="Cole o JSON aqui..."
+            ></textarea>
+
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem">
+              <button class="btn-primary" onclick="importarJSONSage()">
+                <i class="fas fa-search"></i> VALIDAR E IMPORTAR
+              </button>
+              <button
+                class="btn-secondary"
+                onclick="document.getElementById('jsonInput').value = ''"
+              >
+                <i class="fas fa-eraser"></i> LIMPAR CAMPO
+              </button>
+            </div>
+
+            <div
+              style="
+                background: var(--bg-light);
+                padding: 1rem;
+                border-radius: 8px;
+              "
+            >
+              <p>
+                <strong>💡 Dica:</strong> O JSON deve conter a estrutura
+                completa retornada pelo script SAGE ELETIVAS.
+              </p>
+              <p>
+                Conflitos entre mista e fixa serão resolvidos automaticamente
+                (prioridade mista).
+              </p>
+            </div>
+          </div>
+
+          <!-- Status Atual dos Dados -->
+          <div class="filtros-container" style="margin-bottom: 2rem">
+            <h3 style="margin-bottom: 1rem">📊 STATUS ATUAL DOS DADOS</h3>
+            <div
+              style="
+                background: var(--bg-white);
+                padding: 1rem;
+                border-radius: 8px;
+                border: 1px solid var(--bg-gray);
+              "
+            >
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                  gap: 1rem;
+                "
+              >
+                <div>
+                  <p>
+                    <strong>📅 Última importação:</strong>
+                    <span id="ultimaImportacao">Nunca</span>
+                  </p>
+                  <p>
+                    <strong>👥 Alunos:</strong>
+                    <span id="totalAlunosDados">0</span>
+                  </p>
+                  <p>
+                    <strong>👤 Professores:</strong>
+                    <span id="totalProfessoresDados">0</span>
+                  </p>
+                </div>
+                <div>
+                  <p>
+                    <strong>📚 Eletivas Fixas:</strong>
+                    <span id="totalFixas">0</span>
+                  </p>
+                  <p>
+                    <strong>🎭 Eletivas Mistas:</strong>
+                    <span id="totalMistas">0</span>
+                  </p>
+                  <p>
+                    <strong>⚠️ Conflitos pendentes:</strong>
+                    <span id="totalConflitos">0</span>
+                  </p>
+                </div>
+                <div>
+                  <p><strong>⚙️ Configurações manuais:</strong></p>
+                  <p>✓ Tempos eletivos</p>
+                  <p>✓ Liberação de notas</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resolução de Choques -->
+          <div id="secaoChoques" style="display: none; margin-bottom: 2rem">
+            <div class="filtros-container">
+              <h3 style="margin-bottom: 1rem">
+                ⚠️ RESOLUÇÃO DE CHOQUES DE HORÁRIO
+              </h3>
+
+              <div
+                id="choquesResolvidos"
+                style="
+                  margin-bottom: 1rem;
+                  padding: 1rem;
+                  background: var(--bg-light);
+                  border-radius: 8px;
+                  border-left: 4px solid var(--success);
+                "
+              >
+                <!-- Será preenchido via JavaScript -->
+              </div>
+
+              <div
+                id="choquesPendentes"
+                style="
+                  margin-bottom: 1rem;
+                  padding: 1rem;
+                  background: var(--bg-light);
+                  border-radius: 8px;
+                  border-left: 4px solid var(--danger);
+                "
+              >
+                <!-- Será preenchido via JavaScript -->
+              </div>
+
+              <button
+                class="btn-primary"
+                onclick="abrirModalConflitos()"
+                id="btnVerConflitos"
+                style="display: none"
+              >
+                <i class="fas fa-eye"></i> VER DETALHES DOS CONFLITOS
+              </button>
+            </div>
+          </div>
+
+          <!-- Configuração dos Tempos Eletivos -->
+          <div class="filtros-container" style="margin-bottom: 2rem">
+            <h3 style="margin-bottom: 1rem">
+              ⏰ CONFIGURAÇÃO DOS TEMPOS ELETIVOS
+            </h3>
+            <p style="margin-bottom: 1rem; color: var(--text-light)">
+              Mantidas separadamente - não são alteradas pela importação
+            </p>
+
+            <div style="overflow-x: auto">
+              <table class="alunos-table" style="width: 100%">
+                <thead>
+                  <tr>
+                    <th>TEMPO</th>
+                    <th>DIA DA SEMANA</th>
+                    <th>SÉRIES PARTICIPANTES</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelaTempos">
+                  <!-- Será preenchido via JavaScript -->
+                </tbody>
+              </table>
+            </div>
+
+            <div style="margin-top: 1rem">
+              <button class="btn-secondary" onclick="abrirModalEditarTempos()">
+                <i class="fas fa-cog"></i> EDITAR CONFIGURAÇÃO DOS TEMPOS
+              </button>
+            </div>
+          </div>
+
+          <!-- Liberação de Notas -->
+          <div class="filtros-container" style="margin-bottom: 2rem">
+            <h3 style="margin-bottom: 1rem">📊 LIBERAÇÃO DE NOTAS</h3>
+            <p style="margin-bottom: 1rem; color: var(--text-light)">
+              Mantidas separadamente - não são alteradas pela importação
+            </p>
+
+            <div
+              style="
+                background: var(--bg-white);
+                padding: 1rem;
+                border-radius: 8px;
+                border: 1px solid var(--bg-gray);
+              "
+            >
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                  gap: 1rem;
+                "
+              >
+                <div>
+                  <p>
+                    <strong>Semestre atual:</strong>
+                    <span id="semestreAtual">1º/2026</span>
+                  </p>
+                  <p>
+                    <strong>Período de liberação:</strong>
+                    <span id="periodoLiberacao">10/03/2026 a 20/03/2026</span>
+                  </p>
+                </div>
+                <div>
+                  <p>
+                    <strong>Eletivas liberadas:</strong>
+                    <span id="eletivasLiberadas">0 de 0</span>
+                  </p>
+                  <button
+                    class="btn-secondary btn-small"
+                    onclick="abrirModalEditarLiberacao()"
+                    style="margin-top: 0.5rem"
+                  >
+                    <i class="fas fa-cog"></i> GERENCIAR
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Backup e Exportação -->
+          <div class="filtros-container" style="margin-bottom: 2rem">
+            <h3 style="margin-bottom: 1rem">💾 BACKUP E EXPORTAÇÃO</h3>
+
+            <div
+              style="
+                display: flex;
+                gap: 1rem;
+                flex-wrap: wrap;
+                margin-bottom: 1rem;
+              "
+            >
+              <button class="btn-primary" onclick="exportarJSONCompleto()">
+                <i class="fas fa-download"></i> EXPORTAR DADOS COMPLETOS
+              </button>
+              <button class="btn-success" onclick="criarBackup()">
+                <i class="fas fa-save"></i> CRIAR BACKUP
+              </button>
+              <button
+                class="btn-secondary"
+                onclick="abrirModalRestaurarBackup()"
+              >
+                <i class="fas fa-undo"></i> RESTAURAR BACKUP
+              </button>
+            </div>
+
+            <div
+              id="listaBackups"
+              style="
+                max-height: 200px;
+                overflow-y: auto;
+                border: 2px solid var(--bg-gray);
+                border-radius: 8px;
+                padding: 0.5rem;
+                background: var(--bg-white);
+              "
+            >
+              <!-- Lista de backups será inserida via JavaScript -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Adicionar/Editar Professor -->
+    <div id="modalProfessor" class="modal">
+      <div class="modal-content" style="max-width: 500px">
+        <div class="modal-header">
+          <h3 id="modalProfessorTitulo">➕ ADICIONAR PROFESSOR</h3>
+          <button class="close-modal" onclick="fecharModalProfessor()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="formProfessor">
+            <div class="form-group">
+              <label>Nome completo:</label>
+              <input
+                type="text"
+                id="professorNome"
+                placeholder="Digite o nome completo"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>E-mail:</label>
+              <input
+                type="email"
+                id="professorEmail"
+                placeholder="email@escola.com"
+                required
+              />
+            </div>
+            <input type="hidden" id="professorId" />
+          </form>
+          <div
+            style="
+              margin-top: 1rem;
+              padding: 1rem;
+              background: var(--bg-light);
+              border-radius: 8px;
+            "
+          >
+            <p><strong>⚠️ INFORMAÇÕES:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>Alterações não afetam registros existentes</li>
+              <li>Eletivas vinculadas permanecem com o professor</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalProfessor()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-success" onclick="salvarProfessor()">
+            💾 SALVAR
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Trocar Eletivas (Professores) -->
+    <div id="modalTrocarEletivas" class="modal">
+      <div class="modal-content" style="max-width: 600px">
+        <div class="modal-header">
+          <h3 id="modalTrocarTitulo">🔄 TROCAR ELETIVAS</h3>
+          <button class="close-modal" onclick="fecharModalTrocarEletivas()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p
+            id="modalTrocarProfessor"
+            style="font-weight: bold; margin-bottom: 1rem"
+          ></p>
+
+          <div style="margin-bottom: 1.5rem">
+            <h4 style="margin-bottom: 0.5rem">ELETIVAS ATUAIS:</h4>
+            <div
+              id="eletivasOrigem"
+              style="
+                max-height: 200px;
+                overflow-y: auto;
+                border: 2px solid var(--bg-gray);
+                border-radius: 8px;
+                padding: 0.5rem;
+              "
+            >
+              <!-- Lista de eletivas será inserida via JavaScript -->
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>TRANSFERIR PARA PROFESSOR:</label>
+            <select
+              id="selectProfessorDestino"
+              class="semestre-selector"
+              onchange="carregarEletivasDestino()"
+            >
+              <option value="">Selecione um professor</option>
+            </select>
+          </div>
+
+          <div style="margin-top: 1.5rem">
+            <h4 style="margin-bottom: 0.5rem">ELETIVAS DO DESTINO:</h4>
+            <div
+              id="eletivasDestino"
+              style="
+                max-height: 150px;
+                overflow-y: auto;
+                border: 2px solid var(--bg-gray);
+                border-radius: 8px;
+                padding: 0.5rem;
+                background: var(--bg-light);
+              "
+            >
+              <!-- Lista de eletivas será inserida via JavaScript -->
+            </div>
+          </div>
+
+          <div
+            style="
+              margin-top: 1rem;
+              padding: 1rem;
+              background: var(--bg-light);
+              border-radius: 8px;
+            "
+          >
+            <p><strong>⚠️ INFORMAÇÕES:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>Registros existentes permanecem vinculados às eletivas</li>
+              <li>Apenas o professor responsável é alterado</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalTrocarEletivas()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-success" onclick="confirmarTrocaEletivas()">
+            ✅ CONFIRMAR TRANFERÊNCIA
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Criação/Edição de Eletiva -->
+    <div id="modalEletiva" class="modal">
+      <div class="modal-content" style="max-width: 700px">
+        <div class="modal-header">
+          <h3 id="modalEletivaTitulo">➕ CRIAR NOVA ELETIVA</h3>
+          <button class="close-modal" onclick="fecharModalEletiva()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <h4 style="margin-bottom: 0.5rem">DADOS BÁSICOS:</h4>
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              margin-bottom: 1rem;
+            "
+          >
+            <div class="form-group">
+              <label>Nome da Eletiva:</label>
+              <input
+                type="text"
+                id="eletivaNome"
+                placeholder="Digite o nome"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>Código:</label>
+              <input
+                type="text"
+                id="eletivaCodigo"
+                placeholder="Ex: DAN01"
+                maxlength="6"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>Professor(a):</label>
+              <select
+                id="selectProfessorEletiva"
+                class="semestre-selector"
+                required
+              >
+                <option value="">Selecione um professor</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Local:</label>
+              <div style="display: flex; gap: 0.5rem">
+                <select
+                  id="selectLocalEletiva"
+                  class="semestre-selector"
+                  style="flex: 2"
+                >
+                  <option value="">Selecione um local</option>
+                </select>
+                <button class="btn-secondary" onclick="abrirModalNovoLocal()">
+                  <i class="fas fa-plus"></i> NOVO
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Tipo:</label>
+              <div style="display: flex; gap: 2rem">
+                <label
+                  ><input
+                    type="radio"
+                    name="tipoEletiva"
+                    value="MISTA"
+                    id="eletivaTipoMista"
+                    checked
+                  />
+                  MISTA</label
+                >
+                <label
+                  ><input
+                    type="radio"
+                    name="tipoEletiva"
+                    value="FIXA"
+                    id="eletivaTipoFixa"
+                  />
+                  FIXA</label
+                >
+              </div>
+            </div>
+          </div>
+
+          <h4 style="margin-bottom: 0.5rem">HORÁRIO E TEMPO:</h4>
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              margin-bottom: 1rem;
+            "
+          >
+            <div class="form-group">
+              <label>Dia da semana:</label>
+              <select id="selectDiaEletiva" class="semestre-selector"></select>
+            </div>
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem"
+            >
+              <div class="form-group">
+                <label>Horário início:</label>
+                <select id="horarioInicio" class="semestre-selector">
+                  <option value="07:00">07:00</option>
+                  <option value="08:55">08:55</option>
+                  <option value="10:50">10:50</option>
+                  <option value="13:30">13:30</option>
+                  <option value="15:25">15:25</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Horário fim:</label>
+                <select id="horarioFim" class="semestre-selector">
+                  <option value="08:40">08:40</option>
+                  <option value="10:35">10:35</option>
+                  <option value="12:30">12:30</option>
+                  <option value="15:10">15:10</option>
+                  <option value="17:05">17:05</option>
+                </select>
+              </div>
+            </div>
+            <p class="help-text">
+              O tempo eletivo (T1 a T5) será definido automaticamente baseado no
+              horário.
+            </p>
+          </div>
+
+          <h4 style="margin-bottom: 0.5rem">TURMAS ATENDIDAS:</h4>
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              margin-bottom: 1rem;
+            "
+          >
+            <div
+              id="turmasCheckboxContainer"
+              style="
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 0.5rem;
+              "
+            >
+              <!-- Checkboxes serão inseridos via JavaScript -->
+            </div>
+            <div style="display: flex; gap: 1rem; margin-top: 1rem">
+              <button
+                class="btn-secondary btn-small"
+                onclick="selecionarTodasTurmas(true)"
+              >
+                ✅ SELECIONAR TODAS
+              </button>
+              <button
+                class="btn-secondary btn-small"
+                onclick="selecionarTodasTurmas(false)"
+              >
+                ⬜ DESMARCAR TODAS
+              </button>
+            </div>
+          </div>
+
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+            "
+          >
+            <p><strong>⚠️ INFORMAÇÕES:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>Alterações não afetam registros de frequência e notas</li>
+              <li>Código deve ser único no sistema</li>
+              <li>Ao mudar professor, registros permanecem na eletiva</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalEletiva()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-success" onclick="salvarEletiva()">
+            💾 SALVAR
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Edição de Categoria da Eletiva -->
+    <div id="modalEditarCategoria" class="modal">
+      <div class="modal-content" style="max-width: 500px">
+        <div class="modal-header">
+          <h3 id="modalCategoriaTitulo">📋 EDITAR CATEGORIA</h3>
+          <button class="close-modal" onclick="fecharModalEditarCategoria()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>
+            <strong>Categoria atual:</strong> <span id="categoriaAtual"></span>
+          </p>
+
+          <div
+            id="categoriaInfo"
+            style="
+              margin: 1rem 0;
+              padding: 1rem;
+              background: var(--bg-light);
+              border-radius: 8px;
+            "
+          ></div>
+
+          <div style="margin: 1.5rem 0">
+            <p><strong>Selecione a nova categoria:</strong></p>
+            <div style="display: flex; gap: 2rem; margin-top: 0.5rem">
+              <label style="display: flex; align-items: center; gap: 0.5rem">
+                <input
+                  type="radio"
+                  name="categoriaEletiva"
+                  value="FIXA"
+                  id="categoriaFixa"
+                />
+                <span
+                  ><strong>FIXA</strong> - Apenas alunos da mesma turma</span
+                >
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem">
+                <input
+                  type="radio"
+                  name="categoriaEletiva"
+                  value="MISTA"
+                  id="categoriaMista"
+                />
+                <span
+                  ><strong>MISTA</strong> - Alunos de diferentes turmas e
+                  séries</span
+                >
+              </label>
+            </div>
+          </div>
+
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+            "
+          >
+            <p><strong>⚠️ REGRAS IMPORTANTES:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>
+                <strong>FIXA:</strong> Todos os alunos DEVEM ser da mesma turma
+              </li>
+              <li>
+                <strong>MISTA:</strong> Alunos podem ser de qualquer turma/série
+              </li>
+              <li>
+                Ao alterar de MISTA para FIXA, o sistema verificará se todos os
+                alunos atuais são da mesma turma
+              </li>
+              <li>
+                Registros anteriores (frequências e notas) NÃO são afetados pela
+                mudança de categoria
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalEditarCategoria()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-success" onclick="salvarCategoriaEletiva()">
+            💾 SALVAR
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Troca Rápida de Professor (Eletivas) -->
+    <div id="modalTrocarProfessor" class="modal">
+      <div class="modal-content" style="max-width: 500px">
+        <div class="modal-header">
+          <h3 id="modalTrocaTitulo">🔄 TROCAR PROFESSOR</h3>
+          <button class="close-modal" onclick="fecharModalTrocarProfessor()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>
+            <strong>Professor atual:</strong>
+            <span id="professorAtualTroca"></span>
+          </p>
+
+          <div class="form-group" style="margin-top: 1rem">
+            <label>Novo professor:</label>
+            <select id="selectNovoProfessor" class="semestre-selector">
+              <option value="">Selecione um professor</option>
+            </select>
+          </div>
+
+          <div
+            style="
+              margin-top: 1rem;
+              padding: 1rem;
+              background: var(--bg-light);
+              border-radius: 8px;
+            "
+          >
+            <p><strong>⚠️ INFORMAÇÕES:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>Registros existentes permanecem vinculados à eletiva</li>
+              <li>Apenas o professor responsável será alterado</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalTrocarProfessor()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-success" onclick="confirmarTrocaProfessor()">
+            ✅ CONFIRMAR TROCA
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Novo Local -->
+    <div id="modalNovoLocal" class="modal">
+      <div class="modal-content" style="max-width: 400px">
+        <div class="modal-header">
+          <h3>➕ CADASTRAR NOVO LOCAL</h3>
+          <button class="close-modal" onclick="fecharModalNovoLocal()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Nome do local:</label>
+            <input
+              type="text"
+              id="novoLocalNome"
+              placeholder="Ex: Sala de Dança"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label>Capacidade (opcional):</label>
+            <input
+              type="number"
+              id="novoLocalCapacidade"
+              placeholder="Número de alunos"
+              min="1"
+            />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalNovoLocal()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-success" onclick="salvarNovoLocal()">
+            ✅ CADASTRAR
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Adicionar/Editar Estudante -->
+    <div id="modalEstudante" class="modal">
+      <div class="modal-content" style="max-width: 700px">
+        <div class="modal-header">
+          <h3 id="modalEstudanteTitulo">➕ ADICIONAR ESTUDANTE</h3>
+          <button class="close-modal" onclick="fecharModalEstudante()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <h4 style="margin-bottom: 0.5rem">DADOS DO ESTUDANTE:</h4>
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              margin-bottom: 1rem;
+            "
+          >
+            <div class="form-group">
+              <label>Nome completo:</label>
+              <input
+                type="text"
+                id="estudanteNome"
+                placeholder="Digite o nome completo"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label>SIGE (matrícula):</label>
+              <input
+                type="text"
+                id="estudanteSige"
+                placeholder="Apenas números"
+                required
+                pattern="\\d+"
+              />
+              <small id="sigeAviso" style="color: var(--danger); display: none"
+                >⚠️ SIGE NÃO PODE SER ALTERADO após a criação</small
+              >
+            </div>
+            <div class="form-group">
+              <label>Turma:</label>
+              <select
+                id="selectTurmaEstudante"
+                class="semestre-selector"
+                required
+              >
+                <!-- Opções serão inseridas via JavaScript -->
+              </select>
+            </div>
+          </div>
+
+          <h4 style="margin-bottom: 0.5rem">ELETIVAS (opcional):</h4>
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              margin-bottom: 1rem;
+              max-height: 300px;
+              overflow-y: auto;
+            "
+          >
+            <div id="eletivasCheckboxContainer">
+              <!-- Checkboxes serão inseridos via JavaScript -->
+            </div>
+          </div>
+
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+            "
+          >
+            <p><strong>⚠️ INFORMAÇÕES:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>SIGE deve ser único no sistema</li>
+              <li>Registros anteriores são preservados ao editar</li>
+              <li>
+                Estudante pode estar em múltiplas eletivas (se horários
+                diferentes)
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalEstudante()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-success" onclick="salvarEstudante()">
+            💾 SALVAR
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Trocar Eletiva do Estudante -->
+    <div id="modalTrocarEletivaEstudante" class="modal">
+      <div class="modal-content" style="max-width: 600px">
+        <div class="modal-header">
+          <h3 id="modalTrocaEstudanteTitulo">🔄 TROCAR ELETIVA</h3>
+          <button
+            class="close-modal"
+            onclick="fecharModalTrocarEletivaEstudante()"
+          >
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p
+            id="estudanteTrocaInfo"
+            style="font-weight: bold; margin-bottom: 1rem"
+          ></p>
+
+          <h4 style="margin-bottom: 0.5rem">ELETIVAS ATUAIS:</h4>
+          <div
+            id="eletivasAtuaisEstudante"
+            style="
+              margin-bottom: 1.5rem;
+              padding: 0.5rem;
+              background: var(--bg-light);
+              border-radius: 8px;
+            "
+          >
+            <!-- Lista de eletivas atuais -->
+          </div>
+
+          <h4 style="margin-bottom: 0.5rem">ELETIVAS DISPONÍVEIS:</h4>
+          <div
+            id="eletivasDisponiveisContainer"
+            style="
+              max-height: 300px;
+              overflow-y: auto;
+              border: 2px solid var(--bg-gray);
+              border-radius: 8px;
+              padding: 0.5rem;
+            "
+          >
+            <!-- Eletivas disponíveis serão inseridas via JavaScript -->
+          </div>
+
+          <div
+            style="
+              margin-top: 1rem;
+              padding: 1rem;
+              background: var(--bg-light);
+              border-radius: 8px;
+            "
+          >
+            <p><strong>⚠️ INFORMAÇÕES:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>
+                Você pode adicionar o estudante a uma NOVA eletiva (além das
+                atuais)
+              </li>
+              <li>
+                Não há limite de eletivas por estudante (desde que horários
+                diferentes)
+              </li>
+              <li>Registros anteriores são preservados</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button
+            class="btn-secondary"
+            onclick="fecharModalTrocarEletivaEstudante()"
+          >
+            ❌ CANCELAR
+          </button>
+          <button
+            class="btn-success"
+            onclick="confirmarTrocaEletivaEstudante()"
+          >
+            ✅ ADICIONAR À ELETIVA
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Edição de Tempos -->
+    <div id="modalEditarTempos" class="modal">
+      <div class="modal-content" style="max-width: 700px">
+        <div class="modal-header">
+          <h3>⚙️ EDITAR CONFIGURAÇÃO DOS TEMPOS</h3>
+          <button class="close-modal" onclick="fecharModalEditarTempos()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 1rem; color: var(--text-light)">
+            Configure o dia da semana e as séries participantes para cada tempo
+            eletivo (T1 a T5).
+          </p>
+
+          <div id="temposEditContainer" style="margin-bottom: 1rem">
+            <!-- Será preenchido via JavaScript -->
+          </div>
+
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              margin-top: 1rem;
+            "
+          >
+            <p><strong>⚠️ REGRAS:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>Cada tempo deve ter um dia da semana ÚNICO</li>
+              <li>Não pode haver dois tempos no mesmo dia</li>
+              <li>Pelo menos uma série deve ser selecionada por tempo</li>
+              <li>As configurações afetam a distribuição de eletivas</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalEditarTempos()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-success" onclick="salvarConfigTempos()">
+            💾 SALVAR CONFIGURAÇÃO
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Liberação de Notas -->
+    <div id="modalLiberacaoNotas" class="modal">
+      <div class="modal-content" style="max-width: 700px">
+        <div class="modal-header">
+          <h3>📊 GERENCIAR LIBERAÇÃO DE NOTAS</h3>
+          <button class="close-modal" onclick="fecharModalLiberacaoNotas()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 1rem; color: var(--text-light)">
+            Defina o período e as eletivas que terão registro de notas liberado
+            para os professores.
+          </p>
+
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              margin-bottom: 1.5rem;
+            "
+          >
+            <div class="form-group">
+              <label><strong>Semestre:</strong></label>
+              <select id="selectSemestreLiberacao" class="semestre-selector">
+                <option value="1/2026">1º Semestre 2026</option>
+                <option value="2/2026">2º Semestre 2026</option>
+              </select>
+            </div>
+
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem"
+            >
+              <div class="form-group">
+                <label>Data de início:</label>
+                <input
+                  type="date"
+                  id="dataInicioLiberacao"
+                  class="semestre-selector"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label>Data de fim:</label>
+                <input
+                  type="date"
+                  id="dataFimLiberacao"
+                  class="semestre-selector"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <h4 style="margin-bottom: 0.5rem">📚 ELETIVAS:</h4>
+          <div
+            id="eletivasLiberacaoContainer"
+            style="
+              max-height: 300px;
+              overflow-y: auto;
+              border: 2px solid var(--bg-gray);
+              border-radius: 8px;
+              padding: 0.5rem;
+              margin-bottom: 1rem;
+              background: var(--bg-white);
+            "
+          >
+            <!-- Lista de eletivas será inserida via JavaScript -->
+          </div>
+
+          <div style="display: flex; gap: 1rem; margin-top: 0.5rem">
+            <button
+              class="btn-secondary btn-small"
+              onclick="selecionarTodasEletivasLiberacao(true)"
+            >
+              ✅ SELECIONAR TODAS
+            </button>
+            <button
+              class="btn-secondary btn-small"
+              onclick="selecionarTodasEletivasLiberacao(false)"
+            >
+              ⬜ DESMARCAR TODAS
+            </button>
+          </div>
+
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              margin-top: 1rem;
+            "
+          >
+            <p><strong>⚠️ INFORMAÇÕES:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>
+                Professores só poderão registrar notas no período definido
+              </li>
+              <li>Fora do período, o botão de notas ficará bloqueado</li>
+              <li>Eletivas não liberadas não aparecem para os professores</li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalLiberacaoNotas()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-success" onclick="salvarLiberacaoNotas()">
+            💾 SALVAR LIBERAÇÃO
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Restaurar Backup -->
+    <div id="modalRestaurarBackup" class="modal">
+      <div class="modal-content" style="max-width: 600px">
+        <div class="modal-header">
+          <h3>🔄 RESTAURAR BACKUP</h3>
+          <button class="close-modal" onclick="fecharModalRestaurarBackup()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 1rem; color: var(--text-light)">
+            Selecione um backup para restaurar. Todos os dados atuais serão
+            substituídos.
+          </p>
+
+          <div
+            id="listaBackupsRestaurar"
+            style="
+              max-height: 300px;
+              overflow-y: auto;
+              border: 2px solid var(--bg-gray);
+              border-radius: 8px;
+              padding: 0.5rem;
+              margin-bottom: 1rem;
+              background: var(--bg-white);
+            "
+          >
+            <!-- Lista de backups será inserida via JavaScript -->
+          </div>
+
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              border-left: 4px solid var(--danger);
+            "
+          >
+            <p
+              style="
+                color: var(--danger);
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+              "
+            >
+              ⚠️ ATENÇÃO!
+            </p>
+            <p style="margin: 0; color: var(--text-dark)">
+              Esta ação irá SOBRESCREVER todos os dados atuais do sistema
+              (professores, eletivas, estudantes, registros, notas). Não é
+              possível desfazer.
+            </p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalRestaurarBackup()">
+            ❌ CANCELAR
+          </button>
+          <button class="btn-danger" id="btnConfirmarRestaurarBackup" disabled>
+            ⚠️ RESTAURAR BACKUP
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Conflitos -->
+    <div id="modalConflitos" class="modal">
+      <div class="modal-content" style="max-width: 700px">
+        <div class="modal-header">
+          <h3>⚠️ CONFLITOS DE HORÁRIO PENDENTES</h3>
+          <button class="close-modal" onclick="fecharModalConflitos()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="margin-bottom: 1rem; color: var(--text-light)">
+            Os seguintes alunos estão matriculados em múltiplas eletivas no
+            mesmo horário. Estes conflitos precisam ser resolvidos manualmente.
+          </p>
+
+          <div
+            id="conflitosDetalhadosContainer"
+            class="conflitos-container"
+            style="max-height: 400px; overflow-y: auto"
+          >
+            <!-- Conteúdo será inserido via JavaScript -->
+          </div>
+
+          <div
+            style="
+              background: var(--bg-light);
+              padding: 1rem;
+              border-radius: 8px;
+              margin-top: 1rem;
+            "
+          >
+            <p><strong>📌 COMO RESOLVER:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>
+                <strong>FIXA x FIXA:</strong> O aluno só pode estar em UMA
+                eletiva fixa por tempo. Remova manualmente uma das matrículas.
+              </li>
+              <li>
+                <strong>MISTA x MISTA:</strong> O aluno só pode estar em UMA
+                eletiva mista por tempo. Remova manualmente uma das matrículas.
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalConflitos()">
+            🔙 FECHAR
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="modalConfirmacao" class="modal">
+      <div class="modal-content modal-small">
+        <div class="modal-header">
+          <h3 id="confirmTitle">Confirmação</h3>
+        </div>
+        <div class="modal-body" id="confirmBody"></div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalConfirmacao()">
+            Cancelar
+          </button>
+          <button class="btn-primary" id="confirmActionBtn">Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <div id="gestorLoader" class="gestor-loader">
+      <div class="loader-content">
+        <div class="loader-spinner"></div>
+        <p>Carregando...</p>
+      </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-sync.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/init-data.js"></script>
+    <script src="js/sincronizacao.js"></script>
+    <script src="js/gestao-completa.js"></script>
+  </body>
+</html>

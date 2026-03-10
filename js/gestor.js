@@ -1,43 +1,52 @@
-// js/gestor.js - Lógica do gestor (OTIMIZADO)
+// js/gestor.js - Lógica do gestor
 console.log("👔 gestor.js carregado");
 
 let gestorAtual = null;
-let eletivaEmEdicao = null;
-let alunoEmTroca = null;
-let alunoEmEdicao = null;
-let alunoParaAdicionar = null;
-let flagLiberacaoNotas = {};
-let historicoMovimentacoes = [];
+let todasEletivas = [];
+let tempoSelecionado = "TODOS";
+let termoBusca = "";
 
-// Cache para evitar recálculos desnecessários
-let cacheEstatisticas = {};
-let ultimaAtualizacaoCache = 0;
+// Variáveis para aba registros
+let filtroTipoRegistros = "todas";
+let filtroProfessorRegistros = "";
+let filtroDiaRegistros = "";
+let buscaRegistros = "";
+let eletivaSelecionadaParaData = null;
+let dataSelecionada = null;
+let eletivaSelecionadaParaImpressao = null; // Nova variável para o modal de impressão
 
-// Inicializar jsPDF (carregar sob demanda)
-let jsPDFInstance = null;
+// Mapeamento de tempo eletivo baseado no horário
+const mapaTempo = {
+  "07:00-08:40": "T1",
+  "08:55-10:35": "T2",
+  "10:50-12:30": "T3",
+  "13:30-15:10": "T4",
+  "15:25-17:05": "T5",
+};
 
-function getJsPDF() {
-  if (!jsPDFInstance && window.jspdf) {
-    jsPDFInstance = window.jspdf.jsPDF;
-  }
-  return jsPDFInstance;
-}
-
-// Dias da semana para dropdown
+// Dias da semana
 const diasSemana = [
-  "SEGUNDA-FEIRA",
-  "TERÇA-FEIRA",
-  "QUARTA-FEIRA",
-  "QUINTA-FEIRA",
-  "SEXTA-FEIRA",
-  "SÁBADO",
-  "DOMINGO",
+  "segunda",
+  "terca",
+  "quarta",
+  "quinta",
+  "sexta",
+  "sabado",
+  "domingo",
 ];
+const nomesDias = {
+  segunda: "SEGUNDA-FEIRA",
+  terca: "TERÇA-FEIRA",
+  quarta: "QUARTA-FEIRA",
+  quinta: "QUINTA-FEIRA",
+  sexta: "SEXTA-FEIRA",
+  sabado: "SÁBADO",
+  domingo: "DOMINGO",
+};
 
 document.addEventListener("DOMContentLoaded", function () {
   console.log("👔 Inicializando página do gestor...");
 
-  // Carregar funções essenciais primeiro
   carregarTheme();
 
   const gestorStorage = localStorage.getItem("gestor_atual");
@@ -49,16 +58,12 @@ document.addEventListener("DOMContentLoaded", function () {
   gestorAtual = JSON.parse(gestorStorage);
   console.log("👤 Gestor:", gestorAtual.nome, "Perfil:", gestorAtual.perfil);
 
-  // Carregar estado básico
   if (typeof carregarEstado === "function") {
     carregarEstado();
-
-    // Inicializar estruturas
-    carregarFlagLiberacao();
-    carregarHistoricoMovimentacoes();
+    todasEletivas = state.eletivas || [];
+    console.log("📚 Eletivas carregadas:", todasEletivas.length);
   }
 
-  // Atualizar UI imediatamente
   document.getElementById("userName").textContent = gestorAtual.nome;
 
   const roleMap = {
@@ -69,38 +74,10 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("userRole").textContent =
     roleMap[gestorAtual.perfil] || "Gestor";
 
-  // Setar datas padrão (rápido)
-  const hoje = new Date().toISOString().split("T")[0];
-  const dataLiberacao = document.getElementById("dataLiberacao");
-  if (dataLiberacao) dataLiberacao.value = hoje;
-
-  const fimSemestre = new Date();
-  fimSemestre.setMonth(6);
-  fimSemestre.setDate(30);
-  const dataEncerramento = document.getElementById("dataEncerramento");
-  if (dataEncerramento)
-    dataEncerramento.value = fimSemestre.toISOString().split("T")[0];
-
-  const trintaDiasAtras = new Date();
-  trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-  const filtroInicio = document.getElementById("filtroDataInicioRegistros");
-  const filtroFim = document.getElementById("filtroDataFimRegistros");
-  if (filtroInicio)
-    filtroInicio.value = trintaDiasAtras.toISOString().split("T")[0];
-  if (filtroFim) filtroFim.value = hoje;
-
-  // Carregar dados pesados de forma assíncrona
-  setTimeout(() => {
-    console.log("📊 Carregando dados completos em segundo plano...");
-    carregarSelectProfessoresRegistros();
-    carregarEstatisticas();
-    carregarEletivasOrganizar();
-    carregarEletivasLiberacao();
-    atualizarStatusLiberacao();
-    carregarSelectProfessoresFiltro();
-    carregarSelectDiasFiltro();
-    carregarSelectProfessoresModal();
-  }, 100);
+  // Carregar dados iniciais
+  carregarEstatisticas();
+  inicializarFiltrosRegistros();
+  carregarCardsRegistros();
 });
 
 // ========== FUNÇÕES DE UTILIDADE ==========
@@ -116,132 +93,17 @@ function mostrarLoaderGestor(mostrar) {
   }
 }
 
-function mostrarSucesso(mensagem) {
-  showToast(mensagem, "success");
-}
-
-function mostrarErro(mensagem) {
-  showToast(mensagem, "error");
-}
-
-function mostrarAviso(mensagem) {
-  showToast(mensagem, "warning");
-}
-
-function mostrarLoading(mensagem) {
-  const loader = document.getElementById("gestorLoader");
-  if (loader) {
-    loader.querySelector("p").textContent = mensagem;
-    loader.classList.add("active");
+function formatarData(dataString) {
+  if (!dataString) return "";
+  if (dataString.includes("-")) {
+    const [ano, mes, dia] = dataString.split("-");
+    return `${dia}/${mes}/${ano}`;
   }
+  return dataString;
 }
 
-function fecharLoading() {
-  const loader = document.getElementById("gestorLoader");
-  if (loader) {
-    loader.classList.remove("active");
-    loader.querySelector("p").textContent = "Carregando...";
-  }
-}
-
-// Carregar flag de liberação do localStorage
-function carregarFlagLiberacao() {
-  try {
-    const saved = localStorage.getItem("sage_liberacao_notas");
-    if (saved) {
-      flagLiberacaoNotas = JSON.parse(saved);
-    } else {
-      flagLiberacaoNotas = {
-        "1/2026": {},
-        "2/2026": {},
-      };
-    }
-  } catch (e) {
-    console.warn("Erro ao carregar flag de liberação:", e);
-    flagLiberacaoNotas = {
-      "1/2026": {},
-      "2/2026": {},
-    };
-  }
-}
-
-// Salvar flag de liberação
-function salvarFlagLiberacao() {
-  try {
-    localStorage.setItem(
-      "sage_liberacao_notas",
-      JSON.stringify(flagLiberacaoNotas),
-    );
-
-    if (window.FirebaseSync) {
-      window.FirebaseSync.salvarDadosFirebase(
-        "liberacao_notas",
-        flagLiberacaoNotas,
-      );
-    }
-  } catch (e) {
-    console.warn("Erro ao salvar flag de liberação:", e);
-  }
-}
-
-// Carregar histórico de movimentações
-function carregarHistoricoMovimentacoes() {
-  try {
-    const saved = localStorage.getItem("sage_historico_alunos");
-    if (saved) {
-      historicoMovimentacoes = JSON.parse(saved);
-    } else {
-      historicoMovimentacoes = [];
-    }
-  } catch (e) {
-    console.warn("Erro ao carregar histórico:", e);
-    historicoMovimentacoes = [];
-  }
-}
-
-// Salvar histórico de movimentações
-function salvarHistoricoMovimentacoes() {
-  try {
-    localStorage.setItem(
-      "sage_historico_alunos",
-      JSON.stringify(historicoMovimentacoes),
-    );
-  } catch (e) {
-    console.warn("Erro ao salvar histórico:", e);
-  }
-}
-
-// Registrar movimentação
-function registrarMovimentacao(tipo, dados) {
-  const movimentacao = {
-    id: Date.now() + Math.random(),
-    timestamp: new Date().toISOString(),
-    tipo: tipo,
-    ...dados,
-  };
-
-  historicoMovimentacoes.push(movimentacao);
-  salvarHistoricoMovimentacoes();
-}
-
-// Verificar se notas estão liberadas
-function verificarNotasLiberadasGestor(eletivaId, semestre = "1/2026") {
-  return flagLiberacaoNotas[semestre]?.[eletivaId] === true;
-}
-
-// Verificar se duas eletivas têm mesmo horário
-function temMesmoHorario(eletiva1, eletiva2) {
-  if (!eletiva1?.horario || !eletiva2?.horario) return false;
-
-  return (
-    eletiva1.horario.diaSemana === eletiva2.horario.diaSemana &&
-    eletiva1.horario.codigoTempo === eletiva2.horario.codigoTempo
-  );
-}
-
-// Mudar de aba (otimizado)
+// Mudar de aba
 window.mudarTabGestor = function (tab) {
-  // Atualizar UI imediatamente
   document
     .querySelectorAll(".gestor-tab-btn")
     .forEach((btn) => btn.classList.remove("active"));
@@ -256,3039 +118,13 @@ window.mudarTabGestor = function (tab) {
     .forEach((pane) => pane.classList.remove("active"));
   document.getElementById(`tab-${tab}`).classList.add("active");
 
-  // Carregar dados específicos da aba de forma assíncrona
-  setTimeout(() => {
-    if (tab === "estatisticas") {
-      carregarEstatisticas();
-    } else if (tab === "registros") {
-      carregarRegistrosGestor();
-    } else if (tab === "organizar") {
-      carregarEletivasOrganizar();
-    } else if (tab === "liberar") {
-      carregarEletivasLiberacao();
-      atualizarStatusLiberacao();
-    }
-  }, 50);
-};
-
-// ========== FUNÇÕES DE ORDENAÇÃO ==========
-
-// Ordenar eletivas por dia da semana
-function ordenarEletivasPorDia(eletivas) {
-  const ordemDias = {
-    segunda: 1,
-    terca: 2,
-    quarta: 3,
-    quinta: 4,
-    sexta: 5,
-    sabado: 6,
-    domingo: 7,
-  };
-
-  return [...eletivas].sort((a, b) => {
-    const diaA = ordemDias[a.horario?.diaSemana?.toLowerCase()] || 99;
-    const diaB = ordemDias[b.horario?.diaSemana?.toLowerCase()] || 99;
-
-    if (diaA !== diaB) return diaA - diaB;
-
-    const tempoA = parseInt(a.horario?.codigoTempo?.replace("T", "") || 0);
-    const tempoB = parseInt(b.horario?.codigoTempo?.replace("T", "") || 0);
-    return tempoA - tempoB;
-  });
-}
-
-// Agrupar eletivas por dia
-function agruparEletivasPorDia(eletivas) {
-  const grupos = {};
-
-  eletivas.forEach((eletiva) => {
-    const dia = eletiva.horario?.diaSemana?.toLowerCase() || "outros";
-    if (!grupos[dia]) grupos[dia] = [];
-    grupos[dia].push(eletiva);
-  });
-
-  return grupos;
-}
-
-// Formatar nome do dia
-function formatarNomeDia(dia) {
-  const nomes = {
-    segunda: "SEGUNDA-FEIRA",
-    terca: "TERÇA-FEIRA",
-    quarta: "QUARTA-FEIRA",
-    quinta: "QUINTA-FEIRA",
-    sexta: "SEXTA-FEIRA",
-    sabado: "SÁBADO",
-    domingo: "DOMINGO",
-    outros: "OUTROS DIAS",
-  };
-  return nomes[dia] || dia.toUpperCase();
-}
-
-// ========== FUNÇÕES DE ESTATÍSTICAS ==========
-
-// Calcular estatísticas de uma eletiva (com cache)
-function calcularEstatisticasEletiva(eletivaId, semestre = "1/2026") {
-  const chaveCache = `${eletivaId}_${semestre}`;
-  const agora = Date.now();
-
-  // Cache por 5 segundos
-  if (
-    cacheEstatisticas[chaveCache] &&
-    agora - cacheEstatisticas[chaveCache].timestamp < 5000
-  ) {
-    return cacheEstatisticas[chaveCache].dados;
-  }
-
-  const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-  const alunosIds = matriculas.map((m) => m.alunoId);
-  const totalAlunos = alunosIds.length;
-
-  // Calcular média de notas
-  const notasRegistro = state.notas?.find(
-    (n) => n.eletivaId === eletivaId && n.semestre === semestre,
-  );
-  let mediaNotas = 0;
-  if (notasRegistro?.notas?.length > 0) {
-    const soma = notasRegistro.notas.reduce((acc, n) => acc + n.nota, 0);
-    mediaNotas = soma / notasRegistro.notas.length;
-  }
-
-  // Calcular total de faltas
-  const registros =
-    state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
-  let totalFaltas = 0;
-
-  registros.forEach((reg) => {
-    if (reg.frequencia?.ausentes) {
-      totalFaltas += reg.frequencia.ausentes.length;
-    }
-  });
-
-  const mediaFaltas =
-    totalAlunos > 0 ? (totalFaltas / totalAlunos).toFixed(1) : 0;
-
-  const resultado = {
-    totalAlunos,
-    mediaNotas: mediaNotas.toFixed(1),
-    totalFaltas,
-    mediaFaltas,
-  };
-
-  // Salvar no cache
-  cacheEstatisticas[chaveCache] = {
-    timestamp: agora,
-    dados: resultado,
-  };
-
-  return resultado;
-}
-
-// Calcular estatísticas seguras para PDF
-async function calcularEstatisticasSeguro(eletivaId, semestre = "1/2026") {
-  const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-  const alunosIds = matriculas.map((m) => m.alunoId);
-  const totalAlunos = alunosIds.length;
-
-  // Calcular notas
-  const notasRegistro = state.notas?.find(
-    (n) => n.eletivaId === eletivaId && n.semestre === semestre,
-  );
-  const notasPorAluno = {};
-  let somaNotas = 0;
-  let qtdNotas = 0;
-
-  if (notasRegistro?.notas) {
-    notasRegistro.notas.forEach((n) => {
-      notasPorAluno[n.alunoId] = n.nota;
-      somaNotas += n.nota;
-      qtdNotas++;
-    });
-  }
-
-  // Calcular faltas
-  const registros =
-    state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
-  const ausenciasPorAluno = {};
-  let totalAusencias = 0;
-
-  registros.forEach((reg) => {
-    if (reg.frequencia?.ausentes) {
-      reg.frequencia.ausentes.forEach((codigo) => {
-        const aluno = state.alunos?.find((a) => a.codigoSige === codigo);
-        if (aluno) {
-          ausenciasPorAluno[aluno.id] = (ausenciasPorAluno[aluno.id] || 0) + 1;
-          totalAusencias++;
-        }
-      });
-    }
-  });
-
-  // Estatísticas
-  const notasArray = Object.values(notasPorAluno);
-  const mediaNotas = qtdNotas > 0 ? somaNotas / qtdNotas : 0;
-  const mediaFaltas = totalAlunos > 0 ? totalAusencias / totalAlunos : 0;
-
-  const maiorNota = notasArray.length > 0 ? Math.max(...notasArray) : null;
-  const menorNota = notasArray.length > 0 ? Math.min(...notasArray) : null;
-
-  const acimaMedia = notasArray.filter((n) => n > mediaNotas).length;
-  const abaixoMedia = notasArray.filter((n) => n < mediaNotas).length;
-
-  return {
-    ausenciasPorAluno,
-    notasPorAluno,
-    totalAusencias,
-    mediaFaltas,
-    mediaNotas,
-    maiorNota,
-    menorNota,
-    acimaMedia,
-    abaixoMedia,
-  };
-}
-
-// Carregar estatísticas (CORRIGIDO - SEM ÍCONES)
-window.carregarEstatisticas = function () {
-  const container = document.getElementById("estatisticasContainer");
-  if (!container) return;
-
-  const semestre =
-    document.getElementById("semestreEstatisticas")?.value || "1/2026";
-  const termoBusca =
-    document.getElementById("buscaEletiva")?.value?.toLowerCase() || "";
-
-  let eletivas = state.eletivas || [];
-
-  // Filtrar por busca
-  if (termoBusca) {
-    eletivas = eletivas.filter(
-      (e) =>
-        e.nome?.toLowerCase().includes(termoBusca) ||
-        e.codigo?.toLowerCase().includes(termoBusca),
-    );
-  }
-
-  const eletivasOrdenadas = ordenarEletivasPorDia(eletivas);
-  const eletivasPorDia = agruparEletivasPorDia(eletivasOrdenadas);
-
-  // Usar DocumentFragment para melhor performance
-  const fragment = document.createDocumentFragment();
-
-  // Limpar container de uma vez
-  container.innerHTML = "";
-
-  const ordemDias = [
-    "segunda",
-    "terca",
-    "quarta",
-    "quinta",
-    "sexta",
-    "sabado",
-    "domingo",
-    "outros",
-  ];
-
-  ordemDias.forEach((dia) => {
-    const eletivasDoDia = eletivasPorDia[dia];
-    if (!eletivasDoDia?.length) return;
-
-    const diaTitulo = document.createElement("h3");
-    diaTitulo.className = "dia-titulo";
-    diaTitulo.textContent = `─────── ${formatarNomeDia(dia)} ───────`;
-    fragment.appendChild(diaTitulo);
-
-    eletivasDoDia.forEach((eletiva) => {
-      const stats = calcularEstatisticasEletiva(eletiva.id, semestre);
-      const professor = state.professores?.find(
-        (p) => p.id === eletiva.professorId,
-      );
-
-      const card = document.createElement("div");
-      card.className = "eletiva-card-estatistica";
-
-      card.innerHTML = `
-        <div class="eletiva-header-estatistica">
-          <div style="display: flex; align-items: center;">
-            <div class="eletiva-info">
-              <h3>${eletiva.nome}</h3>
-              <p>Código: ${eletiva.codigo} | Professor: ${professor?.nome || "Não atribuído"}</p>
-              <p>Horário: ${eletiva.horario?.diaSemana} ${eletiva.horario?.codigoTempo}</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="estatisticas-grid">
-          <div class="estatistica-item">
-            <div class="estatistica-valor">${stats.totalAlunos}</div>
-            <div class="estatistica-label">ALUNOS</div>
-          </div>
-          <div class="estatistica-item">
-            <div class="estatistica-valor">${stats.mediaNotas}</div>
-            <div class="estatistica-label">MÉDIA</div>
-          </div>
-          <div class="estatistica-item">
-            <div class="estatistica-valor">${stats.totalFaltas}</div>
-            <div class="estatistica-label">FALTAS</div>
-          </div>
-          <div class="estatistica-item">
-            <div class="estatistica-valor">${stats.mediaFaltas}</div>
-            <div class="estatistica-label">FALTAS/ALUNO</div>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-          <button class="btn-primary btn-small" onclick="verAlunosEstatisticas(${eletiva.id}, '${semestre}')">
-            <i class="fas fa-eye"></i> VER ALUNOS
-          </button>
-          <button class="btn-secondary btn-small" onclick="imprimirRelatorioEletiva(${eletiva.id}, '${semestre}')">
-            <i class="fas fa-print"></i> IMPRIMIR RELATÓRIO
-          </button>
-        </div>
-      `;
-
-      fragment.appendChild(card);
-    });
-  });
-
-  if (fragment.children.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhuma eletiva encontrada</p>';
-  } else {
-    container.appendChild(fragment);
-  }
-};
-
-// Filtrar estatísticas
-window.filtrarEletivasEstatisticas = function () {
-  carregarEstatisticas();
-};
-
-// ========== FUNÇÕES DE ALUNOS ==========
-
-// Ver alunos nas estatísticas (MODAL ÚNICO)
-window.verAlunosEstatisticas = function (eletivaId, semestre) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  if (!eletiva) return;
-
-  mostrarLoaderGestor(true);
-
-  // Usar setTimeout para não travar a UI
-  setTimeout(() => {
-    try {
-      const matriculas =
-        state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-      const alunos =
-        state.alunos
-          ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-          .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-      const notasRegistro = state.notas?.find(
-        (n) => n.eletivaId === eletivaId && n.semestre === semestre,
-      );
-      const mapaNotas = {};
-      if (notasRegistro?.notas) {
-        notasRegistro.notas.forEach((n) => {
-          mapaNotas[n.alunoId] = n.nota;
-        });
-      }
-
-      // Calcular faltas por aluno
-      const registros =
-        state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
-      const faltasPorAluno = {};
-
-      registros.forEach((reg) => {
-        if (reg.frequencia?.ausentes) {
-          reg.frequencia.ausentes.forEach((codigo) => {
-            const aluno = alunos.find((a) => a.codigoSige === codigo);
-            if (aluno) {
-              faltasPorAluno[aluno.id] = (faltasPorAluno[aluno.id] || 0) + 1;
-            }
-          });
-        }
-      });
-
-      // Calcular estatísticas para o resumo
-      const notasArray = Object.values(mapaNotas).filter((n) => n !== "-");
-      const mediaGeral =
-        notasArray.length > 0
-          ? (notasArray.reduce((a, b) => a + b, 0) / notasArray.length).toFixed(
-              1,
-            )
-          : 0;
-
-      const totalAusencias = Object.values(faltasPorAluno).reduce(
-        (a, b) => a + b,
-        0,
-      );
-      const mediaFaltas =
-        alunos.length > 0 ? (totalAusencias / alunos.length).toFixed(1) : 0;
-
-      const maiorNota = notasArray.length > 0 ? Math.max(...notasArray) : 0;
-      const menorNota = notasArray.length > 0 ? Math.min(...notasArray) : 0;
-
-      const acimaMedia = notasArray.filter((n) => n > mediaGeral).length;
-      const abaixoMedia = notasArray.filter((n) => n < mediaGeral).length;
-
-      let tabelaHTML = `
-        <p><strong>Eletiva:</strong> ${eletiva.nome} | <strong>Professor:</strong> ${eletiva.professorNome}</p>
-        <p><strong>Semestre:</strong> ${semestre} | <strong>Total de alunos:</strong> ${alunos.length}</p>
-        
-        <div class="search-box" style="margin: 1rem 0;">
-          <i class="fas fa-search"></i>
-          <input type="text" id="buscaAlunoModal" placeholder="Buscar aluno..." oninput="filtrarAlunosModal()">
-        </div>
-        
-        <div class="alunos-table-container" style="max-height: 300px; overflow-y: auto;">
-          <table class="alunos-table-gestor">
-            <thead>
-              <tr>
-                <th>NOME</th>
-                <th>TURMA</th>
-                <th>SIGE</th>
-                <th>FALTAS</th>
-                <th>NOTA</th>
-              </tr>
-            </thead>
-            <tbody id="tabelaAlunosBody">
-      `;
-
-      alunos.forEach((aluno) => {
-        const faltas = faltasPorAluno[aluno.id] || 0;
-        const nota = mapaNotas[aluno.id] || "-";
-
-        tabelaHTML += `
-          <tr class="aluno-row" data-nome="${aluno.nome.toLowerCase()}" data-sige="${aluno.codigoSige}">
-            <td>${aluno.nome}</td>
-            <td>${aluno.turmaOrigem}</td>
-            <td>${aluno.codigoSige}</td>
-            <td><span class="badge-falta">${faltas}</span></td>
-            <td><span class="badge-nota">${nota !== "-" ? nota.toFixed(1) : "-"}</span></td>
-          </tr>
-        `;
-      });
-
-      tabelaHTML += `
-            </tbody>
-          </table>
-        </div>
-        
-        <div style="margin-top: 1rem; background: var(--bg-light); padding: 1rem; border-radius: 8px;">
-          <p><strong>Resumo da Turma:</strong></p>
-          <p>• Total de alunos: ${alunos.length}</p>
-          <p>• Total de ausências no semestre: ${totalAusencias}</p>
-          <p>• Média de faltas por aluno: ${mediaFaltas}</p>
-          <p>• Média geral da turma: ${mediaGeral}</p>
-          <p>• Maior nota: ${maiorNota.toFixed(1)}</p>
-          <p>• Menor nota: ${menorNota.toFixed(1)}</p>
-          <p>• Alunos acima da média: ${acimaMedia}</p>
-          <p>• Alunos abaixo da média: ${abaixoMedia}</p>
-        </div>
-      `;
-
-      document.getElementById("modalAlunosTitulo").textContent =
-        `👥 ALUNOS - ${eletiva.nome}`;
-      document.getElementById("modalAlunosBody").innerHTML = tabelaHTML;
-      document.getElementById("modalAlunosImprimir").onclick = () =>
-        imprimirRelatorioEletiva(eletivaId, semestre);
-      document.getElementById("modalAlunosExportar").onclick = () =>
-        exportarAlunosExcel(eletivaId);
-
-      document.getElementById("modalVerAlunos").classList.add("active");
-
-      // Adicionar função de filtro
-      window.filtrarAlunosModal = function () {
-        const termo =
-          document.getElementById("buscaAlunoModal")?.value.toLowerCase() || "";
-        document.querySelectorAll(".aluno-row").forEach((row) => {
-          const nome = row.dataset.nome;
-          const sige = row.dataset.sige;
-          if (nome.includes(termo) || sige.includes(termo)) {
-            row.style.display = "";
-          } else {
-            row.style.display = "none";
-          }
-        });
-      };
-    } catch (error) {
-      console.error("Erro ao carregar alunos:", error);
-      mostrarErro("Erro ao carregar alunos");
-    } finally {
-      mostrarLoaderGestor(false);
-    }
-  }, 50);
-};
-
-// Fechar modal de alunos
-window.fecharModalAlunos = function () {
-  document.getElementById("modalVerAlunos").classList.remove("active");
-};
-
-// ========== FUNÇÕES DE REGISTROS ==========
-
-// Carregar select de professores para registros
-function carregarSelectProfessoresRegistros() {
-  const select = document.getElementById("filtroProfessorRegistros");
-  if (!select) return;
-
-  const professores =
-    state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  select.innerHTML = '<option value="">Todos os professores</option>';
-
-  // Usar fragment para melhor performance
-  const fragment = document.createDocumentFragment();
-
-  professores.forEach((p) => {
-    const option = document.createElement("option");
-    option.value = p.id;
-    option.textContent = p.nome;
-    fragment.appendChild(option);
-  });
-
-  select.appendChild(fragment);
-}
-
-// Carregar registros do gestor (otimizado)
-async function carregarRegistrosGestor() {
-  const container = document.getElementById("registrosVisualizarContainer");
-  if (!container) return;
-
-  mostrarLoaderGestor(true);
-
-  try {
-    const filtroProfessor = document.getElementById(
-      "filtroProfessorRegistros",
-    )?.value;
-    const dataInicio = document.getElementById(
-      "filtroDataInicioRegistros",
-    )?.value;
-    const dataFim = document.getElementById("filtroDataFimRegistros")?.value;
-
-    // Usar setTimeout para não travar
-    setTimeout(async () => {
-      try {
-        let registros = [];
-
-        if (window.FirebaseSync) {
-          registros = await window.FirebaseSync.carregarRegistrosFirebase();
-        }
-
-        if (!registros || registros.length === 0) {
-          registros = state.registros || [];
-        }
-
-        // Aplicar filtros
-        if (filtroProfessor) {
-          registros = registros.filter(
-            (r) => r.professorId === parseInt(filtroProfessor),
-          );
-        }
-
-        if (dataInicio) {
-          registros = registros.filter((r) => r.data >= dataInicio);
-        }
-        if (dataFim) {
-          registros = registros.filter((r) => r.data <= dataFim);
-        }
-
-        // Agrupar por professor
-        const registrosPorProfessor = {};
-        registros.forEach((r) => {
-          if (!registrosPorProfessor[r.professorId]) {
-            registrosPorProfessor[r.professorId] = [];
-          }
-          registrosPorProfessor[r.professorId].push(r);
-        });
-
-        const professores = state.professores || [];
-
-        // Usar fragment para melhor performance
-        const fragment = document.createDocumentFragment();
-        container.innerHTML = "";
-
-        for (const professor of professores) {
-          const registrosProf = registrosPorProfessor[professor.id] || [];
-          if (registrosProf.length === 0 && filtroProfessor) continue;
-
-          // Agrupar por eletiva
-          const registrosPorEletiva = {};
-          registrosProf.forEach((r) => {
-            if (!registrosPorEletiva[r.eletivaId]) {
-              registrosPorEletiva[r.eletivaId] = [];
-            }
-            registrosPorEletiva[r.eletivaId].push(r);
-          });
-
-          // Buscar notas
-          const notasProf =
-            state.notas?.filter((n) => n.professorId === professor.id) || [];
-          const notasPorEletiva = {};
-          notasProf.forEach((n) => {
-            if (!notasPorEletiva[n.eletivaId]) {
-              notasPorEletiva[n.eletivaId] = [];
-            }
-            notasPorEletiva[n.eletivaId].push(n);
-          });
-
-          const professorSection = document.createElement("div");
-          professorSection.className = "professor-section";
-
-          professorSection.innerHTML = `
-            <div class="professor-titulo">
-              <i class="fas fa-user-circle"></i>
-              <h2>👤 PROFESSOR: ${professor.nome}</h2>
-            </div>
-          `;
-
-          const eletivasProfessor =
-            state.eletivas?.filter((e) => e.professorId === professor.id) || [];
-
-          for (const eletiva of eletivasProfessor) {
-            const registrosEletiva = registrosPorEletiva[eletiva.id] || [];
-            const notasEletiva = notasPorEletiva[eletiva.id] || [];
-
-            registrosEletiva.sort((a, b) => b.data.localeCompare(a.data));
-
-            const card = document.createElement("div");
-            card.className = "eletiva-card-gestor";
-
-            let registrosHTML = "";
-
-            registrosEletiva.slice(0, 5).forEach((r) => {
-              const presentes = r.frequencia?.presentes?.length || 0;
-              const ausentes = r.frequencia?.ausentes?.length || 0;
-
-              registrosHTML += `
-                <div class="registro-item-gestor" onclick='abrirDetalhesRegistroGestor(${JSON.stringify(r).replace(/'/g, "\\'")})'>
-                  <span class="registro-data-gestor">📅 ${formatarData(r.data)}</span>
-                  <span class="registro-resumo">${presentes} presentes, ${ausentes} ausentes</span>
-                  <span class="registro-tipo frequencia">Frequência</span>
-                </div>
-              `;
-            });
-
-            notasEletiva.slice(0, 2).forEach((n) => {
-              const media =
-                n.notas?.length > 0
-                  ? (
-                      n.notas.reduce((acc, nota) => acc + nota.nota, 0) /
-                      n.notas.length
-                    ).toFixed(1)
-                  : "0.0";
-
-              registrosHTML += `
-                <div class="registro-item-gestor" onclick='abrirDetalhesNotasGestor(${JSON.stringify(n).replace(/'/g, "\\'")})'>
-                  <span class="registro-data-gestor">📊 ${n.semestre}</span>
-                  <span class="registro-resumo">Média: ${media}</span>
-                  <span class="registro-tipo notas">Notas</span>
-                </div>
-              `;
-            });
-
-            card.innerHTML = `
-              <div class="eletiva-header">
-                <div class="eletiva-info">
-                  <h3>ELETIVA: ${eletiva.nome} | Código: ${eletiva.codigo}</h3>
-                  <div class="eletiva-meta">
-                    <span><i class="fas fa-users"></i> Turmas: ${eletiva.turmaOrigem || "Várias"}</span>
-                    <span><i class="fas fa-clock"></i> Horário: ${eletiva.horario?.diaSemana} ${eletiva.horario?.codigoTempo}</span>
-                  </div>
-                </div>
-                <div class="eletiva-actions">
-                  <button class="btn-primary btn-small" onclick="imprimirListaFrequenciaGestor(${eletiva.id})">
-                    <i class="fas fa-print"></i> FREQUÊNCIA
-                  </button>
-                  <button class="btn-success btn-small" onclick="imprimirNotasGestor(${eletiva.id})">
-                    <i class="fas fa-chart-bar"></i> NOTAS
-                  </button>
-                </div>
-              </div>
-              <div class="registros-lista-gestor">
-                ${registrosHTML || '<p class="empty-state" style="padding: 1rem;">Nenhum registro encontrado</p>'}
-              </div>
-            `;
-
-            professorSection.appendChild(card);
-          }
-
-          if (professorSection.children.length > 1) {
-            fragment.appendChild(professorSection);
-          }
-        }
-
-        if (fragment.children.length === 0) {
-          container.innerHTML =
-            '<p class="empty-state">Nenhum registro encontrado</p>';
-        } else {
-          container.appendChild(fragment);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar registros:", error);
-        container.innerHTML =
-          '<p class="empty-state">Erro ao carregar registros</p>';
-      } finally {
-        mostrarLoaderGestor(false);
-      }
-    }, 50);
-  } catch (error) {
-    console.error("Erro ao carregar registros:", error);
-    container.innerHTML =
-      '<p class="empty-state">Erro ao carregar registros</p>';
-    mostrarLoaderGestor(false);
-  }
-}
-
-// Aplicar filtros de registros
-window.aplicarFiltrosRegistros = function () {
-  carregarRegistrosGestor();
-};
-
-// Limpar filtros de registros
-window.limparFiltrosRegistros = function () {
-  document.getElementById("filtroProfessorRegistros").value = "";
-
-  const hoje = new Date().toISOString().split("T")[0];
-  const trintaDiasAtras = new Date();
-  trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
-
-  document.getElementById("filtroDataInicioRegistros").value = trintaDiasAtras
-    .toISOString()
-    .split("T")[0];
-  document.getElementById("filtroDataFimRegistros").value = hoje;
-
-  carregarRegistrosGestor();
-};
-
-// Sincronizar dados
-window.sincronizarDadosGestor = async function () {
-  mostrarLoaderGestor(true);
-  try {
-    if (window.FirebaseSync) {
-      await window.FirebaseSync.processarFilaPendente();
-      mostrarSucesso("Dados sincronizados com sucesso!");
-    }
-    carregarRegistrosGestor();
-  } catch (error) {
-    console.error("Erro na sincronização:", error);
-    mostrarErro("Erro ao sincronizar dados");
-  } finally {
-    mostrarLoaderGestor(false);
-  }
-};
-
-// Abrir detalhes do registro
-window.abrirDetalhesRegistroGestor = function (registro) {
-  if (typeof registro === "string") {
-    try {
-      registro = JSON.parse(registro);
-    } catch (e) {
-      console.error("Erro ao parsear registro:", e);
-      return;
-    }
-  }
-
-  const eletiva = state.eletivas?.find((e) => e.id === registro.eletivaId);
-  const professor = state.professores?.find(
-    (p) => p.id === registro.professorId,
-  );
-
-  if (!eletiva || !professor) return;
-
-  const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === registro.eletivaId) || [];
-  const alunos =
-    state.alunos
-      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  const presentes = registro.frequencia?.presentes || [];
-  const ausentes = registro.frequencia?.ausentes || [];
-
-  let tabelaHTML = `
-    <p><strong>Professor:</strong> ${professor.nome}</p>
-    <p><strong>Total de Alunos:</strong> ${alunos.length} | <strong>Presentes:</strong> ${presentes.length} | <strong>Ausentes:</strong> ${ausentes.length}</p>
-    
-    <div class="alunos-table-container">
-      <table class="alunos-table-gestor">
-        <thead>
-          <tr>
-            <th>Nome do Aluno</th>
-            <th>Turma</th>
-            <th>SIGE</th>
-            <th>Status</th>
-            <th>Tempo</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
-
-  alunos.forEach((aluno) => {
-    const isPresente = presentes.includes(aluno.codigoSige);
-    const status = isPresente ? "✅ Presente" : "❌ Ausente";
-    const tempo = isPresente ? eletiva.horario?.codigoTempo || "T1" : "-";
-
-    tabelaHTML += `
-      <tr>
-        <td>${aluno.nome}</td>
-        <td>${aluno.turmaOrigem}</td>
-        <td>${aluno.codigoSige}</td>
-        <td>${status}</td>
-        <td>${tempo}</td>
-      </tr>
-    `;
-  });
-
-  tabelaHTML += `
-        </tbody>
-      </table>
-    </div>
-    
-    <p><strong>Registro da Aula:</strong></p>
-    <p style="background: var(--bg-light); padding: 1rem; border-radius: 8px;">${registro.conteudo}</p>
-  `;
-
-  document.getElementById("modalDetalhesTitulo").textContent =
-    `📋 DETALHES DO REGISTRO - ${eletiva.nome} - ${formatarData(registro.data)}`;
-  document.getElementById("modalDetalhesBody").innerHTML = tabelaHTML;
-  document.getElementById("modalDetalhesImprimir").style.display =
-    "inline-flex";
-  document.getElementById("modalDetalhesImprimir").onclick = () => {
-    if (window.imprimirRegistrosPorData) {
-      window.imprimirRegistrosPorData(registro.eletivaId, registro.data);
-    }
-  };
-
-  document.getElementById("modalDetalhesRegistro").classList.add("active");
-};
-
-// Abrir detalhes de notas
-window.abrirDetalhesNotasGestor = function (nota) {
-  if (typeof nota === "string") {
-    try {
-      nota = JSON.parse(nota);
-    } catch (e) {
-      console.error("Erro ao parsear nota:", e);
-      return;
-    }
-  }
-
-  const eletiva = state.eletivas?.find((e) => e.id === nota.eletivaId);
-  if (!eletiva) return;
-
-  const media =
-    nota.notas?.length > 0
-      ? (
-          nota.notas.reduce((acc, n) => acc + n.nota, 0) / nota.notas.length
-        ).toFixed(1)
-      : "0.0";
-
-  let alunosHTML = `
-    <p><strong>Eletiva:</strong> ${eletiva.nome} | <strong>Semestre:</strong> ${nota.semestre}</p>
-    <p><strong>Média da turma:</strong> ${media}</p>
-    
-    <div class="alunos-table-container">
-      <table class="alunos-table-gestor">
-        <thead>
-          <tr>
-            <th>Nome do Aluno</th>
-            <th>Turma</th>
-            <th>SIGE</th>
-            <th>Nota</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
-
-  nota.notas?.forEach((n) => {
-    alunosHTML += `
-      <tr>
-        <td>${n.nome}</td>
-        <td>${n.turma}</td>
-        <td>${n.sige}</td>
-        <td><span class="badge-nota">${n.nota.toFixed(1)}</span></td>
-      </tr>
-    `;
-  });
-
-  alunosHTML += `
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  document.getElementById("modalDetalhesTitulo").textContent =
-    `📊 DETALHES DAS NOTAS - ${eletiva.nome}`;
-  document.getElementById("modalDetalhesBody").innerHTML = alunosHTML;
-  document.getElementById("modalDetalhesImprimir").style.display =
-    "inline-flex";
-  document.getElementById("modalDetalhesImprimir").onclick = () => {
-    if (window.imprimirPDFNotas) {
-      window.imprimirPDFNotas(eletiva.id, nota.semestre);
-    }
-  };
-
-  document.getElementById("modalDetalhesRegistro").classList.add("active");
-};
-
-// Fechar modal de detalhes
-window.fecharModalDetalhes = function () {
-  document.getElementById("modalDetalhesRegistro").classList.remove("active");
-};
-
-// ========== FUNÇÕES DE ORGANIZAÇÃO COM FILTROS E BUSCA ==========
-
-// Carregar select de professores para filtro
-function carregarSelectProfessoresFiltro() {
-  const select = document.getElementById("filtroProfessorOrganizar");
-  if (!select) return;
-
-  const professores =
-    state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  select.innerHTML = '<option value="TODOS">Todos os professores</option>';
-
-  professores.forEach((p) => {
-    const option = document.createElement("option");
-    option.value = p.id;
-    option.textContent = p.nome;
-    select.appendChild(option);
-  });
-}
-
-// Carregar select de dias para filtro
-function carregarSelectDiasFiltro() {
-  const select = document.getElementById("filtroDiaOrganizar");
-  if (!select) return;
-
-  select.innerHTML = '<option value="TODOS">Todos os dias</option>';
-
-  diasSemana.forEach((dia) => {
-    const option = document.createElement("option");
-    option.value = dia;
-    option.textContent = dia;
-    select.appendChild(option);
-  });
-}
-
-// Carregar select de professores para modal de criação
-function carregarSelectProfessoresModal() {
-  const select = document.getElementById("selectProfessorNovaEletiva");
-  if (!select) return;
-
-  const professores =
-    state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  select.innerHTML = '<option value="">Selecione um professor</option>';
-
-  professores.forEach((p) => {
-    const option = document.createElement("option");
-    option.value = p.id;
-    option.textContent = p.nome;
-    select.appendChild(option);
-  });
-}
-
-// Carregar checkboxes de turmas
-function carregarTurmasCheckboxes() {
-  const container = document.getElementById("turmasCheckboxContainer");
-  if (!container) return;
-
-  const turmas = CONFIG.turmas || [
-    "1ª SÉRIE A",
-    "1ª SÉRIE B",
-    "1ª SÉRIE C",
-    "2ª SÉRIE A",
-    "2ª SÉRIE B",
-    "2ª SÉRIE C",
-    "3ª SÉRIE A",
-    "3ª SÉRIE B",
-    "3ª SÉRIE C",
-  ];
-
-  let html =
-    '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">';
-
-  turmas.forEach((turma) => {
-    html += `
-      <label style="display: flex; align-items: center; gap: 0.3rem;">
-        <input type="checkbox" class="turma-checkbox" value="${turma}">
-        ${turma}
-      </label>
-    `;
-  });
-
-  html += "</div>";
-
-  container.innerHTML = html;
-}
-
-// Selecionar todas as turmas
-window.selecionarTodasTurmas = function (selecionar) {
-  document.querySelectorAll(".turma-checkbox").forEach((cb) => {
-    cb.checked = selecionar;
-  });
-};
-
-// Aplicar filtros na organização
-window.aplicarFiltrosOrganizar = function () {
-  carregarEletivasOrganizar();
-};
-
-// Limpar filtros e busca
-window.limparFiltrosOrganizar = function () {
-  document.getElementById("buscaOrganizar").value = "";
-  document.getElementById("filtroTipoOrganizar").value = "todas";
-  document.getElementById("filtroDiaOrganizar").value = "TODOS";
-  document.getElementById("filtroProfessorOrganizar").value = "TODOS";
-  document.getElementById("filtroDiaOrganizarContainer").style.display = "none";
-  document.getElementById("filtroProfOrganizarContainer").style.display =
-    "none";
-  carregarEletivasOrganizar();
-};
-
-// Mostrar/esconder campos de filtro
-window.mudarTipoFiltro = function () {
-  const tipo = document.getElementById("filtroTipoOrganizar")?.value;
-
-  if (tipo === "dia") {
-    document.getElementById("filtroDiaOrganizarContainer").style.display =
-      "block";
-    document.getElementById("filtroProfOrganizarContainer").style.display =
-      "none";
-  } else if (tipo === "professor") {
-    document.getElementById("filtroDiaOrganizarContainer").style.display =
-      "none";
-    document.getElementById("filtroProfOrganizarContainer").style.display =
-      "block";
-  } else {
-    document.getElementById("filtroDiaOrganizarContainer").style.display =
-      "none";
-    document.getElementById("filtroProfOrganizarContainer").style.display =
-      "none";
-  }
-};
-
-// Validar formato do código da eletiva
-function validarFormatoCodigo(codigo) {
-  // Entre 3 e 6 caracteres, apenas letras e números
-  const regex = /^[A-Za-z0-9]{3,6}$/;
-  return regex.test(codigo);
-}
-
-// Verificar se código já existe
-async function verificarCodigoExistente(codigo) {
-  try {
-    // Padronizar para maiúsculas
-    codigo = codigo.toUpperCase();
-
-    // Verificar no state
-    if (state.eletivas?.some((e) => e.codigo?.toUpperCase() === codigo)) {
-      return true;
-    }
-
-    // Verificar no Firebase se disponível
-    if (window.FirebaseSync) {
-      const dados = await window.FirebaseSync.carregarDadosFirebase("eletivas");
-      if (dados?.some((e) => e.codigo?.toUpperCase() === codigo)) {
-        return true;
-      }
-    }
-
-    return false;
-  } catch (error) {
-    console.error("Erro ao verificar código:", error);
-    return false;
-  }
-}
-
-// Verificar código em tempo real
-window.verificarCodigoTempoReal = async function () {
-  const input = document.getElementById("novoEletivaCodigo");
-  const status = document.getElementById("codigoStatus");
-
-  if (!input || !status) return;
-
-  const codigo = input.value.trim();
-
-  if (codigo.length < 3) {
-    status.innerHTML =
-      '<span style="color: var(--warning);">🔍 Mínimo 3 caracteres</span>';
-    return;
-  }
-
-  if (!validarFormatoCodigo(codigo)) {
-    status.innerHTML =
-      '<span style="color: var(--danger);">❌ Código deve ter 3-6 caracteres (letras e números)</span>';
-    return;
-  }
-
-  mostrarLoading("Verificando disponibilidade...");
-
-  try {
-    const existe = await verificarCodigoExistente(codigo);
-
-    if (existe) {
-      status.innerHTML = `<span style="color: var(--danger);">❌ Código ${codigo.toUpperCase()} já existe!</span>`;
-    } else {
-      status.innerHTML = `<span style="color: var(--success);">✅ Código ${codigo.toUpperCase()} disponível!</span>`;
-    }
-  } catch (error) {
-    status.innerHTML =
-      '<span style="color: var(--warning);">⚠️ Erro ao verificar</span>';
-  } finally {
-    fecharLoading();
-  }
-};
-
-// Abrir modal de nova eletiva
-window.abrirModalNovaEletiva = function () {
-  // Resetar formulário
-  document.getElementById("novoEletivaNome").value = "";
-  document.getElementById("novoEletivaCodigo").value = "";
-  document.getElementById("codigoStatus").innerHTML = "";
-  document.getElementById("selectProfessorNovaEletiva").value = "";
-  document
-    .querySelectorAll('input[name="tipoEletiva"]')
-    .forEach((r) => (r.checked = false));
-  document.getElementById("tipoMista").checked = true;
-  document.getElementById("selectDiaNovaEletiva").value = "SEGUNDA-FEIRA";
-  document.getElementById("horarioInicio").value = "14:00";
-  document.getElementById("horarioFim").value = "15:30";
-
-  // Carregar turmas
-  carregarTurmasCheckboxes();
-
-  // Carregar professores
-  carregarSelectProfessoresModal();
-
-  // Abrir modal
-  document.getElementById("modalNovaEletiva").classList.add("active");
-};
-
-// Fechar modal de nova eletiva
-window.fecharModalNovaEletiva = function () {
-  document.getElementById("modalNovaEletiva").classList.remove("active");
-};
-
-// Abrir modal de novo professor
-window.abrirModalNovoProfessor = function () {
-  document.getElementById("novoProfessorNome").value = "";
-  document.getElementById("novoProfessorEmail").value = "";
-  document.getElementById("modalNovoProfessor").classList.add("active");
-};
-
-// Fechar modal de novo professor
-window.fecharModalNovoProfessor = function () {
-  document.getElementById("modalNovoProfessor").classList.remove("active");
-};
-
-// Cadastrar novo professor
-window.cadastrarNovoProfessor = async function () {
-  const nome = document.getElementById("novoProfessorNome")?.value.trim();
-  const email = document.getElementById("novoProfessorEmail")?.value.trim();
-
-  if (!nome || !email) {
-    mostrarErro("Preencha todos os campos");
-    return;
-  }
-
-  mostrarLoading("Cadastrando professor...");
-
-  try {
-    // Criar novo professor
-    const novoId = (state.professores?.length || 0) + 1;
-    const novoProfessor = {
-      id: novoId,
-      nome: nome,
-      email: email,
-      perfil: "PROFESSOR",
-    };
-
-    if (!state.professores) state.professores = [];
-    state.professores.push(novoProfessor);
-    salvarEstado();
-
-    if (window.FirebaseSync) {
-      await window.FirebaseSync.salvarDadosFirebase(
-        "professores",
-        novoProfessor,
-        novoId,
-      );
-    }
-
-    // Atualizar selects
-    carregarSelectProfessoresModal();
-    carregarSelectProfessoresFiltro();
-    carregarSelectProfessoresRegistros();
-
-    mostrarSucesso("Professor cadastrado com sucesso!");
-    fecharModalNovoProfessor();
-
-    // Selecionar o novo professor no dropdown
-    document.getElementById("selectProfessorNovaEletiva").value = novoId;
-  } catch (error) {
-    console.error("Erro ao cadastrar professor:", error);
-    mostrarErro("Erro ao cadastrar professor");
-  } finally {
-    fecharLoading();
-  }
-};
-
-// Criar nova eletiva
-window.criarNovaEletiva = async function () {
-  const nome = document.getElementById("novoEletivaNome")?.value.trim();
-  const codigo = document.getElementById("novoEletivaCodigo")?.value.trim();
-  const professorId = document.getElementById(
-    "selectProfessorNovaEletiva",
-  )?.value;
-  const tipo =
-    document.querySelector('input[name="tipoEletiva"]:checked')?.value ||
-    "MISTA";
-  const dia = document.getElementById("selectDiaNovaEletiva")?.value;
-  const horarioInicio = document.getElementById("horarioInicio")?.value;
-  const horarioFim = document.getElementById("horarioFim")?.value;
-
-  // Coletar turmas selecionadas
-  const turmasSelecionadas = [];
-  document.querySelectorAll(".turma-checkbox:checked").forEach((cb) => {
-    turmasSelecionadas.push(cb.value);
-  });
-
-  // Validações
-  if (!nome || nome.length < 3) {
-    mostrarErro("Nome da eletiva é obrigatório (mínimo 3 caracteres)");
-    return;
-  }
-
-  if (!codigo) {
-    mostrarErro("Código da eletiva é obrigatório");
-    return;
-  }
-
-  if (!validarFormatoCodigo(codigo)) {
-    mostrarErro("Código deve ter entre 3 e 6 caracteres (letras e números)");
-    return;
-  }
-
-  const codigoExistente = await verificarCodigoExistente(codigo);
-  if (codigoExistente) {
-    mostrarErro(`Já existe uma eletiva com o código ${codigo.toUpperCase()}`);
-    return;
-  }
-
-  if (!professorId) {
-    mostrarErro("Selecione um professor");
-    return;
-  }
-
-  if (turmasSelecionadas.length === 0) {
-    mostrarErro("Selecione pelo menos uma turma");
-    return;
-  }
-
-  mostrarLoading("Criando nova eletiva...");
-
-  try {
-    const professor = state.professores?.find(
-      (p) => p.id === parseInt(professorId),
-    );
-
-    // Mapear dia da semana para formato do sistema
-    const diaMap = {
-      "SEGUNDA-FEIRA": "segunda",
-      "TERÇA-FEIRA": "terca",
-      "QUARTA-FEIRA": "quarta",
-      "QUINTA-FEIRA": "quinta",
-      "SEXTA-FEIRA": "sexta",
-      SÁBADO: "sabado",
-      DOMINGO: "domingo",
-    };
-
-    // Mapear horário para código de tempo
-    const horarioMap = {
-      "07:00-08:40": "T1",
-      "08:55-10:35": "T2",
-      "10:50-12:30": "T3",
-      "13:30-15:10": "T4",
-      "15:25-17:05": "T5",
-    };
-
-    const horarioCompleto = `${horarioInicio}-${horarioFim}`;
-    const codigoTempo = horarioMap[horarioCompleto] || "T1";
-
-    // Criar nova eletiva
-    const novaEletiva = {
-      id: state.eletivas.length + 1000 + Math.floor(Math.random() * 100),
-      codigo: codigo.toUpperCase(),
-      nome: nome,
-      tipo: tipo,
-      professorId: parseInt(professorId),
-      professorNome: professor?.nome || "",
-      horario: {
-        diaSemana: diaMap[dia] || "segunda",
-        codigoTempo: codigoTempo,
-      },
-      local: turmasSelecionadas.join(", "),
-      vagas: 40,
-      seriesPermitidas: ["1ª", "2ª", "3ª"],
-      turmaOrigem: turmasSelecionadas.join(", "),
-      semestreId: "2026-1",
-      dataCriacao: new Date().toISOString(),
-    };
-
-    if (!state.eletivas) state.eletivas = [];
-    state.eletivas.push(novaEletiva);
-    salvarEstado();
-
-    if (window.FirebaseSync) {
-      await window.FirebaseSync.salvarDadosFirebase(
-        "eletivas",
-        novaEletiva,
-        novaEletiva.id,
-      );
-    }
-
-    mostrarSucesso("Eletiva criada com sucesso!");
-    fecharModalNovaEletiva();
-
-    // Recarregar listas
-    carregarEletivasOrganizar();
+  if (tab === "estatisticas") {
     carregarEstatisticas();
-    carregarEletivasLiberacao();
-  } catch (error) {
-    console.error("Erro ao criar eletiva:", error);
-    mostrarErro("Erro ao criar eletiva");
-  } finally {
-    fecharLoading();
+  } else if (tab === "registros") {
+    inicializarFiltrosRegistros();
+    carregarCardsRegistros();
   }
 };
-
-// Filtrar eletivas (função auxiliar)
-function filtrarEletivas(eletivas) {
-  const tipo = document.getElementById("filtroTipoOrganizar")?.value;
-  const dia = document.getElementById("filtroDiaOrganizar")?.value;
-  const professorId = document.getElementById(
-    "filtroProfessorOrganizar",
-  )?.value;
-  const busca =
-    document.getElementById("buscaOrganizar")?.value?.toLowerCase() || "";
-
-  const diaMap = {
-    "SEGUNDA-FEIRA": "segunda",
-    "TERÇA-FEIRA": "terca",
-    "QUARTA-FEIRA": "quarta",
-    "QUINTA-FEIRA": "quinta",
-    "SEXTA-FEIRA": "sexta",
-    SÁBADO: "sabado",
-    DOMINGO: "domingo",
-  };
-
-  return eletivas.filter((eletiva) => {
-    // Aplicar filtro por tipo
-    if (tipo === "dia" && dia !== "TODOS") {
-      const diaSistema = diaMap[dia] || dia.toLowerCase();
-      if (eletiva.horario?.diaSemana?.toLowerCase() !== diaSistema)
-        return false;
-    }
-
-    if (tipo === "professor" && professorId !== "TODOS") {
-      if (eletiva.professorId !== parseInt(professorId)) return false;
-    }
-
-    // Aplicar busca
-    if (busca) {
-      const professor =
-        state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-        "";
-      return (
-        eletiva.nome?.toLowerCase().includes(busca) ||
-        eletiva.codigo?.toLowerCase().includes(busca) ||
-        professor.toLowerCase().includes(busca)
-      );
-    }
-
-    return true;
-  });
-}
-
-// Carregar eletivas para organização (COM FILTROS E BUSCA)
-function carregarEletivasOrganizar() {
-  const container = document.getElementById("eletivasOrganizarContainer");
-  if (!container) return;
-
-  const todasEletivas = state.eletivas || [];
-  const eletivasFiltradas = filtrarEletivas(todasEletivas);
-
-  container.innerHTML = "";
-
-  // Atualizar contador de resultados
-  const contador = document.getElementById("resultadosContador");
-  if (contador) {
-    contador.textContent = `(${eletivasFiltradas.length} eletivas encontradas)`;
-  }
-
-  if (eletivasFiltradas.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhuma eletiva encontrada com os critérios selecionados</p>';
-    return;
-  }
-
-  eletivasFiltradas.sort((a, b) => a.nome.localeCompare(b.nome));
-
-  eletivasFiltradas.forEach((eletiva) => {
-    const professor = state.professores?.find(
-      (p) => p.id === eletiva.professorId,
-    );
-    const matriculas =
-      state.matriculas?.filter((m) => m.eletivaId === eletiva.id) || [];
-    const totalAlunos = matriculas.length;
-
-    const card = document.createElement("div");
-    card.className = "eletiva-card-organizacao";
-
-    card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-        <div>
-          <h3 style="color: var(--primary);">${eletiva.nome} | Código: ${eletiva.codigo}</h3>
-          <p style="font-size: 0.9rem; color: var(--text-light);">Professor: ${professor?.nome || "Não atribuído"}</p>
-        </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button class="btn-primary btn-small" onclick="editarEletivaOrganizacao(${eletiva.id})">
-            <i class="fas fa-edit"></i> EDITAR
-          </button>
-          <button class="btn-danger btn-small" onclick="confirmarRemoverEletiva(${eletiva.id})">
-            <i class="fas fa-trash"></i> REMOVER
-          </button>
-        </div>
-      </div>
-
-      <div style="background: var(--bg-light); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.8rem;">
-        <p><strong>Tipo:</strong> ${eletiva.tipo || "MISTA"} | <strong>Turmas:</strong> ${eletiva.turmaOrigem || "Várias"} | <strong>Horário:</strong> ${eletiva.horario?.diaSemana} ${eletiva.horario?.codigoTempo}</p>
-        <p><strong>👥 Total de alunos:</strong> ${totalAlunos}</p>
-      </div>
-
-      <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-        <button class="btn-secondary btn-small" onclick="verAlunosEstatisticas(${eletiva.id}, '1/2026')">
-          <i class="fas fa-eye"></i> VER ALUNOS
-        </button>
-        <button class="btn-success btn-small" onclick="abrirAdicionarAluno(${eletiva.id})">
-          <i class="fas fa-plus"></i> ADICIONAR
-        </button>
-      </div>
-    `;
-
-    container.appendChild(card);
-  });
-}
-
-// Editar eletiva na organização
-window.editarEletivaOrganizacao = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  if (!eletiva) return;
-
-  eletivaEmEdicao = eletiva;
-
-  const professores =
-    state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  let optionsHTML = professores
-    .map(
-      (p) =>
-        `<option value="${p.id}" ${p.id === eletiva.professorId ? "selected" : ""}>${p.nome}</option>`,
-    )
-    .join("");
-
-  const horario = eletiva.horario || {
-    diaSemana: "segunda",
-    codigoTempo: "T1",
-  };
-  const horarios = CONFIG.horarios || [];
-
-  const diasOptions = [
-    "segunda",
-    "terca",
-    "quarta",
-    "quinta",
-    "sexta",
-    "sabado",
-    "domingo",
-  ]
-    .map(
-      (dia) =>
-        `<option value="${dia}" ${dia === horario.diaSemana ? "selected" : ""}>${dia.charAt(0).toUpperCase() + dia.slice(1)}</option>`,
-    )
-    .join("");
-
-  const tempoOptions = horarios
-    .map(
-      (h) =>
-        `<option value="${h.codigo}" ${h.codigo === horario.codigoTempo ? "selected" : ""}>${h.descricao}</option>`,
-    )
-    .join("");
-
-  const modalBody = `
-    <form id="formEditarEletiva">
-      <div class="form-group">
-        <label>Nome da Eletiva:</label>
-        <input type="text" id="editNomeEletiva" value="${eletiva.nome}" required>
-      </div>
-      
-      <div class="form-group">
-        <label>Código:</label>
-        <input type="text" id="editCodigoEletiva" value="${eletiva.codigo}" required readonly style="background: var(--bg-gray);">
-      </div>
-      
-      <div class="form-group">
-        <label>Professor:</label>
-        <select id="editProfessorEletiva" required>
-          ${optionsHTML}
-        </select>
-      </div>
-      
-      <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-        <div class="form-group">
-          <label>Dia da semana:</label>
-          <select id="editDiaEletiva">
-            ${diasOptions}
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Horário:</label>
-          <select id="editHorarioEletiva">
-            ${tempoOptions}
-          </select>
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <label>Turmas atendidas:</label>
-        <input type="text" id="editTurmasEletiva" value="${eletiva.turmaOrigem || ""}" placeholder="Ex: 3ºA, 3ºB">
-      </div>
-      
-      <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: 8px;">
-        <p><strong>⚠️ AVISOS:</strong></p>
-        <ul style="margin-left: 1.5rem;">
-          <li>Alterar professor mantém todos os registros da eletiva</li>
-          <li>Alunos vinculados serão mantidos</li>
-        </ul>
-      </div>
-    </form>
-  `;
-
-  document.getElementById("modalEditarTitulo").textContent =
-    `✏️ EDITAR ELETIVA - ${eletiva.nome}`;
-  document.getElementById("modalEditarBody").innerHTML = modalBody;
-  document.getElementById("modalEditarEletiva").classList.add("active");
-};
-
-// Salvar edição da eletiva
-window.salvarEdicaoEletiva = function () {
-  if (!eletivaEmEdicao) return;
-
-  const nome = document.getElementById("editNomeEletiva")?.value;
-  const professorId = document.getElementById("editProfessorEletiva")?.value;
-  const dia = document.getElementById("editDiaEletiva")?.value;
-  const horarioCodigo = document.getElementById("editHorarioEletiva")?.value;
-  const turmas = document.getElementById("editTurmasEletiva")?.value;
-
-  if (!nome || !professorId) {
-    mostrarErro("Preencha todos os campos obrigatórios");
-    return;
-  }
-
-  const professor = state.professores?.find(
-    (p) => p.id === parseInt(professorId),
-  );
-
-  const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
-  if (index !== -1) {
-    state.eletivas[index] = {
-      ...eletivaEmEdicao,
-      nome: nome,
-      professorId: parseInt(professorId),
-      professorNome: professor?.nome || "",
-      horario: {
-        diaSemana: dia,
-        codigoTempo: horarioCodigo,
-      },
-      turmaOrigem: turmas,
-    };
-
-    salvarEstado();
-
-    if (window.FirebaseSync) {
-      window.FirebaseSync.salvarDadosFirebase(
-        "eletivas",
-        state.eletivas[index],
-        state.eletivas[index].id,
-      );
-    }
-
-    mostrarSucesso("Eletiva atualizada com sucesso!");
-    fecharModalEditarEletiva();
-    carregarEletivasOrganizar();
-    carregarEstatisticas();
-    carregarEletivasLiberacao();
-  }
-};
-
-// Fechar modal de edição
-window.fecharModalEditarEletiva = function () {
-  document.getElementById("modalEditarEletiva").classList.remove("active");
-  eletivaEmEdicao = null;
-};
-
-// Confirmar remover eletiva
-window.confirmarRemoverEletiva = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  if (!eletiva) return;
-
-  const confirmBody = document.getElementById("confirmBody");
-  const confirmTitle = document.getElementById("confirmTitle");
-  const confirmBtn = document.getElementById("confirmActionBtn");
-
-  confirmTitle.textContent = "Confirmar Exclusão";
-  confirmBody.innerHTML = `
-    <p>Tem certeza que deseja remover a eletiva <strong>${eletiva.nome}</strong>?</p>
-    <p style="color: var(--danger); margin-top: 0.5rem;">⚠️ TODOS os registros desta eletiva serão apagados!</p>
-  `;
-
-  const originalOnClick = confirmBtn.onclick;
-  confirmBtn.onclick = function () {
-    removerEletiva(eletivaId);
-    fecharModalConfirmacao();
-    setTimeout(() => {
-      confirmBtn.onclick = originalOnClick;
-    }, 100);
-  };
-
-  document.getElementById("modalConfirmacao").classList.add("active");
-};
-
-// Remover eletiva
-function removerEletiva(eletivaId) {
-  state.eletivas = state.eletivas.filter((e) => e.id !== eletivaId);
-  state.matriculas = state.matriculas.filter((m) => m.eletivaId !== eletivaId);
-  state.registros = state.registros.filter((r) => r.eletivaId !== eletivaId);
-  state.notas = state.notas.filter((n) => n.eletivaId !== eletivaId);
-
-  salvarEstado();
-
-  if (window.FirebaseSync) {
-    window.FirebaseSync.salvarDadosFirebase("eletivas", null, eletivaId);
-  }
-
-  registrarMovimentacao("remocao_eletiva", { eletivaId });
-
-  mostrarSucesso("Eletiva removida com sucesso!");
-  carregarEletivasOrganizar();
-  carregarEstatisticas();
-  carregarEletivasLiberacao();
-}
-
-// ========== FUNÇÕES DE TROCA DE ALUNO ==========
-
-// Abrir trocar aluno
-window.abrirTrocarAluno = function (eletivaId, alunoId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  const aluno = state.alunos?.find((a) => a.id === alunoId);
-  const professor = state.professores?.find(
-    (p) => p.id === eletiva?.professorId,
-  );
-
-  if (!eletiva || !aluno) return;
-
-  alunoEmTroca = { eletivaId, alunoId };
-
-  // Buscar outras eletivas no MESMO HORÁRIO
-  const outrasEletivas =
-    state.eletivas?.filter(
-      (e) => e.id !== eletivaId && temMesmoHorario(e, eletiva),
-    ) || [];
-
-  // Buscar eletivas em horários diferentes
-  const outrasEletivasDiferentes =
-    state.eletivas?.filter(
-      (e) => e.id !== eletivaId && !temMesmoHorario(e, eletiva),
-    ) || [];
-
-  let opcoesHTML = "";
-
-  if (outrasEletivas.length > 0) {
-    opcoesHTML +=
-      "<p><strong>✅ ELETIVAS DISPONÍVEIS NO MESMO HORÁRIO:</strong></p>";
-    outrasEletivas.forEach((e) => {
-      const prof = state.professores?.find((p) => p.id === e.professorId);
-      opcoesHTML += `
-        <div class="eletiva-radio-option">
-          <input type="radio" name="novaEletiva" value="${e.id}" id="eletiva_${e.id}">
-          <label for="eletiva_${e.id}">
-            <strong>${e.nome}</strong> (${prof?.nome}) - ${e.horario?.diaSemana} ${e.horario?.codigoTempo}
-          </label>
-        </div>
-      `;
-    });
-  }
-
-  if (outrasEletivasDiferentes.length > 0) {
-    opcoesHTML +=
-      '<p style="margin-top: 1rem;"><strong>❌ ELETIVAS EM HORÁRIOS DIFERENTES (NÃO PERMITIDO):</strong></p>';
-    outrasEletivasDiferentes.slice(0, 3).forEach((e) => {
-      const prof = state.professores?.find((p) => p.id === e.professorId);
-      opcoesHTML += `
-        <div class="eletiva-radio-option disabled">
-          <input type="radio" disabled>
-          <label>
-            <strong>${e.nome}</strong> (${prof?.nome}) - ${e.horario?.diaSemana} ${e.horario?.codigoTempo}
-          </label>
-        </div>
-      `;
-    });
-    if (outrasEletivasDiferentes.length > 3) {
-      opcoesHTML += `<p style="color: var(--text-light);">... e mais ${outrasEletivasDiferentes.length - 3} eletivas</p>`;
-    }
-  }
-
-  if (outrasEletivas.length === 0) {
-    opcoesHTML =
-      '<p class="empty-state">Nenhuma eletiva disponível no mesmo horário</p>';
-  }
-
-  const modalBody = `
-    <p><strong>Aluno:</strong> ${aluno.nome} (${aluno.turmaOrigem}) - SIGE: ${aluno.codigoSige}</p>
-    <p><strong>Eletiva atual:</strong> ${eletiva.nome} (${professor?.nome}) - ${eletiva.horario?.diaSemana} ${eletiva.horario?.codigoTempo}</p>
-    
-    <div class="eletivas-disponiveis" style="margin-top: 1.5rem;">
-      ${opcoesHTML}
-    </div>
-    
-    <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: 8px;">
-      <p><strong>⚠️ REGRAS:</strong></p>
-      <ul style="margin-left: 1.5rem;">
-        <li>Aluno só pode trocar para eletivas no MESMO horário</li>
-        <li>Registros anteriores permanecem na eletiva original</li>
-      </ul>
-    </div>
-  `;
-
-  document.getElementById("modalTrocarAlunoBody").innerHTML = modalBody;
-  document.getElementById("modalTrocarAluno").classList.add("active");
-};
-
-// Confirmar troca de aluno
-window.confirmarTrocaAluno = function () {
-  if (!alunoEmTroca) return;
-
-  const radioSelecionado = document.querySelector(
-    'input[name="novaEletiva"]:checked',
-  );
-  if (!radioSelecionado) {
-    mostrarErro("Selecione uma nova eletiva");
-    return;
-  }
-
-  const novaEletivaId = parseInt(radioSelecionado.value);
-  const eletivaOrigem = state.eletivas?.find(
-    (e) => e.id === alunoEmTroca.eletivaId,
-  );
-  const eletivaDestino = state.eletivas?.find((e) => e.id === novaEletivaId);
-  const aluno = state.alunos?.find((a) => a.id === alunoEmTroca.alunoId);
-
-  if (!eletivaOrigem || !eletivaDestino || !aluno) return;
-
-  // Validar mesmo horário
-  if (!temMesmoHorario(eletivaOrigem, eletivaDestino)) {
-    mostrarErro("Só é possível trocar para eletivas no mesmo horário");
-    return;
-  }
-
-  // Remover matrícula antiga
-  state.matriculas = state.matriculas.filter(
-    (m) =>
-      !(
-        m.alunoId === alunoEmTroca.alunoId &&
-        m.eletivaId === alunoEmTroca.eletivaId
-      ),
-  );
-
-  // Adicionar nova matrícula
-  const novaMatricula = {
-    id: state.matriculas.length + 1,
-    eletivaId: novaEletivaId,
-    alunoId: alunoEmTroca.alunoId,
-    tipoMatricula: "troca",
-    dataMatricula: new Date().toISOString().split("T")[0],
-    semestreId: "2026-1",
-  };
-
-  state.matriculas.push(novaMatricula);
-  salvarEstado();
-
-  if (window.FirebaseSync) {
-    window.FirebaseSync.salvarDadosFirebase(
-      "matriculas",
-      novaMatricula,
-      novaMatricula.id,
-    );
-  }
-
-  registrarMovimentacao("troca", {
-    alunoId: aluno.id,
-    alunoNome: aluno.nome,
-    origem: eletivaOrigem.id,
-    origemNome: eletivaOrigem.nome,
-    destino: eletivaDestino.id,
-    destinoNome: eletivaDestino.nome,
-  });
-
-  mostrarSucesso("Aluno trocado de eletiva com sucesso!");
-  fecharModalTrocarAluno();
-  carregarEletivasOrganizar();
-  carregarEstatisticas();
-};
-
-// Fechar modal de troca
-window.fecharModalTrocarAluno = function () {
-  document.getElementById("modalTrocarAluno").classList.remove("active");
-  alunoEmTroca = null;
-};
-
-// ========== FUNÇÕES DE EDIÇÃO DE ALUNO (COM SIGE INAUTERÁVEL) ==========
-
-// Editar aluno
-window.editarAluno = function (alunoId, eletivaId) {
-  const aluno = state.alunos?.find((a) => a.id === alunoId);
-  if (!aluno) return;
-
-  alunoEmEdicao = { aluno, eletivaId };
-
-  const turmasOptions = CONFIG.turmas
-    ?.map(
-      (t) =>
-        `<option value="${t}" ${t === aluno.turmaOrigem ? "selected" : ""}>${t}</option>`,
-    )
-    .join("");
-
-  const modalBody = `
-    <p><strong>Aluno:</strong> ${aluno.nome}</p>
-    <p><strong>SIGE:</strong> ${aluno.codigoSige} <span style="color: var(--danger);">(🔒 NÃO ALTERÁVEL)</span></p>
-    
-    <div class="form-group">
-      <label>Nome completo:</label>
-      <input type="text" id="editAlunoNome" value="${aluno.nome}" required>
-    </div>
-    
-    <div class="form-group">
-      <label>Turma:</label>
-      <select id="editAlunoTurma">
-        ${turmasOptions}
-      </select>
-    </div>
-    
-    <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: 8px;">
-      <p><strong>⚠️ AVISO IMPORTANTE:</strong></p>
-      <p>O SIGE é a identificação única do aluno e <strong>NÃO PODE SER ALTERADO</strong>.</p>
-      <p>Se o SIGE estiver incorreto, remova o aluno e adicione novamente com o SIGE correto (o histórico será perdido).</p>
-    </div>
-  `;
-
-  document.getElementById("modalEditarAlunoBody").innerHTML = modalBody;
-  document.getElementById("modalEditarAluno").classList.add("active");
-};
-
-// Editar aluno no modal de estatísticas
-window.editarAlunoModal = function (alunoId, eletivaId) {
-  editarAluno(alunoId, eletivaId);
-};
-
-// Salvar edição de aluno (SEM SIGE)
-window.salvarEdicaoAluno = function () {
-  if (!alunoEmEdicao) return;
-
-  const nome = document.getElementById("editAlunoNome")?.value;
-  const turma = document.getElementById("editAlunoTurma")?.value;
-
-  if (!nome || !turma) {
-    mostrarErro("Preencha todos os campos");
-    return;
-  }
-
-  const index = state.alunos.findIndex((a) => a.id === alunoEmEdicao.aluno.id);
-  if (index !== -1) {
-    state.alunos[index] = {
-      ...state.alunos[index],
-      nome: nome,
-      turmaOrigem: turma,
-      // SIGE NÃO É ALTERADO
-    };
-
-    salvarEstado();
-
-    if (window.FirebaseSync) {
-      window.FirebaseSync.salvarDadosFirebase(
-        "alunos",
-        state.alunos[index],
-        state.alunos[index].id,
-      );
-    }
-
-    registrarMovimentacao("edicao_aluno", {
-      alunoId: alunoEmEdicao.aluno.id,
-      nomeAntigo: alunoEmEdicao.aluno.nome,
-      nomeNovo: nome,
-    });
-
-    mostrarSucesso("Aluno atualizado com sucesso!");
-    fecharModalEditarAluno();
-
-    // Recarregar visualizações
-    carregarEletivasOrganizar();
-    if (
-      document.getElementById("tab-estatisticas").classList.contains("active")
-    ) {
-      carregarEstatisticas();
-    }
-  }
-};
-
-// Fechar modal de edição de aluno
-window.fecharModalEditarAluno = function () {
-  document.getElementById("modalEditarAluno").classList.remove("active");
-  alunoEmEdicao = null;
-};
-
-// Confirmar remover aluno
-window.confirmarRemoverAluno = function (eletivaId, alunoId) {
-  const aluno = state.alunos?.find((a) => a.id === alunoId);
-  if (!aluno) return;
-
-  const confirmBody = document.getElementById("confirmBody");
-  const confirmTitle = document.getElementById("confirmTitle");
-  const confirmBtn = document.getElementById("confirmActionBtn");
-
-  confirmTitle.textContent = "Confirmar Remoção";
-  confirmBody.innerHTML = `
-    <p>Remover aluno <strong>${aluno.nome}</strong> desta eletiva?</p>
-    <p style="margin-top: 0.5rem;">⚠️ Registros anteriores serão mantidos.</p>
-  `;
-
-  const originalOnClick = confirmBtn.onclick;
-  confirmBtn.onclick = function () {
-    removerAlunoDaEletiva(eletivaId, alunoId);
-    fecharModalConfirmacao();
-    setTimeout(() => {
-      confirmBtn.onclick = originalOnClick;
-    }, 100);
-  };
-
-  document.getElementById("modalConfirmacao").classList.add("active");
-};
-
-// Remover aluno da eletiva
-function removerAlunoDaEletiva(eletivaId, alunoId) {
-  const aluno = state.alunos?.find((a) => a.id === alunoId);
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-
-  state.matriculas = state.matriculas.filter(
-    (m) => !(m.alunoId === alunoId && m.eletivaId === eletivaId),
-  );
-
-  salvarEstado();
-
-  registrarMovimentacao("remocao", {
-    alunoId,
-    alunoNome: aluno?.nome,
-    eletivaId,
-    eletivaNome: eletiva?.nome,
-  });
-
-  mostrarSucesso("Aluno removido da eletiva");
-  carregarEletivasOrganizar();
-  if (
-    document.getElementById("tab-estatisticas").classList.contains("active")
-  ) {
-    carregarEstatisticas();
-  }
-}
-
-// ========== FUNÇÕES DE ADIÇÃO DE ALUNO ==========
-
-// Abrir adicionar aluno (COM AVISO SOBRE SIGE)
-window.abrirAdicionarAluno = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  if (!eletiva) return;
-
-  const turmasOptions = CONFIG.turmas
-    ?.map((t) => `<option value="${t}">${t}</option>`)
-    .join("");
-
-  const modalBody = `
-    <p><strong>Adicionar novo aluno à eletiva:</strong> ${eletiva.nome}</p>
-    
-    <div class="form-group">
-      <label>Nome completo:</label>
-      <input type="text" id="novoAlunoNome" placeholder="Digite o nome completo" required>
-    </div>
-    
-    <div class="form-group">
-      <label>SIGE (número de matrícula):</label>
-      <input type="text" id="novoAlunoSige" placeholder="Apenas números" required pattern="\\d+">
-      <small style="color: var(--danger);">⚠️ SIGE NÃO PODE SER ALTERADO DEPOIS</small>
-    </div>
-    
-    <div class="form-group">
-      <label>Turma de origem:</label>
-      <select id="novoAlunoTurma">
-        ${turmasOptions}
-      </select>
-    </div>
-    
-    <div class="form-group">
-      <label>Data de entrada:</label>
-      <input type="date" id="novoAlunoData" value="${new Date().toISOString().split("T")[0]}" readonly>
-    </div>
-    
-    <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: 8px;">
-      <p><strong>⚠️ AVISO:</strong> Aluno será adicionado à eletiva imediatamente</p>
-    </div>
-  `;
-
-  document.getElementById("modalAdicionarTitulo").textContent =
-    `➕ ADICIONAR NOVO ALUNO - ${eletiva.nome}`;
-  document.getElementById("modalAdicionarAlunoBody").innerHTML = modalBody;
-  document.getElementById("modalAdicionarAluno").classList.add("active");
-  alunoParaAdicionar = { eletivaId };
-};
-
-// Confirmar adicionar aluno
-window.confirmarAdicionarAluno = function () {
-  if (!alunoParaAdicionar) return;
-
-  const nome = document.getElementById("novoAlunoNome")?.value;
-  const sige = document.getElementById("novoAlunoSige")?.value;
-  const turma = document.getElementById("novoAlunoTurma")?.value;
-
-  if (!nome || !sige || !turma) {
-    mostrarErro("Preencha todos os campos");
-    return;
-  }
-
-  if (!/^\d+$/.test(sige)) {
-    mostrarErro("SIGE deve conter apenas números");
-    return;
-  }
-
-  // Verificar se aluno já existe por SIGE
-  const alunoExistente = state.alunos?.find((a) => a.codigoSige === sige);
-  let alunoId;
-
-  if (alunoExistente) {
-    // Usar aluno existente
-    alunoId = alunoExistente.id;
-    mostrarAviso("Aluno já cadastrado no sistema. Adicionando à eletiva...");
-  } else {
-    // Criar novo aluno
-    alunoId = (state.alunos?.length || 0) + 1;
-    const novoAluno = {
-      id: alunoId,
-      nome: nome,
-      codigoSige: sige,
-      turmaOrigem: turma,
-      serie: turma?.substring(0, 3) || "1ª",
-    };
-
-    if (!state.alunos) state.alunos = [];
-    state.alunos.push(novoAluno);
-  }
-
-  // Verificar se já está matriculado
-  const jaMatriculado = state.matriculas?.some(
-    (m) =>
-      m.alunoId === alunoId && m.eletivaId === alunoParaAdicionar.eletivaId,
-  );
-
-  if (jaMatriculado) {
-    mostrarAviso("Aluno já está matriculado nesta eletiva");
-    fecharModalAdicionarAluno();
-    return;
-  }
-
-  // Criar matrícula
-  const novaMatricula = {
-    id: (state.matriculas?.length || 0) + 1,
-    eletivaId: alunoParaAdicionar.eletivaId,
-    alunoId: alunoId,
-    tipoMatricula: "manual",
-    dataMatricula: new Date().toISOString().split("T")[0],
-    semestreId: "2026-1",
-  };
-
-  if (!state.matriculas) state.matriculas = [];
-  state.matriculas.push(novaMatricula);
-  salvarEstado();
-
-  if (window.FirebaseSync) {
-    window.FirebaseSync.salvarDadosFirebase(
-      "matriculas",
-      novaMatricula,
-      novaMatricula.id,
-    );
-    if (!alunoExistente) {
-      window.FirebaseSync.salvarDadosFirebase(
-        "alunos",
-        state.alunos[state.alunos.length - 1],
-        alunoId,
-      );
-    }
-  }
-
-  registrarMovimentacao("novo_aluno", {
-    alunoId,
-    alunoNome: nome,
-    eletivaId: alunoParaAdicionar.eletivaId,
-    sige,
-  });
-
-  mostrarSucesso("Aluno adicionado com sucesso!");
-  fecharModalAdicionarAluno();
-  carregarEletivasOrganizar();
-  if (
-    document.getElementById("tab-estatisticas").classList.contains("active")
-  ) {
-    carregarEstatisticas();
-  }
-};
-
-// Fechar modal de adicionar aluno
-window.fecharModalAdicionarAluno = function () {
-  document.getElementById("modalAdicionarAluno").classList.remove("active");
-  alunoParaAdicionar = null;
-};
-
-// Abrir adicionar aluno existente
-window.abrirAdicionarExistente = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  if (!eletiva) return;
-
-  // Listar todos os alunos que NÃO estão nesta eletiva
-  const matriculasIds =
-    state.matriculas
-      ?.filter((m) => m.eletivaId === eletivaId)
-      .map((m) => m.alunoId) || [];
-  const alunosDisponiveis =
-    state.alunos
-      ?.filter((a) => !matriculasIds.includes(a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  let resultadosHTML = "";
-
-  if (alunosDisponiveis.length === 0) {
-    resultadosHTML =
-      '<p class="empty-state">Nenhum aluno disponível para adicionar</p>';
-  } else {
-    alunosDisponiveis.slice(0, 10).forEach((aluno) => {
-      resultadosHTML += `
-        <div class="resultado-item">
-          <input type="radio" name="alunoExistente" value="${aluno.id}" id="aluno_${aluno.id}">
-          <label for="aluno_${aluno.id}">
-            <strong>${aluno.nome}</strong> (${aluno.turmaOrigem}) - SIGE: ${aluno.codigoSige}
-          </label>
-        </div>
-      `;
-    });
-
-    if (alunosDisponiveis.length > 10) {
-      resultadosHTML += `<p style="text-align: center; color: var(--text-light);">... e mais ${alunosDisponiveis.length - 10} alunos</p>`;
-    }
-  }
-
-  const modalBody = `
-    <p><strong>Adicionar aluno existente à eletiva:</strong> ${eletiva.nome}</p>
-    
-    <div class="search-box" style="margin: 1rem 0;">
-      <i class="fas fa-search"></i>
-      <input type="text" id="buscaAlunoExistente" placeholder="Buscar aluno por nome ou SIGE..." oninput="filtrarAlunosExistentes(${eletivaId})">
-    </div>
-    
-    <div class="resultado-busca" id="resultadoBuscaExistente">
-      ${resultadosHTML}
-    </div>
-    
-    <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: 8px;">
-      <p><strong>⚠️ REGRAS:</strong></p>
-      <ul style="margin-left: 1.5rem;">
-        <li>Aluno pode estar em outra eletiva (se horários diferentes)</li>
-        <li>Verificar conflito de horários</li>
-      </ul>
-    </div>
-  `;
-
-  document.getElementById("modalAdicionarExistenteBody").innerHTML = modalBody;
-  document.getElementById("modalAdicionarExistente").classList.add("active");
-  alunoParaAdicionar = { eletivaId };
-
-  // Função de filtro
-  window.filtrarAlunosExistentes = function (eletivaId) {
-    const termo =
-      document.getElementById("buscaAlunoExistente")?.value.toLowerCase() || "";
-    const matriculasIds =
-      state.matriculas
-        ?.filter((m) => m.eletivaId === eletivaId)
-        .map((m) => m.alunoId) || [];
-    const alunosFiltrados =
-      state.alunos?.filter(
-        (a) =>
-          !matriculasIds.includes(a.id) &&
-          (a.nome.toLowerCase().includes(termo) ||
-            a.codigoSige.includes(termo)),
-      ) || [];
-
-    let resultados = "";
-    alunosFiltrados.slice(0, 10).forEach((aluno) => {
-      resultados += `
-        <div class="resultado-item">
-          <input type="radio" name="alunoExistente" value="${aluno.id}" id="aluno_${aluno.id}">
-          <label for="aluno_${aluno.id}">
-            <strong>${aluno.nome}</strong> (${aluno.turmaOrigem}) - SIGE: ${aluno.codigoSige}
-          </label>
-        </div>
-      `;
-    });
-
-    if (alunosFiltrados.length > 10) {
-      resultados += `<p style="text-align: center; color: var(--text-light);">... e mais ${alunosFiltrados.length - 10} alunos</p>`;
-    }
-
-    document.getElementById("resultadoBuscaExistente").innerHTML =
-      resultados || '<p class="empty-state">Nenhum aluno encontrado</p>';
-  };
-};
-
-// Confirmar adicionar aluno existente
-window.confirmarAdicionarExistente = function () {
-  if (!alunoParaAdicionar) return;
-
-  const radioSelecionado = document.querySelector(
-    'input[name="alunoExistente"]:checked',
-  );
-  if (!radioSelecionado) {
-    mostrarErro("Selecione um aluno");
-    return;
-  }
-
-  const alunoId = parseInt(radioSelecionado.value);
-
-  // Verificar se já está matriculado
-  const jaMatriculado = state.matriculas?.some(
-    (m) =>
-      m.alunoId === alunoId && m.eletivaId === alunoParaAdicionar.eletivaId,
-  );
-
-  if (jaMatriculado) {
-    mostrarAviso("Aluno já está matriculado nesta eletiva");
-    fecharModalAdicionarExistente();
-    return;
-  }
-
-  // Verificar conflito de horários
-  const eletivaDestino = state.eletivas?.find(
-    (e) => e.id === alunoParaAdicionar.eletivaId,
-  );
-  const matriculasAluno =
-    state.matriculas?.filter((m) => m.alunoId === alunoId) || [];
-
-  for (const matricula of matriculasAluno) {
-    const eletivaAluno = state.eletivas?.find(
-      (e) => e.id === matricula.eletivaId,
-    );
-    if (eletivaAluno && temMesmoHorario(eletivaDestino, eletivaAluno)) {
-      if (
-        !confirm(
-          `Aluno já está em ${eletivaAluno.nome} no mesmo horário. Deseja adicionar mesmo assim?`,
-        )
-      ) {
-        return;
-      }
-    }
-  }
-
-  // Criar matrícula
-  const novaMatricula = {
-    id: (state.matriculas?.length || 0) + 1,
-    eletivaId: alunoParaAdicionar.eletivaId,
-    alunoId: alunoId,
-    tipoMatricula: "manual",
-    dataMatricula: new Date().toISOString().split("T")[0],
-    semestreId: "2026-1",
-  };
-
-  if (!state.matriculas) state.matriculas = [];
-  state.matriculas.push(novaMatricula);
-  salvarEstado();
-
-  if (window.FirebaseSync) {
-    window.FirebaseSync.salvarDadosFirebase(
-      "matriculas",
-      novaMatricula,
-      novaMatricula.id,
-    );
-  }
-
-  const aluno = state.alunos?.find((a) => a.id === alunoId);
-  registrarMovimentacao("adicao_existente", {
-    alunoId,
-    alunoNome: aluno?.nome,
-    eletivaId: alunoParaAdicionar.eletivaId,
-    eletivaNome: eletivaDestino?.nome,
-  });
-
-  mostrarSucesso("Aluno adicionado com sucesso!");
-  fecharModalAdicionarExistente();
-  carregarEletivasOrganizar();
-  if (
-    document.getElementById("tab-estatisticas").classList.contains("active")
-  ) {
-    carregarEstatisticas();
-  }
-};
-
-// Fechar modal de adicionar existente
-window.fecharModalAdicionarExistente = function () {
-  document.getElementById("modalAdicionarExistente").classList.remove("active");
-  alunoParaAdicionar = null;
-};
-
-// Salvar todas as alterações
-window.salvarTodasAlteracoes = function () {
-  salvarEstado();
-  if (window.FirebaseSync) {
-    window.FirebaseSync.processarFilaPendente();
-  }
-  mostrarSucesso("Todas as alterações salvas!");
-};
-
-// ========== FUNÇÕES DE JSON ==========
-
-// Abrir modal JSON
-window.abrirModalJSON = function () {
-  const dadosExport = {
-    eletivas: state.eletivas || [],
-    professores: state.professores || [],
-    alunos: state.alunos || [],
-    matriculas: state.matriculas || [],
-  };
-
-  document.getElementById("jsonViewerContent").textContent = JSON.stringify(
-    dadosExport,
-    null,
-    2,
-  );
-  document.getElementById("modalVerJSON").classList.add("active");
-};
-
-// Fechar modal JSON
-window.fecharModalJSON = function () {
-  document.getElementById("modalVerJSON").classList.remove("active");
-};
-
-// Copiar JSON
-window.copiarJSON = function () {
-  const jsonContent = document.getElementById("jsonViewerContent").textContent;
-  navigator.clipboard
-    .writeText(jsonContent)
-    .then(() => {
-      mostrarSucesso("JSON copiado!");
-    })
-    .catch(() => {
-      mostrarErro("Erro ao copiar");
-    });
-};
-
-// Exportar JSON
-window.exportarJSON = function () {
-  const jsonContent = document.getElementById("jsonViewerContent").textContent;
-  const blob = new Blob([jsonContent], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "dados-planilha.json";
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
-// Abrir modal importar JSON
-window.abrirModalImportarJSON = function () {
-  document.getElementById("jsonImportTextarea").value = "";
-  document.getElementById("modalImportarJSON").classList.add("active");
-};
-
-// Fechar modal importar JSON
-window.fecharModalImportarJSON = function () {
-  document.getElementById("modalImportarJSON").classList.remove("active");
-};
-
-// Validar JSON
-window.validarJSON = function () {
-  const jsonText = document.getElementById("jsonImportTextarea")?.value;
-  if (!jsonText) {
-    mostrarErro("Cole o JSON primeiro");
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(jsonText);
-    mostrarSucesso("✅ JSON válido!");
-  } catch (e) {
-    mostrarErro("❌ JSON inválido: " + e.message);
-  }
-};
-
-// Importar JSON
-window.importarJSON = function () {
-  const jsonText = document.getElementById("jsonImportTextarea")?.value;
-  if (!jsonText) {
-    mostrarErro("Cole o JSON primeiro");
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(jsonText);
-
-    // Mapear eletivas existentes por código
-    const eletivasExistentes = {};
-    state.eletivas?.forEach((e) => {
-      eletivasExistentes[e.codigo] = e;
-    });
-
-    // Atualizar ou adicionar novas eletivas
-    if (parsed.eletivas) {
-      parsed.eletivas.forEach((nova, index) => {
-        if (eletivasExistentes[nova.codigo]) {
-          // Atualizar existente (manter ID)
-          const indexExistente = state.eletivas.findIndex(
-            (e) => e.codigo === nova.codigo,
-          );
-          if (indexExistente !== -1) {
-            state.eletivas[indexExistente] = {
-              ...eletivasExistentes[nova.codigo],
-              nome: nova.nome,
-              tipo: nova.tipo || "MISTA",
-              horario: nova.horario || {
-                diaSemana: "segunda",
-                codigoTempo: "T1",
-              },
-              turmaOrigem: nova.turmaOrigem || "",
-            };
-          }
-        } else {
-          // Adicionar nova
-          state.eletivas.push({
-            id: state.eletivas.length + 1000 + index,
-            codigo: nova.codigo,
-            nome: nova.nome,
-            tipo: nova.tipo || "MISTA",
-            professorId: nova.professorId || 1,
-            professorNome: nova.professorNome || "",
-            horario: nova.horario || {
-              diaSemana: "segunda",
-              codigoTempo: "T1",
-            },
-            vagas: 40,
-            seriesPermitidas: ["1ª", "2ª", "3ª"],
-            turmaOrigem: nova.turmaOrigem || "",
-            semestreId: "2026-1",
-          });
-        }
-      });
-    }
-
-    salvarEstado();
-    mostrarSucesso("JSON importado com sucesso!");
-    fecharModalImportarJSON();
-    carregarEletivasOrganizar();
-    carregarEstatisticas();
-    carregarEletivasLiberacao();
-  } catch (e) {
-    mostrarErro("Erro ao importar JSON: " + e.message);
-  }
-};
-
-// ========== FUNÇÕES DE LIBERAÇÃO DE NOTAS ==========
-
-// Carregar eletivas para liberação
-function carregarEletivasLiberacao() {
-  const container = document.getElementById("eletivasLiberacaoContainer");
-  if (!container) return;
-
-  const semestre =
-    document.getElementById("selectSemestreLiberacao")?.value || "1/2026";
-  const eletivas =
-    state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  container.innerHTML = "";
-
-  eletivas.forEach((eletiva) => {
-    const professor = state.professores?.find(
-      (p) => p.id === eletiva.professorId,
-    );
-    const matriculas =
-      state.matriculas?.filter((m) => m.eletivaId === eletiva.id) || [];
-    const liberada = verificarNotasLiberadasGestor(eletiva.id, semestre);
-
-    const div = document.createElement("div");
-    div.className = "eletiva-liberacao-item";
-    div.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 0.8rem;
-      border-bottom: 1px solid var(--bg-gray);
-    `;
-
-    div.innerHTML = `
-      <input type="checkbox" id="liberacao_${eletiva.id}" value="${eletiva.id}" ${liberada ? "checked" : ""}>
-      <div style="flex: 1;">
-        <strong>${eletiva.nome}</strong> (${professor?.nome || "Sem professor"})
-        <span style="font-size: 0.85rem; color: var(--text-light); margin-left: 0.5rem;">${matriculas.length} alunos</span>
-      </div>
-      <span style="font-size: 0.85rem; padding: 0.2rem 0.8rem; border-radius: 20px; background: ${liberada ? "var(--success)" : "var(--bg-gray)"}; color: ${liberada ? "white" : "var(--text-light)"};">
-        ${liberada ? "✅ Liberado" : "🔒 Bloqueado"}
-      </span>
-    `;
-
-    container.appendChild(div);
-  });
-
-  if (eletivas.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhuma eletiva cadastrada</p>';
-  }
-}
-
-// Atualizar status de liberação
-function atualizarStatusLiberacao() {
-  const statusDiv = document.getElementById("statusLiberacao");
-  const semestre =
-    document.getElementById("selectSemestreLiberacao")?.value || "1/2026";
-
-  const eletivasLiberadas = Object.values(
-    flagLiberacaoNotas[semestre] || {},
-  ).filter((v) => v).length;
-
-  if (eletivasLiberadas > 0) {
-    statusDiv.className = "status-liberacao liberado";
-    statusDiv.innerHTML = `
-      <i class="fas fa-lock-open" style="font-size: 1.5rem;"></i>
-      <div>
-        <strong>Status atual:</strong> 🔓 LIBERADO para ${eletivasLiberadas} eletivas
-      </div>
-    `;
-  } else {
-    statusDiv.className = "status-liberacao bloqueado";
-    statusDiv.innerHTML = `
-      <i class="fas fa-lock" style="font-size: 1.5rem;"></i>
-      <div>
-        <strong>Status atual:</strong> 🔒 BLOQUEADO para professores
-      </div>
-    `;
-  }
-}
-
-// Selecionar todas as eletivas
-window.selecionarTodasEletivas = function (selecionar) {
-  const checkboxes = document.querySelectorAll(
-    '#eletivasLiberacaoContainer input[type="checkbox"]',
-  );
-  checkboxes.forEach((cb) => {
-    cb.checked = selecionar;
-  });
-};
-
-// Habilitar notas selecionadas
-window.habilitarNotasSelecionadas = function () {
-  const semestre =
-    document.getElementById("selectSemestreLiberacao")?.value || "1/2026";
-  const checkboxes = document.querySelectorAll(
-    '#eletivasLiberacaoContainer input[type="checkbox"]:checked',
-  );
-
-  checkboxes.forEach((cb) => {
-    const eletivaId = parseInt(cb.value);
-    if (!flagLiberacaoNotas[semestre]) {
-      flagLiberacaoNotas[semestre] = {};
-    }
-    flagLiberacaoNotas[semestre][eletivaId] = true;
-  });
-
-  salvarFlagLiberacao();
-  mostrarSucesso(`Notas habilitadas para ${checkboxes.length} eletivas!`);
-  carregarEletivasLiberacao();
-  atualizarStatusLiberacao();
-};
-
-// Bloquear notas selecionadas
-window.bloquearNotasSelecionadas = function () {
-  const semestre =
-    document.getElementById("selectSemestreLiberacao")?.value || "1/2026";
-  const checkboxes = document.querySelectorAll(
-    '#eletivasLiberacaoContainer input[type="checkbox"]:checked',
-  );
-
-  checkboxes.forEach((cb) => {
-    const eletivaId = parseInt(cb.value);
-    if (flagLiberacaoNotas[semestre]) {
-      delete flagLiberacaoNotas[semestre][eletivaId];
-    }
-  });
-
-  salvarFlagLiberacao();
-  mostrarSucesso(`Notas bloqueadas para ${checkboxes.length} eletivas!`);
-  carregarEletivasLiberacao();
-  atualizarStatusLiberacao();
-};
-
-// ========== FUNÇÕES DE IMPRESSÃO ==========
-
-// Carregar logo para PDF
-async function carregarLogoBase64() {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.onload = function () {
-      const canvas = document.createElement("canvas");
-      canvas.width = this.width;
-      canvas.height = this.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(this, 0, 0);
-      const dataURL = canvas.toDataURL("image/png");
-      resolve(dataURL);
-    };
-    img.onerror = function () {
-      console.warn("⚠️ Erro ao carregar logo");
-      resolve(null);
-    };
-    img.src = "assets/logo-escola.png";
-  });
-}
-
-// Imprimir lista de frequência
-window.imprimirListaFrequenciaGestor = async function (eletivaId) {
-  if (window.imprimirListaFrequencia) {
-    window.imprimirListaFrequencia(eletivaId);
-  }
-};
-
-// Imprimir notas
-window.imprimirNotasGestor = async function (eletivaId) {
-  if (window.imprimirPDFNotas) {
-    window.imprimirPDFNotas(eletivaId, "1/2026");
-  }
-};
-
-// Gerar PDF seguro
-async function gerarPDFSeguro(dadosPDF, nomeArquivo) {
-  try {
-    const doc = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4",
-    });
-
-    let y = 20;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 15;
-
-    // Logo
-    if (dadosPDF.cabecalho.logo) {
-      try {
-        const logoBase64 = await carregarLogoBase64();
-        if (logoBase64) {
-          doc.addImage(logoBase64, "PNG", pageWidth / 2 - 26, y - 10, 52, 19.5);
-          y += 15;
-        }
-      } catch (e) {
-        console.warn("Erro ao adicionar logo:", e);
-      }
-    }
-
-    // Título
-    doc.setFontSize(16);
-    doc.setFont("helvetica", "bold");
-    doc.text(
-      dadosPDF.cabecalho.titulo ||
-        "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
-      pageWidth / 2,
-      y,
-      { align: "center" },
-    );
-    y += 8;
-
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      dadosPDF.cabecalho.escola || "EEMTI Filgueiras Lima - Inep: 23142804",
-      pageWidth / 2,
-      y,
-      { align: "center" },
-    );
-    y += 10;
-
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(`RELATÓRIO DE FREQUÊNCIA E NOTAS`, pageWidth / 2, y, {
-      align: "center",
-    });
-    y += 8;
-
-    doc.setFontSize(12);
-    doc.text(
-      `${dadosPDF.cabecalho.eletiva || ""} - ${dadosPDF.cabecalho.semestre || ""}`,
-      pageWidth / 2,
-      y,
-      { align: "center" },
-    );
-    y += 6;
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `Professor(a): ${dadosPDF.cabecalho.professor || ""}`,
-      pageWidth / 2,
-      y,
-      { align: "center" },
-    );
-    y += 10;
-
-    // Tabela
-    const colWidths = [80, 25, 25, 20, 25];
-
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("NOME DO ALUNO", margin, y);
-    doc.text("TURMA", margin + colWidths[0], y);
-    doc.text("SIGE", margin + colWidths[0] + colWidths[1], y);
-    doc.text("FALTAS", margin + colWidths[0] + colWidths[1] + colWidths[2], y);
-    doc.text(
-      "NOTA",
-      margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3],
-      y,
-    );
-
-    y += 5;
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 5;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-
-    (dadosPDF.alunos || []).forEach((aluno) => {
-      if (y > 150) {
-        doc.addPage();
-        y = 20;
-      }
-
-      doc.text(aluno.nome.substring(0, 35), margin, y);
-      doc.text(aluno.turma, margin + colWidths[0], y);
-      doc.text(aluno.sige, margin + colWidths[0] + colWidths[1], y);
-      doc.text(
-        aluno.faltas.toString(),
-        margin + colWidths[0] + colWidths[1] + colWidths[2],
-        y,
-      );
-      doc.text(
-        aluno.nota !== "N/A" ? aluno.nota.toFixed(1) : "-",
-        margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3],
-        y,
-      );
-
-      y += 5;
-    });
-
-    y += 10;
-
-    // Resumo
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("📊 RESUMO DA TURMA:", margin, y);
-    y += 6;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(
-      `• Total de Alunos: ${dadosPDF.resumo.totalAlunos || 0}`,
-      margin + 5,
-      y,
-    );
-    y += 5;
-    doc.text(
-      `• Total de Ausências no Semestre: ${dadosPDF.resumo.totalAusencias || 0}`,
-      margin + 5,
-      y,
-    );
-    y += 5;
-    doc.text(
-      `• Média de Faltas por Aluno: ${dadosPDF.resumo.mediaFaltas || "0.0"}`,
-      margin + 5,
-      y,
-    );
-    y += 5;
-    doc.text(
-      `• Média Geral da Turma: ${dadosPDF.resumo.mediaGeral || "0.0"}`,
-      margin + 5,
-      y,
-    );
-    y += 5;
-    doc.text(
-      `• Maior Nota: ${dadosPDF.resumo.maiorNota !== "N/A" ? dadosPDF.resumo.maiorNota.toFixed(1) : "N/A"}`,
-      margin + 5,
-      y,
-    );
-    y += 5;
-    doc.text(
-      `• Menor Nota: ${dadosPDF.resumo.menorNota !== "N/A" ? dadosPDF.resumo.menorNota.toFixed(1) : "N/A"}`,
-      margin + 5,
-      y,
-    );
-    y += 5;
-    doc.text(
-      `• Alunos Acima da Média: ${dadosPDF.resumo.acimaMedia || 0}`,
-      margin + 5,
-      y,
-    );
-    y += 5;
-    doc.text(
-      `• Alunos Abaixo da Média: ${dadosPDF.resumo.abaixoMedia || 0}`,
-      margin + 5,
-      y,
-    );
-    y += 10;
-
-    doc.line(margin, y, pageWidth - margin, y);
-    y += 8;
-
-    // Assinaturas
-    doc.line(margin, y, margin + 70, y);
-    doc.line(pageWidth - margin - 70, y, pageWidth - margin, y);
-    y += 5;
-
-    doc.text("Assinatura do Professor", margin, y);
-    doc.text("Assinatura do Gestor", pageWidth - margin - 70, y);
-    y += 8;
-
-    doc.text(`Data: ____/____/______`, pageWidth / 2, y, { align: "center" });
-
-    const pdfBlob = doc.output("blob");
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    window.open(pdfUrl, "_blank");
-  } catch (error) {
-    console.error("Erro ao gerar PDF:", error);
-    throw error;
-  }
-}
-
-// Imprimir relatório completo da eletiva (NOVO - CORRIGIDO)
-window.imprimirRelatorioEletiva = async function (
-  eletivaId,
-  semestre = "1/2026",
-) {
-  mostrarLoaderGestor(true);
-
-  try {
-    const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-    if (!eletiva) {
-      mostrarErro("Eletiva não encontrada");
-      return;
-    }
-
-    const professor = state.professores?.find(
-      (p) => p.id === eletiva.professorId,
-    );
-    const matriculas =
-      state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-    const alunos =
-      state.alunos
-        ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-        .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-    if (alunos.length === 0) {
-      mostrarAviso("Esta eletiva não possui alunos cadastrados.");
-      return;
-    }
-
-    const estatisticas = await calcularEstatisticasSeguro(eletivaId, semestre);
-
-    const dadosPDF = {
-      cabecalho: {
-        logo: "assets/logo-escola.png",
-        titulo: "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
-        escola: "EEMTI Filgueiras Lima - Inep: 23142804",
-        eletiva: eletiva.nome || "Sem nome",
-        codigo: eletiva.codigo || "Sem código",
-        professor: professor?.nome || eletiva.professorNome || "Não atribuído",
-        semestre: semestre || "1º/2026",
-      },
-      alunos: alunos.map((aluno) => ({
-        nome: aluno.nome || "Sem nome",
-        turma: aluno.turmaOrigem || "Sem turma",
-        sige: aluno.codigoSige || "000000",
-        faltas: estatisticas.ausenciasPorAluno?.[aluno.id] || 0,
-        nota: estatisticas.notasPorAluno?.[aluno.id] || "N/A",
-      })),
-      resumo: {
-        totalAlunos: alunos.length,
-        totalAusencias: estatisticas.totalAusencias || 0,
-        mediaFaltas: (estatisticas.mediaFaltas || 0).toFixed(1),
-        mediaGeral: (estatisticas.mediaNotas || 0).toFixed(1),
-        maiorNota: estatisticas.maiorNota || "N/A",
-        menorNota: estatisticas.menorNota || "N/A",
-        acimaMedia: estatisticas.acimaMedia || 0,
-        abaixoMedia: estatisticas.abaixoMedia || 0,
-      },
-    };
-
-    dadosPDF.alunos.sort((a, b) => a.nome.localeCompare(b.nome));
-
-    await gerarPDFSeguro(dadosPDF, `relatorio-${eletiva.codigo}-${semestre}`);
-
-    mostrarSucesso("Relatório gerado com sucesso!");
-  } catch (error) {
-    console.error("Erro ao gerar relatório:", error);
-    mostrarErro("Não foi possível gerar o relatório. Tente novamente.");
-  } finally {
-    mostrarLoaderGestor(false);
-  }
-};
-
-// Imprimir lista de alunos
-window.imprimirListaAlunos = async function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  if (!eletiva) return;
-
-  const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-  const alunos =
-    state.alunos
-      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  if (alunos.length === 0) {
-    mostrarAviso("Nenhum aluno matriculado");
-    return;
-  }
-
-  const doc = new jsPDF({
-    orientation: "landscape",
-    unit: "mm",
-    format: "a4",
-  });
-
-  let y = 20;
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "bold");
-  doc.text("LISTA DE ALUNOS POR ELETIVA", pageWidth / 2, y, {
-    align: "center",
-  });
-  y += 10;
-
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "normal");
-  doc.text(
-    `Eletiva: ${eletiva.nome} | Código: ${eletiva.codigo} | Professor: ${eletiva.professorNome}`,
-    pageWidth / 2,
-    y,
-    { align: "center" },
-  );
-  y += 10;
-
-  const margin = 15;
-  const colWidths = [80, 30, 30, 60];
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("NOME DO ALUNO", margin, y);
-  doc.text("TURMA", margin + colWidths[0], y);
-  doc.text("SIGE", margin + colWidths[0] + colWidths[1], y);
-  doc.text(
-    "OBSERVAÇÕES",
-    margin + colWidths[0] + colWidths[1] + colWidths[2],
-    y,
-  );
-
-  y += 5;
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 5;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-
-  alunos.forEach((aluno, index) => {
-    if (y > 180) {
-      doc.addPage();
-      y = 20;
-    }
-
-    doc.text(aluno.nome.substring(0, 35), margin, y);
-    doc.text(aluno.turmaOrigem, margin + colWidths[0], y);
-    doc.text(aluno.codigoSige, margin + colWidths[0] + colWidths[1], y);
-    doc.text("", margin + colWidths[0] + colWidths[1] + colWidths[2], y);
-
-    y += 6;
-  });
-
-  y += 10;
-  doc.text(`Total de Alunos: ${alunos.length}`, margin, y);
-  y += 15;
-
-  doc.line(margin, y, margin + 70, y);
-  doc.line(pageWidth - margin - 70, y, pageWidth - margin, y);
-  y += 5;
-
-  doc.text("Assinatura do Professor", margin, y);
-  doc.text("Assinatura do Gestor", pageWidth - margin - 70, y);
-
-  const pdfBlob = doc.output("blob");
-  const pdfUrl = URL.createObjectURL(pdfBlob);
-  window.open(pdfUrl, "_blank");
-};
-
-// Exportar alunos para Excel
-window.exportarAlunosExcel = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  if (!eletiva) return;
-
-  const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-  const alunos =
-    state.alunos
-      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  if (alunos.length === 0) {
-    mostrarAviso("Nenhum aluno para exportar");
-    return;
-  }
-
-  const dados = alunos.map((a) => ({
-    Nome: a.nome,
-    Turma: a.turmaOrigem,
-    SIGE: a.codigoSige,
-  }));
-
-  const ws = XLSX.utils.json_to_sheet(dados);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Alunos");
-
-  const nomeArquivo = `alunos_${eletiva.codigo}_${new Date().toISOString().split("T")[0]}.xlsx`;
-  XLSX.writeFile(wb, nomeArquivo);
-};
-
-// ========== FUNÇÕES DIVERSAS ==========
 
 // Fechar modal de confirmação
 window.fecharModalConfirmacao = function () {
@@ -3299,4 +135,1720 @@ window.fecharModalConfirmacao = function () {
 window.fazerLogout = function () {
   localStorage.removeItem("gestor_atual");
   window.location.href = "index.html";
+};
+
+// ========== FUNÇÕES DE CÁLCULO DE ESTATÍSTICAS ==========
+
+// Calcular tempo eletivo a partir do horário
+function getTempoFromHorario(horario) {
+  if (!horario) return null;
+  if (horario.codigoTempo) {
+    return horario.codigoTempo;
+  }
+  if (horario.diaSemana && horario.codigoTempo) {
+    return horario.codigoTempo;
+  }
+  return null;
+}
+
+// Calcular total de ausências de uma eletiva
+function calcularAusenciasEletiva(eletivaId) {
+  const registros =
+    state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
+  let total = 0;
+
+  registros.forEach((reg) => {
+    if (reg.frequencia?.ausentes) {
+      total += reg.frequencia.ausentes.length;
+    }
+  });
+
+  return total;
+}
+
+// Calcular média de notas de uma eletiva
+function calcularMediaEletiva(eletivaId) {
+  const notasRegistro = state.notas?.find(
+    (n) => n.eletivaId === eletivaId && n.semestre === "1/2026",
+  );
+
+  if (!notasRegistro?.notas || notasRegistro.notas.length === 0) {
+    return null;
+  }
+
+  const soma = notasRegistro.notas.reduce((acc, n) => acc + n.nota, 0);
+  return soma / notasRegistro.notas.length;
+}
+
+// Calcular estatísticas gerais
+function calcularEstatisticasGerais() {
+  const eletivas = state.eletivas || [];
+  const totalEletivas = eletivas.length;
+
+  const alunosPorSIGE = new Set();
+  const alunos = state.alunos || [];
+
+  alunos.forEach((aluno) => {
+    if (aluno.codigoSige) {
+      alunosPorSIGE.add(aluno.codigoSige);
+    } else {
+      alunosPorSIGE.add(aluno.id);
+    }
+  });
+
+  const totalEstudantes = alunosPorSIGE.size;
+
+  let totalAusencias = 0;
+  (state.registros || []).forEach((r) => {
+    if (r.frequencia?.ausentes) {
+      totalAusencias += r.frequencia.ausentes.length;
+    }
+  });
+
+  let somaMedias = 0;
+  let eletivasComNota = 0;
+
+  eletivas.forEach((e) => {
+    const media = calcularMediaEletiva(e.id);
+    if (media !== null) {
+      somaMedias += media;
+      eletivasComNota++;
+    }
+  });
+
+  const mediaGeral =
+    eletivasComNota > 0 ? (somaMedias / eletivasComNota).toFixed(1) : "N/A";
+
+  return {
+    totalEletivas,
+    totalEstudantes,
+    totalAusencias,
+    mediaGeral,
+  };
+}
+
+// ========== FUNÇÕES DA ABA ESTATÍSTICAS ==========
+
+// Filtrar por tempo
+window.filtrarPorTempo = function (tempo) {
+  tempoSelecionado = tempo;
+
+  document.querySelectorAll(".tempo-btn").forEach((btn) => {
+    btn.classList.remove("active");
+    if (btn.textContent.trim() === tempo) {
+      btn.classList.add("active");
+    }
+  });
+
+  carregarCardsEletivas();
+};
+
+// Filtrar por busca
+window.filtrarEletivas = function () {
+  termoBusca = document.getElementById("buscaEletiva")?.value || "";
+  carregarCardsEletivas();
+};
+
+// Limpar filtros
+window.limparFiltros = function () {
+  tempoSelecionado = "TODOS";
+  termoBusca = "";
+
+  document.getElementById("buscaEletiva").value = "";
+
+  document.querySelectorAll(".tempo-btn").forEach((btn) => {
+    btn.classList.remove("active");
+    if (btn.textContent.trim() === "TODOS") {
+      btn.classList.add("active");
+    }
+  });
+
+  carregarCardsEletivas();
+};
+
+// Carregar estatísticas
+function carregarEstatisticas() {
+  todasEletivas = state.eletivas || [];
+
+  const stats = calcularEstatisticasGerais();
+
+  document.getElementById("totalEletivas").textContent = stats.totalEletivas;
+  document.getElementById("totalEstudantes").textContent =
+    stats.totalEstudantes;
+  document.getElementById("totalAusencias").textContent = stats.totalAusencias;
+  document.getElementById("mediaGeral").textContent = stats.mediaGeral;
+
+  carregarCardsEletivas();
+}
+
+// Carregar cards das eletivas (estatísticas)
+function carregarCardsEletivas() {
+  const container = document.getElementById("eletivasGrid");
+  if (!container) return;
+
+  let eletivasFiltradas = todasEletivas;
+
+  if (tempoSelecionado !== "TODOS") {
+    eletivasFiltradas = eletivasFiltradas.filter((e) => {
+      const tempo = getTempoFromHorario(e.horario);
+      return tempo === tempoSelecionado;
+    });
+  }
+
+  if (termoBusca.trim() !== "") {
+    const termo = termoBusca.toLowerCase();
+    eletivasFiltradas = eletivasFiltradas.filter((e) => {
+      const professor =
+        state.professores?.find((p) => p.id === e.professorId)?.nome || "";
+      return (
+        e.nome?.toLowerCase().includes(termo) ||
+        e.codigo?.toLowerCase().includes(termo) ||
+        professor.toLowerCase().includes(termo)
+      );
+    });
+  }
+
+  if (eletivasFiltradas.length === 0) {
+    container.innerHTML =
+      '<p class="empty-state">Nenhuma eletiva encontrada</p>';
+    return;
+  }
+
+  container.innerHTML = "";
+
+  eletivasFiltradas.forEach((eletiva) => {
+    const professor =
+      state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+      "Não atribuído";
+    const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
+
+    const matriculas =
+      state.matriculas?.filter((m) => m.eletivaId === eletiva.id) || [];
+    const totalAlunos = matriculas.length;
+    const totalAusencias = calcularAusenciasEletiva(eletiva.id);
+    const media = calcularMediaEletiva(eletiva.id);
+    const mediaDisplay = media !== null ? media.toFixed(1) : "N/A";
+
+    const card = document.createElement("div");
+    card.className = "eletiva-card-estatistica";
+
+    card.innerHTML = `
+      <div class="eletiva-card-header">
+        <h3>${eletiva.nome}</h3>
+        <span class="codigo">${eletiva.codigo}</span>
+      </div>
+      <div class="eletiva-info-linha">
+        <i class="fas fa-user"></i> ${professor} | <i class="fas fa-clock"></i> Tempo: ${tempo}
+      </div>
+      <div class="eletiva-stats">
+        <div class="stat-item">
+          <div class="stat-valor">${totalAlunos}</div>
+          <div class="stat-label">ALUNOS</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-valor">${totalAusencias}</div>
+          <div class="stat-label">AUSÊNCIAS</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-valor">${mediaDisplay}</div>
+          <div class="stat-label">MÉDIA</div>
+        </div>
+      </div>
+      <button class="btn-primary btn-small" style="width: 100%;" onclick="verDetalhesEletiva(${eletiva.id})">
+        <i class="fas fa-eye"></i> VER DETALHES
+      </button>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+// Ver detalhes da eletiva
+window.verDetalhesEletiva = function (eletivaId) {
+  mostrarLoaderGestor(true);
+
+  setTimeout(() => {
+    try {
+      const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+      if (!eletiva) {
+        mostrarLoaderGestor(false);
+        return;
+      }
+
+      const professor =
+        state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+        "Não atribuído";
+      const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
+
+      const matriculas =
+        state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+      const alunos =
+        state.alunos
+          ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
+          .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+
+      const totalAlunos = alunos.length;
+      const totalAusencias = calcularAusenciasEletiva(eletivaId);
+      const media = calcularMediaEletiva(eletivaId);
+      const mediaDisplay = media !== null ? media.toFixed(1) : "N/A";
+
+      const registros =
+        state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
+      const ausenciasPorAluno = {};
+
+      registros.forEach((reg) => {
+        if (reg.frequencia?.ausentes) {
+          reg.frequencia.ausentes.forEach((codigo) => {
+            const aluno = alunos.find((a) => a.codigoSige === codigo);
+            if (aluno) {
+              ausenciasPorAluno[aluno.id] =
+                (ausenciasPorAluno[aluno.id] || 0) + 1;
+            }
+          });
+        }
+      });
+
+      const notasRegistro = state.notas?.find(
+        (n) => n.eletivaId === eletivaId && n.semestre === "1/2026",
+      );
+      const notasPorAluno = {};
+      if (notasRegistro?.notas) {
+        notasRegistro.notas.forEach((n) => {
+          notasPorAluno[n.alunoId] = n.nota;
+        });
+      }
+
+      let tabelaHTML = `
+        <table class="alunos-table">
+          <thead>
+            <tr>
+              <th>NOME</th>
+              <th>TURMA</th>
+              <th>SIGE</th>
+              <th>AUSÊNCIAS</th>
+              <th>NOTA</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      alunos.forEach((aluno) => {
+        const ausencias = ausenciasPorAluno[aluno.id] || 0;
+        const nota = notasPorAluno[aluno.id];
+        const notaDisplay = nota !== undefined ? nota.toFixed(1) : "-";
+
+        tabelaHTML += `
+          <tr>
+            <td>${aluno.nome}</td>
+            <td>${aluno.turmaOrigem}</td>
+            <td>${aluno.codigoSige}</td>
+            <td><span class="badge-falta">${ausencias}</span></td>
+            <td><span class="badge-nota">${notaDisplay}</span></td>
+          </tr>
+        `;
+      });
+
+      tabelaHTML += `
+          </tbody>
+        </table>
+      `;
+
+      document.getElementById("modalTitulo").textContent =
+        `👥 ALUNOS - ${eletiva.nome}`;
+      document.getElementById("modalInfo").innerHTML = `
+        <p><strong>Professor:</strong> ${professor} | <strong>Tempo:</strong> ${tempo}</p>
+        <p><strong>Total de Alunos:</strong> ${totalAlunos} | <strong>Total Ausências:</strong> ${totalAusencias} | <strong>Média:</strong> ${mediaDisplay}</p>
+      `;
+      document.getElementById("modalTabelaContainer").innerHTML = tabelaHTML;
+
+      document.getElementById("btnImprimirLista").onclick = () =>
+        imprimirListaAlunos(
+          eletiva,
+          alunos,
+          ausenciasPorAluno,
+          notasPorAluno,
+          professor,
+          tempo,
+        );
+
+      document.getElementById("modalDetalhesEletiva").classList.add("active");
+    } catch (error) {
+      console.error("Erro ao carregar detalhes:", error);
+    } finally {
+      mostrarLoaderGestor(false);
+    }
+  }, 50);
+};
+
+// Fechar modal de detalhes
+window.fecharModalDetalhes = function () {
+  document.getElementById("modalDetalhesEletiva").classList.remove("active");
+};
+
+// ========== FUNÇÕES DA ABA VER REGISTROS ==========
+
+// Inicializar filtros da aba registros
+function inicializarFiltrosRegistros() {
+  carregarSelectProfessoresRegistros();
+  carregarSelectDiasRegistros();
+}
+
+// Carregar select de professores
+function carregarSelectProfessoresRegistros() {
+  const select = document.getElementById("filtroProfessorRegistros");
+  if (!select) return;
+
+  const professores =
+    state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+
+  select.innerHTML = '<option value="">Todos os professores</option>';
+
+  professores.forEach((p) => {
+    const option = document.createElement("option");
+    option.value = p.id;
+    option.textContent = p.nome;
+    select.appendChild(option);
+  });
+}
+
+// Carregar select de dias da semana
+function carregarSelectDiasRegistros() {
+  const select = document.getElementById("filtroDiaRegistros");
+  if (!select) return;
+
+  select.innerHTML = '<option value="">Todos os dias</option>';
+
+  diasSemana.forEach((dia) => {
+    const option = document.createElement("option");
+    option.value = dia;
+    option.textContent = nomesDias[dia];
+    select.appendChild(option);
+  });
+}
+
+// Mostrar/esconder campos de filtro
+window.toggleFiltroRegistros = function () {
+  const tipo = document.getElementById("filtroTipoRegistros")?.value;
+
+  document.getElementById("filtroProfessorContainer").style.display =
+    tipo === "professor" ? "block" : "none";
+  document.getElementById("filtroDiaContainer").style.display =
+    tipo === "dia" ? "block" : "none";
+
+  aplicarFiltrosRegistros();
+};
+
+// Aplicar filtros
+window.aplicarFiltrosRegistros = function () {
+  buscaRegistros =
+    document.getElementById("buscaRegistros")?.value?.toLowerCase() || "";
+  filtroTipoRegistros =
+    document.getElementById("filtroTipoRegistros")?.value || "todas";
+  filtroProfessorRegistros =
+    document.getElementById("filtroProfessorRegistros")?.value || "";
+  filtroDiaRegistros =
+    document.getElementById("filtroDiaRegistros")?.value || "";
+
+  carregarCardsRegistros();
+};
+
+// Limpar filtros
+window.limparFiltrosRegistros = function () {
+  document.getElementById("buscaRegistros").value = "";
+  document.getElementById("filtroTipoRegistros").value = "todas";
+  document.getElementById("filtroProfessorRegistros").value = "";
+  document.getElementById("filtroDiaRegistros").value = "";
+
+  document.getElementById("filtroProfessorContainer").style.display = "none";
+  document.getElementById("filtroDiaContainer").style.display = "none";
+
+  buscaRegistros = "";
+  filtroTipoRegistros = "todas";
+  filtroProfessorRegistros = "";
+  filtroDiaRegistros = "";
+
+  carregarCardsRegistros();
+};
+
+// Filtrar eletivas para registros
+function filtrarEletivasRegistros() {
+  let eletivas = state.eletivas || [];
+
+  if (filtroTipoRegistros === "professor" && filtroProfessorRegistros) {
+    eletivas = eletivas.filter(
+      (e) => e.professorId === parseInt(filtroProfessorRegistros),
+    );
+  }
+
+  if (filtroTipoRegistros === "dia" && filtroDiaRegistros) {
+    eletivas = eletivas.filter(
+      (e) => e.horario?.diaSemana?.toLowerCase() === filtroDiaRegistros,
+    );
+  }
+
+  if (buscaRegistros) {
+    eletivas = eletivas.filter((e) => {
+      const professor =
+        state.professores?.find((p) => p.id === e.professorId)?.nome || "";
+      return (
+        e.nome?.toLowerCase().includes(buscaRegistros) ||
+        e.codigo?.toLowerCase().includes(buscaRegistros) ||
+        professor.toLowerCase().includes(buscaRegistros)
+      );
+    });
+  }
+
+  return eletivas;
+}
+
+// Carregar cards da aba registros
+function carregarCardsRegistros() {
+  const container = document.getElementById("registrosCardsGrid");
+  if (!container) return;
+
+  const eletivas = filtrarEletivasRegistros();
+
+  const contador = document.getElementById("resultadosContadorRegistros");
+  if (contador) {
+    contador.textContent = `(${eletivas.length} eletivas encontradas)`;
+  }
+
+  if (eletivas.length === 0) {
+    container.innerHTML =
+      '<p class="empty-state">Nenhuma eletiva encontrada</p>';
+    return;
+  }
+
+  container.innerHTML = "";
+
+  eletivas.sort((a, b) => a.nome.localeCompare(b.nome));
+
+  eletivas.forEach((eletiva) => {
+    const professor =
+      state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+      "Não atribuído";
+    const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
+
+    const registros =
+      state.registros
+        ?.filter((r) => r.eletivaId === eletiva.id)
+        .sort((a, b) => b.data.localeCompare(a.data)) || [];
+
+    const notas = state.notas?.filter((n) => n.eletivaId === eletiva.id) || [];
+
+    let mediaDisplay = "N/A";
+    if (notas.length > 0) {
+      const todasNotas = [];
+      notas.forEach((n) => {
+        if (n.notas) {
+          n.notas.forEach((nota) => todasNotas.push(nota.nota));
+        }
+      });
+      if (todasNotas.length > 0) {
+        const soma = todasNotas.reduce((a, b) => a + b, 0);
+        mediaDisplay = (soma / todasNotas.length).toFixed(1);
+      }
+    }
+
+    const card = document.createElement("div");
+    card.className = "eletiva-card-estatistica";
+
+    let registrosHTML =
+      '<div style="margin: 0.5rem 0; font-weight: bold;">📅 ÚLTIMOS REGISTROS:</div>';
+
+    registros.slice(0, 3).forEach((reg) => {
+      const presentes = reg.frequencia?.presentes?.length || 0;
+      const ausentes = reg.frequencia?.ausentes?.length || 0;
+      const dataFormatada = formatarData(reg.data);
+      registrosHTML += `<div style="font-size: 0.9rem; padding: 0.2rem 0;">• ${dataFormatada} - Frequência (${presentes} presentes, ${ausentes} ausentes)</div>`;
+    });
+
+    notas.slice(0, 1).forEach((nota) => {
+      const mediaNota =
+        nota.notas?.length > 0
+          ? (
+              nota.notas.reduce((acc, n) => acc + n.nota, 0) / nota.notas.length
+            ).toFixed(1)
+          : "0.0";
+      registrosHTML += `<div style="font-size: 0.9rem; padding: 0.2rem 0;">• ${nota.semestre} - Notas (média: ${mediaNota})</div>`;
+    });
+
+    if (registros.length === 0 && notas.length === 0) {
+      registrosHTML +=
+        '<div style="font-size: 0.9rem; color: var(--text-light);">Nenhum registro encontrado</div>';
+    }
+
+    card.innerHTML = `
+      <div style="margin-bottom: 1rem;">
+        <h3 style="color: var(--primary); margin: 0 0 0.3rem 0;">${eletiva.nome} | Código: ${eletiva.codigo}</h3>
+        <div style="font-size: 0.95rem; color: var(--text-light);">
+          <i class="fas fa-user"></i> ${professor} | 
+          <i class="fas fa-clock"></i> ${eletiva.horario?.diaSemana} ${tempo} | 
+          <i class="fas fa-users"></i> Turmas: ${eletiva.turmaOrigem || "Várias"} |
+          <i class="fas fa-chart-line"></i> Média: ${mediaDisplay}
+        </div>
+      </div>
+      
+      ${registrosHTML}
+      
+      <div style="margin-top: 1rem;">
+        <button class="btn-primary btn-small" style="width: 100%;" onclick="abrirModalOpcoesImpressao(${eletiva.id})">
+          <i class="fas fa-print"></i> IMPRIMIR
+        </button>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+// ========== FUNÇÕES DO MODAL DE OPÇÕES DE IMPRESSÃO ==========
+
+// Abrir modal de opções de impressão
+window.abrirModalOpcoesImpressao = function (eletivaId) {
+  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  if (!eletiva) return;
+
+  eletivaSelecionadaParaImpressao = eletiva;
+
+  const professor =
+    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+    "Não atribuído";
+
+  document.getElementById("modalImpressaoTitulo").textContent =
+    `🖨️ OPÇÕES DE IMPRESSÃO`;
+  document.getElementById("modalImpressaoEletiva").textContent =
+    `${eletiva.nome} (${eletiva.codigo}) - Prof. ${professor}`;
+
+  document.getElementById("modalOpcoesImpressao").classList.add("active");
+};
+
+// Fechar modal de opções de impressão
+window.fecharModalOpcoesImpressao = function () {
+  document.getElementById("modalOpcoesImpressao").classList.remove("active");
+  eletivaSelecionadaParaImpressao = null;
+};
+
+//// Selecionar opção de impressão (CORRIGIDO)
+window.selecionarOpcaoImpressao = function (opcao) {
+  console.log("🎯 Opção selecionada:", opcao);
+  console.log(
+    "📌 eletivaSelecionadaParaImpressao:",
+    eletivaSelecionadaParaImpressao,
+  );
+
+  // Verificar se a eletiva ainda existe
+  if (!eletivaSelecionadaParaImpressao) {
+    console.error("❌ Nenhuma eletiva selecionada!");
+    showToast("Erro: eletiva não selecionada", "error");
+    fecharModalOpcoesImpressao();
+    return;
+  }
+
+  // Verificar se o ID é válido
+  if (!eletivaSelecionadaParaImpressao.id) {
+    console.error("❌ ID da eletiva inválido!");
+    showToast("Erro: ID da eletiva inválido", "error");
+    fecharModalOpcoesImpressao();
+    return;
+  }
+
+  const eletivaId = eletivaSelecionadaParaImpressao.id;
+
+  // Fechar o modal primeiro
+  fecharModalOpcoesImpressao();
+
+  // Pequeno delay para garantir que o modal fechou
+  setTimeout(() => {
+    switch (opcao) {
+      case "listaBranco":
+        console.log("🖨️ Chamando listaBranco para eletiva:", eletivaId);
+        window.imprimirListaBrancoGestor(eletivaId);
+        break;
+      case "registrosData":
+        console.log("📅 Chamando registrosData para eletiva:", eletivaId);
+        window.abrirSelecaoData(eletivaId);
+        break;
+      case "boletim":
+        console.log("📊 Chamando boletim para eletiva:", eletivaId);
+        window.imprimirBoletimGestor(eletivaId);
+        break;
+      default:
+        console.error("❌ Opção desconhecida:", opcao);
+    }
+  }, 100);
+};
+
+// ========== FUNÇÕES DE IMPRESSÃO DA ABA REGISTROS (CORRIGIDAS) ==========
+
+// Imprimir lista em branco
+window.imprimirListaBrancoGestor = async function (eletivaId) {
+  console.log("🖨️ Chamando imprimirListaBrancoGestor para eletiva:", eletivaId);
+
+  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  if (!eletiva) {
+    showToast("Eletiva não encontrada", "error");
+    return;
+  }
+
+  const professor =
+    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+    "Não atribuído";
+
+  const matriculas =
+    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+  const alunos =
+    state.alunos
+      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
+      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+
+  if (alunos.length === 0) {
+    showToast("Esta eletiva não possui alunos cadastrados", "warning");
+    return;
+  }
+
+  mostrarLoaderGestor(true);
+
+  try {
+    await gerarPDFListaBrancoGestor(eletiva, alunos, professor);
+    showToast("Lista de frequência gerada com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao gerar lista:", error);
+    showToast("Erro ao gerar lista: " + error.message, "error");
+  } finally {
+    mostrarLoaderGestor(false);
+  }
+};
+
+// Gerar PDF lista em branco
+async function gerarPDFListaBrancoGestor(eletiva, alunos, professorNome) {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log("📄 Gerando PDF lista em branco para:", eletiva.nome);
+
+      if (typeof window.jspdf === "undefined") {
+        reject("Biblioteca jsPDF não encontrada");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      let paginaAtual = 1;
+      let y = 10;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 10;
+
+      function adicionarCabecalho() {
+        let yCabecalho = 10;
+
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.text(
+          "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 7;
+
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+          "EEMTI Filgueiras Lima - Inep: 23142804",
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 7;
+
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(
+          `LISTA DE FREQUÊNCIA - ${eletiva.nome}`,
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 6;
+
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+          `Professor: ${professorNome} | Total: ${alunos.length} alunos`,
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 6;
+
+        doc.setFontSize(10);
+        doc.text(
+          `Data: ________ / ________ / __________`,
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 8;
+
+        return yCabecalho;
+      }
+
+      function adicionarCabecalhoTabela(yPos) {
+        const colWidths = [75, 20, 20, 25, 25];
+        const posNota = pageWidth - margin - colWidths[4];
+        const posAus = posNota - colWidths[3] - 2;
+        const posSige = posAus - colWidths[2] - 2;
+        const posTurma = posSige - colWidths[1] - 2;
+        const posNome = margin;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+
+        doc.setFillColor(240, 240, 240);
+        doc.rect(margin - 1, yPos - 5, pageWidth - 2 * margin + 2, 6, "F");
+
+        doc.text("NOME", posNome, yPos);
+        doc.text("TURMA", posTurma, yPos);
+        doc.text("SIGE", posSige, yPos);
+        doc.text("STATUS", posAus, yPos);
+        doc.text("OBS", posNota, yPos);
+
+        yPos += 4;
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 4;
+
+        return { yPos, posNome, posTurma, posSige, posAus, posNota, colWidths };
+      }
+
+      y = adicionarCabecalho();
+      let tabelaInfo = adicionarCabecalhoTabela(y);
+      y = tabelaInfo.yPos;
+
+      const posNome = tabelaInfo.posNome;
+      const posTurma = tabelaInfo.posTurma;
+      const posSige = tabelaInfo.posSige;
+      const posAus = tabelaInfo.posAus;
+      const posNota = tabelaInfo.posNota;
+      const colWidths = tabelaInfo.colWidths;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+
+      const alturaPorLinha = 5.5;
+      const linhasPorPagina = Math.floor(
+        (pageHeight - y - 25) / alturaPorLinha,
+      );
+
+      let alunosProcessados = 0;
+      let maxPaginas = 2;
+
+      while (alunosProcessados < alunos.length && paginaAtual <= maxPaginas) {
+        const alunosNestaPagina = Math.min(
+          linhasPorPagina,
+          alunos.length - alunosProcessados,
+        );
+
+        for (let i = 0; i < alunosNestaPagina; i++) {
+          const aluno = alunos[alunosProcessados + i];
+
+          doc.text(aluno.nome, posNome, y);
+          doc.text(aluno.turmaOrigem, posTurma, y);
+          doc.text(aluno.codigoSige, posSige, y);
+
+          const ausX = posAus + colWidths[3] / 2;
+          const notaX = posNota + colWidths[4] / 2;
+
+          doc.text("_______", ausX, y, { align: "center" });
+          doc.text("___", notaX, y, { align: "center" });
+
+          y += alturaPorLinha;
+        }
+
+        alunosProcessados += alunosNestaPagina;
+
+        if (alunosProcessados < alunos.length && paginaAtual < maxPaginas) {
+          doc.addPage();
+          paginaAtual++;
+          y = adicionarCabecalho();
+          tabelaInfo = adicionarCabecalhoTabela(y);
+          y = tabelaInfo.yPos;
+        }
+      }
+
+      if (alunosProcessados < alunos.length) {
+        doc.setTextColor(255, 0, 0);
+        doc.setFontSize(8);
+        doc.text(
+          `⚠️ Lista parcial. ${alunos.length - alunosProcessados} alunos não listados.`,
+          margin,
+          y,
+        );
+        doc.setTextColor(0, 0, 0);
+        y += 6;
+      }
+
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Registro da Aula:", margin, y);
+      y += 5;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+
+      for (let i = 0; i < 3; i++) {
+        doc.text("_".repeat(100), margin, y);
+        y += 5;
+      }
+
+      y += 4;
+
+      const yAssinaturas = pageHeight - 12;
+
+      doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
+      doc.line(
+        pageWidth - margin - 60,
+        yAssinaturas,
+        pageWidth - margin,
+        yAssinaturas,
+      );
+
+      doc.setFontSize(9);
+      doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
+      doc.text(
+        "Assinatura do Gestor",
+        pageWidth - margin - 60,
+        yAssinaturas + 4,
+      );
+
+      const pdfBlob = doc.output("blob");
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, "_blank");
+
+      console.log("✅ PDF gerado com sucesso");
+      resolve(true);
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      reject(error);
+    }
+  });
+}
+
+// Abrir modal de seleção de data
+window.abrirSelecaoData = function (eletivaId) {
+  console.log("📅 Abrindo seleção de data para eletiva:", eletivaId);
+
+  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  if (!eletiva) return;
+
+  eletivaSelecionadaParaData = eletiva;
+
+  const registros =
+    state.registros
+      ?.filter((r) => r.eletivaId === eletivaId)
+      .sort((a, b) => b.data.localeCompare(a.data)) || [];
+
+  if (registros.length === 0) {
+    showToast("Não há registros para esta eletiva", "warning");
+    return;
+  }
+
+  let datasHTML = '<div style="padding: 0.5rem;">';
+  registros.forEach((reg) => {
+    const presentes = reg.frequencia?.presentes?.length || 0;
+    const dataFormatada = formatarData(reg.data);
+    datasHTML += `
+      <div style="padding: 0.5rem; border-bottom: 1px solid var(--bg-gray); cursor: pointer;" 
+           onclick="selecionarData('${reg.data}')">
+        <input type="radio" name="dataSelecionada" value="${reg.data}" id="data_${reg.data}">
+        <label for="data_${reg.data}">📅 ${dataFormatada} - Frequência (${presentes} presentes)</label>
+      </div>
+    `;
+  });
+  datasHTML += "</div>";
+
+  document.getElementById("modalDataTitulo").textContent =
+    `📅 SELECIONAR DATA - ${eletiva.nome}`;
+  document.getElementById("modalDataEletiva").textContent =
+    `Eletiva: ${eletiva.nome} | Código: ${eletiva.codigo}`;
+  document.getElementById("listaDatasContainer").innerHTML = datasHTML;
+
+  document.getElementById("modalSelecionarData").classList.add("active");
+};
+
+// Selecionar data
+window.selecionarData = function (data) {
+  console.log("📅 Data selecionada:", data);
+  dataSelecionada = data;
+  document
+    .querySelectorAll('input[name="dataSelecionada"]')
+    .forEach((r) => (r.checked = false));
+  const radio = document.getElementById(`data_${data}`);
+  if (radio) radio.checked = true;
+};
+
+// Confirmar seleção de data
+window.confirmarSelecaoData = function () {
+  console.log("✅ Confirmando data:", dataSelecionada);
+
+  if (!dataSelecionada) {
+    showToast("Selecione uma data", "warning");
+    return;
+  }
+
+  if (!eletivaSelecionadaParaData) return;
+
+  fecharModalSelecionarData();
+  imprimirRegistroPorDataGestor(eletivaSelecionadaParaData.id, dataSelecionada);
+};
+
+// Fechar modal de seleção de data
+window.fecharModalSelecionarData = function () {
+  document.getElementById("modalSelecionarData").classList.remove("active");
+  dataSelecionada = null;
+};
+
+// Imprimir registro por data
+window.imprimirRegistroPorDataGestor = async function (eletivaId, data) {
+  console.log(
+    "🖨️ Chamando imprimirRegistroPorDataGestor para eletiva:",
+    eletivaId,
+    "data:",
+    data,
+  );
+
+  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  if (!eletiva) {
+    showToast("Eletiva não encontrada", "error");
+    return;
+  }
+
+  const registro = state.registros?.find(
+    (r) => r.eletivaId === eletivaId && r.data === data,
+  );
+  if (!registro) {
+    showToast("Registro não encontrado", "error");
+    return;
+  }
+
+  const professor =
+    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+    "Não atribuído";
+
+  const matriculas =
+    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+  const alunos =
+    state.alunos
+      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
+      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+
+  mostrarLoaderGestor(true);
+
+  try {
+    await gerarPDFRegistroDataGestor(eletiva, alunos, registro, professor);
+    showToast("Registro gerado com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao gerar registro:", error);
+    showToast("Erro ao gerar registro: " + error.message, "error");
+  } finally {
+    mostrarLoaderGestor(false);
+  }
+};
+
+// Gerar PDF de registro por data
+async function gerarPDFRegistroDataGestor(
+  eletiva,
+  alunos,
+  registro,
+  professorNome,
+) {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log("📄 Gerando PDF registro por data para:", eletiva.nome);
+
+      if (typeof window.jspdf === "undefined") {
+        reject("Biblioteca jsPDF não encontrada");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      let paginaAtual = 1;
+      let y = 10;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 10;
+
+      const presentesSet = new Set(registro.frequencia?.presentes || []);
+
+      function adicionarCabecalho() {
+        let yCabecalho = 10;
+
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.text(
+          "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 7;
+
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+          "EEMTI Filgueiras Lima - Inep: 23142804",
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 7;
+
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(
+          `REGISTRO DE FREQUÊNCIA - ${eletiva.nome}`,
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 6;
+
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        const dataFormatada = formatarData(registro.data);
+        doc.text(
+          `Professor: ${professorNome} | Data: ${dataFormatada} | Total: ${alunos.length} alunos`,
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 8;
+
+        return yCabecalho;
+      }
+
+      function adicionarCabecalhoTabela(yPos) {
+        const colWidths = [70, 18, 18, 20, 25];
+        const posObs = pageWidth - margin - colWidths[4];
+        const posStatus = posObs - colWidths[3] - 2;
+        const posSige = posStatus - colWidths[2] - 2;
+        const posTurma = posSige - colWidths[1] - 2;
+        const posNome = margin;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+
+        doc.setFillColor(240, 240, 240);
+        doc.rect(margin - 1, yPos - 5, pageWidth - 2 * margin + 2, 6, "F");
+
+        doc.text("NOME", posNome, yPos);
+        doc.text("TURMA", posTurma, yPos);
+        doc.text("SIGE", posSige, yPos);
+        doc.text("STATUS", posStatus, yPos);
+        doc.text("TEMPO", posObs, yPos);
+
+        yPos += 4;
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 4;
+
+        return {
+          yPos,
+          posNome,
+          posTurma,
+          posSige,
+          posStatus,
+          posObs,
+          colWidths,
+        };
+      }
+
+      y = adicionarCabecalho();
+      let tabelaInfo = adicionarCabecalhoTabela(y);
+      y = tabelaInfo.yPos;
+
+      const posNome = tabelaInfo.posNome;
+      const posTurma = tabelaInfo.posTurma;
+      const posSige = tabelaInfo.posSige;
+      const posStatus = tabelaInfo.posStatus;
+      const posObs = tabelaInfo.posObs;
+      const colWidths = tabelaInfo.colWidths;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+
+      const alturaPorLinha = 5.5;
+      const linhasPorPagina = Math.floor(
+        (pageHeight - y - 35) / alturaPorLinha,
+      );
+
+      let alunosProcessados = 0;
+      let maxPaginas = 2;
+
+      while (alunosProcessados < alunos.length && paginaAtual <= maxPaginas) {
+        const alunosNestaPagina = Math.min(
+          linhasPorPagina,
+          alunos.length - alunosProcessados,
+        );
+
+        for (let i = 0; i < alunosNestaPagina; i++) {
+          const aluno = alunos[alunosProcessados + i];
+
+          const isPresente = presentesSet.has(aluno.codigoSige);
+          const status = isPresente ? "✅" : "❌";
+          const tempo = isPresente ? eletiva.horario?.codigoTempo || "T1" : "-";
+
+          doc.text(aluno.nome, posNome, y);
+          doc.text(aluno.turmaOrigem, posTurma, y);
+          doc.text(aluno.codigoSige, posSige, y);
+
+          const statusX = posStatus + colWidths[3] / 2;
+          const obsX = posObs + colWidths[4] / 2;
+
+          doc.text(status, statusX, y, { align: "center" });
+          doc.text(tempo, obsX, y, { align: "center" });
+
+          y += alturaPorLinha;
+        }
+
+        alunosProcessados += alunosNestaPagina;
+
+        if (alunosProcessados < alunos.length && paginaAtual < maxPaginas) {
+          doc.addPage();
+          paginaAtual++;
+          y = adicionarCabecalho();
+          tabelaInfo = adicionarCabecalhoTabela(y);
+          y = tabelaInfo.yPos;
+        }
+      }
+
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      const totalPresentes = registro.frequencia?.presentes?.length || 0;
+      const totalAusentes = registro.frequencia?.ausentes?.length || 0;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("📊 RESUMO DA AULA:", margin, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`• Presentes: ${totalPresentes}`, margin + 5, y);
+      y += 5;
+      doc.text(`• Ausentes: ${totalAusentes}`, margin + 5, y);
+      y += 6;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("📝 Conteúdo da Aula:", margin, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+
+      const linhasConteudo = doc.splitTextToSize(
+        registro.conteudo,
+        pageWidth - 2 * margin,
+      );
+      linhasConteudo.forEach((linha) => {
+        if (y > pageHeight - 25) {
+          doc.addPage();
+          paginaAtual++;
+          y = 20;
+        }
+        doc.text(linha, margin, y);
+        y += 5;
+      });
+
+      y += 4;
+
+      if (paginaAtual === 1 || paginaAtual === 2) {
+        const yAssinaturas = pageHeight - 12;
+
+        doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
+        doc.line(
+          pageWidth - margin - 60,
+          yAssinaturas,
+          pageWidth - margin,
+          yAssinaturas,
+        );
+
+        doc.setFontSize(9);
+        doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
+        doc.text(
+          "Assinatura do Gestor",
+          pageWidth - margin - 60,
+          yAssinaturas + 4,
+        );
+      }
+
+      const pdfBlob = doc.output("blob");
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, "_blank");
+
+      console.log("✅ PDF gerado com sucesso");
+      resolve(true);
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      reject(error);
+    }
+  });
+}
+
+// Imprimir boletim de notas
+window.imprimirBoletimGestor = async function (eletivaId) {
+  console.log("🖨️ Chamando imprimirBoletimGestor para eletiva:", eletivaId);
+
+  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  if (!eletiva) {
+    showToast("Eletiva não encontrada", "error");
+    return;
+  }
+
+  const notas = state.notas?.filter((n) => n.eletivaId === eletivaId) || [];
+
+  if (notas.length === 0) {
+    showToast("Não há notas registradas para esta eletiva", "warning");
+    return;
+  }
+
+  const professor =
+    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+    "Não atribuído";
+
+  const matriculas =
+    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+  const alunos =
+    state.alunos
+      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
+      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+
+  const ultimoSemestre = notas.sort((a, b) =>
+    b.semestre.localeCompare(a.semestre),
+  )[0];
+
+  mostrarLoaderGestor(true);
+
+  try {
+    await gerarPDFBoletimGestor(eletiva, alunos, ultimoSemestre, professor);
+    showToast("Boletim gerado com sucesso!", "success");
+  } catch (error) {
+    console.error("Erro ao gerar boletim:", error);
+    showToast("Erro ao gerar boletim: " + error.message, "error");
+  } finally {
+    mostrarLoaderGestor(false);
+  }
+};
+
+// Gerar PDF de boletim de notas
+async function gerarPDFBoletimGestor(
+  eletiva,
+  alunos,
+  registroNotas,
+  professorNome,
+) {
+  return new Promise((resolve, reject) => {
+    try {
+      console.log("📄 Gerando PDF boletim de notas para:", eletiva.nome);
+
+      if (typeof window.jspdf === "undefined") {
+        reject("Biblioteca jsPDF não encontrada");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      let paginaAtual = 1;
+      let y = 10;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 10;
+
+      const mapaNotas = {};
+      if (registroNotas?.notas) {
+        registroNotas.notas.forEach((n) => {
+          mapaNotas[n.alunoId] = n.nota;
+        });
+      }
+
+      const notasValidas = Object.values(mapaNotas).filter(
+        (n) => n !== undefined,
+      );
+      const mediaGeral =
+        notasValidas.length > 0
+          ? (
+              notasValidas.reduce((a, b) => a + b, 0) / notasValidas.length
+            ).toFixed(1)
+          : "N/A";
+
+      function adicionarCabecalho() {
+        let yCabecalho = 10;
+
+        doc.setFontSize(16);
+        doc.setFont("helvetica", "bold");
+        doc.text(
+          "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 7;
+
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+          "EEMTI Filgueiras Lima - Inep: 23142804",
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 7;
+
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text(
+          `BOLETIM DE NOTAS - ${eletiva.nome}`,
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 6;
+
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text(
+          `Professor: ${professorNome} | Semestre: ${registroNotas?.semestre || "1/2026"} | Total: ${alunos.length} alunos`,
+          pageWidth / 2,
+          yCabecalho,
+          { align: "center" },
+        );
+        yCabecalho += 8;
+
+        return yCabecalho;
+      }
+
+      function adicionarCabecalhoTabela(yPos) {
+        const colWidths = [75, 20, 20, 25];
+        const posNota = pageWidth - margin - colWidths[3];
+        const posSige = posNota - colWidths[2] - 2;
+        const posTurma = posSige - colWidths[1] - 2;
+        const posNome = margin;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+
+        doc.setFillColor(240, 240, 240);
+        doc.rect(margin - 1, yPos - 5, pageWidth - 2 * margin + 2, 6, "F");
+
+        doc.text("NOME", posNome, yPos);
+        doc.text("TURMA", posTurma, yPos);
+        doc.text("SIGE", posSige, yPos);
+        doc.text("NOTA", posNota, yPos);
+
+        yPos += 4;
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 4;
+
+        return { yPos, posNome, posTurma, posSige, posNota, colWidths };
+      }
+
+      y = adicionarCabecalho();
+      let tabelaInfo = adicionarCabecalhoTabela(y);
+      y = tabelaInfo.yPos;
+
+      const posNome = tabelaInfo.posNome;
+      const posTurma = tabelaInfo.posTurma;
+      const posSige = tabelaInfo.posSige;
+      const posNota = tabelaInfo.posNota;
+      const colWidths = tabelaInfo.colWidths;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+
+      const alturaPorLinha = 5.5;
+      const linhasPorPagina = Math.floor(
+        (pageHeight - y - 35) / alturaPorLinha,
+      );
+
+      let alunosProcessados = 0;
+      let maxPaginas = 2;
+
+      while (alunosProcessados < alunos.length && paginaAtual <= maxPaginas) {
+        const alunosNestaPagina = Math.min(
+          linhasPorPagina,
+          alunos.length - alunosProcessados,
+        );
+
+        for (let i = 0; i < alunosNestaPagina; i++) {
+          const aluno = alunos[alunosProcessados + i];
+          const nota = mapaNotas[aluno.id];
+          const notaDisplay = nota !== undefined ? nota.toFixed(1) : "-";
+
+          doc.text(aluno.nome, posNome, y);
+          doc.text(aluno.turmaOrigem, posTurma, y);
+          doc.text(aluno.codigoSige, posSige, y);
+
+          const notaX = posNota + colWidths[3] / 2;
+          doc.text(notaDisplay, notaX, y, { align: "center" });
+
+          y += alturaPorLinha;
+        }
+
+        alunosProcessados += alunosNestaPagina;
+
+        if (alunosProcessados < alunos.length && paginaAtual < maxPaginas) {
+          doc.addPage();
+          paginaAtual++;
+          y = adicionarCabecalho();
+          tabelaInfo = adicionarCabecalhoTabela(y);
+          y = tabelaInfo.yPos;
+        }
+      }
+
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text("📊 RESUMO DA TURMA:", margin, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`• Média geral: ${mediaGeral}`, margin + 5, y);
+      y += 6;
+
+      const yAssinaturas = pageHeight - 12;
+
+      doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
+      doc.line(
+        pageWidth - margin - 60,
+        yAssinaturas,
+        pageWidth - margin,
+        yAssinaturas,
+      );
+
+      doc.setFontSize(9);
+      doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
+      doc.text(
+        "Assinatura do Gestor",
+        pageWidth - margin - 60,
+        yAssinaturas + 4,
+      );
+
+      const dataAtual = new Date().toLocaleDateString("pt-BR");
+      doc.setFontSize(8);
+      doc.text(`Data: ${dataAtual}`, pageWidth / 2, yAssinaturas + 8, {
+        align: "center",
+      });
+
+      const pdfBlob = doc.output("blob");
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, "_blank");
+
+      console.log("✅ PDF gerado com sucesso");
+      resolve(true);
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      reject(error);
+    }
+  });
+}
+// ========== FUNÇÕES DE IMPRESSÃO DA ABA ESTATÍSTICAS ==========
+
+// Imprimir lista de alunos (estatísticas)
+function imprimirListaAlunos(
+  eletiva,
+  alunos,
+  ausenciasPorAluno,
+  notasPorAluno,
+  professor,
+  tempo,
+) {
+  mostrarLoaderGestor(true);
+
+  try {
+    if (typeof window.jspdf === "undefined") {
+      showToast("Biblioteca de PDF não carregada", "error");
+      mostrarLoaderGestor(false);
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    let y = 10;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 10;
+
+    // TÍTULO PRINCIPAL
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
+      align: "center",
+    });
+    y += 7;
+
+    // ESCOLA
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, {
+      align: "center",
+    });
+    y += 7;
+
+    // TÍTULO DA LISTA
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text(`LISTA DE ALUNOS - ${eletiva.nome}`, pageWidth / 2, y, {
+      align: "center",
+    });
+    y += 6;
+
+    // INFORMAÇÕES DA ELETIVA
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Professor: ${professor} | Tempo: ${tempo} | Total: ${alunos.length} alunos`,
+      pageWidth / 2,
+      y,
+      { align: "center" },
+    );
+    y += 8;
+
+    // CABEÇALHO DA TABELA
+    const colWidths = [70, 18, 18, 20, 25];
+    const posNota = pageWidth - margin - colWidths[4];
+    const posAus = posNota - colWidths[3] - 2;
+    const posSige = posAus - colWidths[2] - 2;
+    const posTurma = posSige - colWidths[1] - 2;
+    const posNome = margin;
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+
+    doc.setFillColor(240, 240, 240);
+    doc.rect(margin - 1, y - 5, pageWidth - 2 * margin + 2, 6, "F");
+
+    doc.text("NOME", posNome, y);
+    doc.text("TURMA", posTurma, y);
+    doc.text("SIGE", posSige, y);
+    doc.text("AUS", posAus, y);
+    doc.text("NOTA", posNota, y);
+
+    y += 4;
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 4;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    const alturaPorLinha = 5.5;
+    const espacoParaAlunos = alunos.length * alturaPorLinha;
+    const espacoRestante = pageHeight - y - 20;
+
+    let alturaAjustada = alturaPorLinha;
+    if (espacoRestante < espacoParaAlunos) {
+      alturaAjustada = espacoRestante / alunos.length;
+    }
+
+    alunos.forEach((aluno) => {
+      if (y > pageHeight - 20) {
+        doc.setTextColor(255, 0, 0);
+        doc.setFontSize(8);
+        doc.text(`⚠️ Lista incompleta. Faltam alunos.`, margin, y);
+        doc.setTextColor(0, 0, 0);
+        return;
+      }
+
+      const ausencias = ausenciasPorAluno[aluno.id] || 0;
+      const nota = notasPorAluno[aluno.id];
+      const notaDisplay = nota !== undefined ? nota.toFixed(1) : "-";
+
+      doc.text(aluno.nome, posNome, y);
+      doc.text(aluno.turmaOrigem, posTurma, y);
+      doc.text(aluno.codigoSige, posSige, y);
+
+      const ausX = posAus + colWidths[3] / 2;
+      const notaX = posNota + colWidths[4] / 2;
+
+      doc.text(ausencias.toString(), ausX, y, { align: "center" });
+      doc.text(notaDisplay, notaX, y, { align: "center" });
+
+      y += alturaAjustada;
+    });
+
+    y += 4;
+
+    const yAssinaturas = pageHeight - 12;
+
+    doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
+    doc.line(
+      pageWidth - margin - 60,
+      yAssinaturas,
+      pageWidth - margin,
+      yAssinaturas,
+    );
+
+    doc.setFontSize(9);
+    doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
+    doc.text("Assinatura do Gestor", pageWidth - margin - 60, yAssinaturas + 4);
+
+    const dataAtual = new Date().toLocaleDateString("pt-BR");
+    doc.setFontSize(8);
+    doc.text(`Data: ${dataAtual}`, pageWidth / 2, yAssinaturas + 8, {
+      align: "center",
+    });
+
+    const pdfBlob = doc.output("blob");
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    window.open(pdfUrl, "_blank");
+  } catch (error) {
+    console.error("❌ Erro ao gerar PDF:", error);
+    showToast("Erro ao gerar PDF: " + error.message, "error");
+  } finally {
+    mostrarLoaderGestor(false);
+  }
+}
+// ========== FUNÇÕES DE REDIRECIONAMENTO PARA GESTÃO COMPLETA ==========
+
+window.abrirModalEditarTempos = function () {
+  window.location.href = "gestao-completa.html#dados";
+};
+
+window.abrirModalEditarLiberacao = function () {
+  window.location.href = "gestao-completa.html#dados";
+};
+
+window.abrirModalRestaurarBackup = function () {
+  window.location.href = "gestao-completa.html#dados";
+};
+
+window.abrirModalConflitos = function () {
+  window.location.href = "gestao-completa.html#dados";
 };

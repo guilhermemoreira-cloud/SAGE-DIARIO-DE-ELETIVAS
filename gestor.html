@@ -100,22 +100,107 @@
         animation: fadeIn 0.3s ease;
       }
 
-      /* Busca */
-      .search-container {
-        display: flex;
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Dashboard superior */
+      .dashboard-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
         gap: 1rem;
         margin-bottom: 2rem;
+      }
+
+      .dashboard-card {
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary-dark)
+        );
+        color: white;
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        box-shadow: var(--shadow);
+      }
+
+      .dashboard-card i {
+        font-size: 2.5rem;
+      }
+
+      .dashboard-card-info h3 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+      }
+
+      .dashboard-card-info p {
+        margin: 0;
+        font-size: 0.9rem;
+        opacity: 0.9;
+      }
+
+      /* Filtros */
+      .filtros-container {
+        background: var(--bg-light);
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+      }
+
+      .tempo-filtros {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
         flex-wrap: wrap;
       }
 
+      .tempo-btn {
+        padding: 0.5rem 1.5rem;
+        border: 2px solid var(--primary);
+        background: none;
+        color: var(--primary);
+        border-radius: 30px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: var(--transition);
+      }
+
+      .tempo-btn:hover {
+        background: var(--primary-light);
+        color: white;
+        border-color: var(--primary-light);
+      }
+
+      .tempo-btn.active {
+        background: var(--primary);
+        color: white;
+      }
+
+      .search-container {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+      }
+
       .search-box {
-        flex: 2;
+        flex: 1;
         display: flex;
         align-items: center;
-        background: var(--bg-light);
+        background: var(--bg-white);
         border-radius: 30px;
         padding: 0.5rem 1rem;
-        border: 1px solid var(--bg-gray);
+        border: 2px solid var(--bg-gray);
       }
 
       .search-box i {
@@ -132,33 +217,22 @@
         color: var(--text-dark);
       }
 
-      .semestre-selector {
-        flex: 1;
-        padding: 0.5rem 1rem;
-        border: 2px solid var(--bg-gray);
-        border-radius: 30px;
-        font-size: 1rem;
-        background: var(--bg-white);
-      }
-
-      /* Cards de estatísticas */
-      .dia-titulo {
-        margin: 2rem 0 1rem 0;
-        color: var(--primary);
-        font-size: 1.3rem;
-        font-weight: 600;
-        border-bottom: 2px solid var(--primary-light);
-        padding-bottom: 0.5rem;
+      /* Cards de eletivas */
+      .eletivas-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
       }
 
       .eletiva-card-estatistica {
         background: var(--bg-white);
         border-radius: var(--border-radius);
         padding: 1.5rem;
-        margin-bottom: 1rem;
-        border-left: 6px solid var(--primary);
+        border-left: 4px solid var(--primary);
         box-shadow: var(--shadow);
         transition: var(--transition);
+        position: relative;
       }
 
       .eletiva-card-estatistica:hover {
@@ -166,53 +240,64 @@
         box-shadow: var(--shadow-hover);
       }
 
-      .eletiva-header-estatistica {
+      .eletiva-card-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 1rem;
-        flex-wrap: wrap;
-        gap: 1rem;
       }
 
-      .eletiva-icon {
-        font-size: 2.5rem;
+      .eletiva-card-header h3 {
         color: var(--primary);
-        margin-right: 1rem;
+        font-size: 1.2rem;
+        margin: 0;
       }
 
-      .eletiva-info h3 {
-        color: var(--primary);
-        font-size: 1.3rem;
-        margin-bottom: 0.3rem;
+      .eletiva-card-header .codigo {
+        background: var(--bg-gray);
+        padding: 0.2rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
       }
 
-      .estatisticas-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      .eletiva-info-linha {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-light);
+        font-size: 0.95rem;
+      }
+
+      .eletiva-stats {
+        display: flex;
         gap: 1rem;
         margin: 1rem 0;
+        padding: 0.8rem;
+        background: var(--bg-light);
+        border-radius: 8px;
       }
 
-      .estatistica-item {
-        background: var(--bg-light);
-        padding: 0.8rem;
-        border-radius: 8px;
+      .stat-item {
+        flex: 1;
         text-align: center;
       }
 
-      .estatistica-valor {
-        font-size: 1.8rem;
+      .stat-valor {
+        font-size: 1.3rem;
         font-weight: 700;
         color: var(--primary);
       }
 
-      .estatistica-label {
-        font-size: 0.85rem;
+      .stat-label {
+        font-size: 0.8rem;
         color: var(--text-light);
       }
 
       /* Modal de alunos */
+      .modal-gestor {
+        max-width: 900px;
+      }
+
       .alunos-table-container {
         max-height: 400px;
         overflow-y: auto;
@@ -221,12 +306,12 @@
         margin: 1rem 0;
       }
 
-      .alunos-table-gestor {
+      .alunos-table {
         width: 100%;
         border-collapse: collapse;
       }
 
-      .alunos-table-gestor th {
+      .alunos-table th {
         background: var(--primary);
         color: white;
         padding: 0.8rem;
@@ -236,12 +321,12 @@
         z-index: 10;
       }
 
-      .alunos-table-gestor td {
+      .alunos-table td {
         padding: 0.8rem;
         border-bottom: 1px solid var(--bg-light);
       }
 
-      .alunos-table-gestor tr:hover {
+      .alunos-table tr:hover {
         background: var(--bg-light);
       }
 
@@ -250,7 +335,7 @@
         color: var(--text-dark);
         padding: 0.2rem 0.5rem;
         border-radius: 20px;
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         font-weight: 600;
       }
 
@@ -259,194 +344,7 @@
         color: white;
         padding: 0.2rem 0.5rem;
         border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-      }
-
-      /* Cards de organização */
-      .eletiva-card-organizacao {
-        background: var(--bg-white);
-        border-radius: var(--border-radius);
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        border: 1px solid var(--bg-gray);
-        box-shadow: var(--shadow);
-      }
-
-      .eletiva-header-organizacao {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid var(--primary-light);
-      }
-
-      .eletiva-titulo h3 {
-        color: var(--primary);
-        font-size: 1.2rem;
-      }
-
-      .eletiva-titulo p {
-        font-size: 0.9rem;
-        color: var(--text-light);
-        margin-top: 0.2rem;
-      }
-
-      .eletiva-campos-edicao {
-        background: var(--bg-light);
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-      }
-
-      .eletiva-campos-edicao select,
-      .eletiva-campos-edicao input {
-        width: 100%;
-        padding: 0.5rem;
-        border: 2px solid var(--bg-gray);
-        border-radius: 4px;
-        font-size: 0.9rem;
-      }
-
-      .alunos-lista-completa {
-        max-height: 300px;
-        overflow-y: auto;
-        border: 2px solid var(--bg-gray);
-        border-radius: 8px;
-        margin: 1rem 0;
-      }
-
-      .aluno-item-organizacao {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.8rem;
-        border-bottom: 1px solid var(--bg-gray);
-      }
-
-      .aluno-item-organizacao:last-child {
-        border-bottom: none;
-      }
-
-      .aluno-info-organizacao {
-        flex: 1;
-      }
-
-      .aluno-info-organizacao strong {
-        color: var(--primary);
-      }
-
-      .aluno-turma-organizacao {
         font-size: 0.85rem;
-        color: var(--text-light);
-        margin-left: 0.5rem;
-        background: var(--bg-gray);
-        padding: 0.2rem 0.5rem;
-        border-radius: 4px;
-      }
-
-      .aluno-acoes {
-        display: flex;
-        gap: 0.5rem;
-      }
-
-      .btn-remover {
-        background: var(--danger);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 0.3rem 0.6rem;
-        cursor: pointer;
-        font-size: 0.8rem;
-      }
-
-      .btn-trocar {
-        background: var(--info);
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 0.3rem 0.6rem;
-        cursor: pointer;
-        font-size: 0.8rem;
-      }
-
-      .btn-editar-aluno {
-        background: var(--warning);
-        color: var(--text-dark);
-        border: none;
-        border-radius: 4px;
-        padding: 0.3rem 0.6rem;
-        cursor: pointer;
-        font-size: 0.8rem;
-      }
-
-      /* Modal de troca */
-      .eletivas-disponiveis {
-        margin: 1rem 0;
-      }
-
-      .eletiva-radio-option {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.8rem;
-        border: 2px solid var(--bg-gray);
-        border-radius: 8px;
-        margin-bottom: 0.5rem;
-        cursor: pointer;
-        transition: var(--transition);
-      }
-
-      .eletiva-radio-option:hover {
-        border-color: var(--primary);
-        background: var(--bg-light);
-      }
-
-      .eletiva-radio-option input[type="radio"] {
-        width: 18px;
-        height: 18px;
-      }
-
-      .eletiva-radio-option.disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        background: var(--bg-gray);
-      }
-
-      .eletiva-radio-option.disabled:hover {
-        border-color: var(--bg-gray);
-      }
-
-      /* Modal de adicionar aluno existente */
-      .resultado-busca {
-        max-height: 300px;
-        overflow-y: auto;
-        border: 2px solid var(--bg-gray);
-        border-radius: 8px;
-        margin: 1rem 0;
-      }
-
-      .resultado-item {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 0.8rem;
-        border-bottom: 1px solid var(--bg-gray);
-      }
-
-      .resultado-item input[type="radio"] {
-        width: 18px;
-        height: 18px;
-      }
-
-      /* Modais */
-      .modal-gestor {
-        max-width: 800px;
-      }
-
-      .modal-pequeno {
-        max-width: 500px;
       }
 
       /* Loading */
@@ -500,12 +398,20 @@
           flex-direction: column;
         }
 
+        .dashboard-cards {
+          grid-template-columns: 1fr;
+        }
+
+        .eletivas-grid {
+          grid-template-columns: 1fr;
+        }
+
         .search-container {
           flex-direction: column;
         }
 
-        .estatisticas-grid {
-          grid-template-columns: 1fr 1fr;
+        .search-container button {
+          width: 100%;
         }
       }
     </style>
@@ -514,8 +420,8 @@
     <div class="gestor-container">
       <!-- Header do Gestor -->
       <div class="gestor-header">
-        <img src="assets/logo.png" alt="SAGE Logo" />
-        <h1>DIÁRIO DOS COMPONENTES CURRICULARES ELETIVOS</h1>
+        <img src="assets/logo-escola.png" alt="SAGE Logo" />
+        <h1>DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS</h1>
         <p>EEMTI Filgueiras Lima - Inep: 23142804</p>
         <div
           style="
@@ -547,166 +453,138 @@
         </div>
       </div>
 
-      <!-- Tabs do Gestor -->
+      <!-- ABAS DO GESTOR -->
       <div class="gestor-tabs">
+        <button class="gestor-tab-btn" onclick="mudarTabGestor('estatisticas')">
+          <i class="fas fa-chart-bar"></i> VER ESTATÍSTICAS
+        </button>
         <button
           class="gestor-tab-btn active"
-          onclick="mudarTabGestor('estatisticas')"
+          onclick="mudarTabGestor('registros')"
         >
-          <i class="fas fa-chart-bar"></i> ESTATÍSTICAS
-        </button>
-        <button class="gestor-tab-btn" onclick="mudarTabGestor('registros')">
-          <i class="fas fa-clipboard-list"></i> REGISTROS
+          <i class="fas fa-clipboard-list"></i> VER REGISTROS
         </button>
         <button class="gestor-tab-btn" onclick="mudarTabGestor('organizar')">
           <i class="fas fa-cog"></i> ORGANIZAR ELETIVAS
-        </button>
-        <button class="gestor-tab-btn" onclick="mudarTabGestor('liberar')">
-          <i class="fas fa-lock-open"></i> HABILITAR NOTAS
         </button>
       </div>
 
       <!-- Conteúdo das Tabs -->
       <div class="gestor-tab-content">
-        <!-- Aba ESTATÍSTICAS -->
-        <div id="tab-estatisticas" class="gestor-tab-pane active">
-          <h2>📊 ESTATÍSTICAS DAS ELETIVAS</h2>
+        <!-- ABA 1: ESTATÍSTICAS -->
+        <div id="tab-estatisticas" class="gestor-tab-pane">
+          <h2>📊 DASHBOARD DE ESTATÍSTICAS</h2>
 
-          <div class="search-container">
-            <div class="search-box">
-              <i class="fas fa-search"></i>
-              <input
-                type="text"
-                id="buscaEletiva"
-                placeholder="Buscar eletiva por nome ou código..."
-                oninput="filtrarEletivasEstatisticas()"
-              />
+          <!-- Cards de Resumo -->
+          <div class="dashboard-cards">
+            <div class="dashboard-card">
+              <i class="fas fa-book"></i>
+              <div class="dashboard-card-info">
+                <h3 id="totalEletivas">0</h3>
+                <p>ELETIVAS</p>
+              </div>
             </div>
-            <select
-              id="semestreEstatisticas"
-              class="semestre-selector"
-              onchange="carregarEstatisticas()"
-            >
-              <option value="1/2026">1º Semestre 2026</option>
-              <option value="2/2026">2º Semestre 2026</option>
-            </select>
+            <div class="dashboard-card">
+              <i class="fas fa-users"></i>
+              <div class="dashboard-card-info">
+                <h3 id="totalEstudantes">0</h3>
+                <p>ESTUDANTES</p>
+              </div>
+            </div>
+            <div class="dashboard-card">
+              <i class="fas fa-user-slash"></i>
+              <div class="dashboard-card-info">
+                <h3 id="totalAusencias">0</h3>
+                <p>AUSÊNCIAS</p>
+              </div>
+            </div>
+            <div class="dashboard-card">
+              <i class="fas fa-chart-line"></i>
+              <div class="dashboard-card-info">
+                <h3 id="mediaGeral">0.0</h3>
+                <p>MÉDIA GERAL</p>
+              </div>
+            </div>
           </div>
 
-          <div id="estatisticasContainer"></div>
-        </div>
-
-        <!-- Aba REGISTROS -->
-        <div id="tab-registros" class="gestor-tab-pane">
-          <h2>📋 REGISTROS</h2>
-
-          <div
-            class="filtros-container"
-            style="
-              background: var(--bg-light);
-              border-radius: 8px;
-              padding: 1.5rem;
-              margin-bottom: 2rem;
-            "
-          >
-            <div
-              style="
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 1rem;
-              "
-            >
-              <div class="filtro-group">
-                <label>Filtrar por Professor:</label>
-                <select id="filtroProfessorRegistros">
-                  <option value="">Todos os professores</option>
-                </select>
-              </div>
-              <div class="filtro-group">
-                <label>Período de:</label>
-                <input type="date" id="filtroDataInicioRegistros" />
-              </div>
-              <div class="filtro-group">
-                <label>até:</label>
-                <input type="date" id="filtroDataFimRegistros" />
-              </div>
+          <!-- Filtro por Tempo -->
+          <div class="filtros-container">
+            <div style="margin-bottom: 1rem">
+              <strong>⏰ FILTRAR POR TEMPO ELETIVO:</strong>
+            </div>
+            <div class="tempo-filtros">
+              <button
+                class="tempo-btn active"
+                onclick="filtrarPorTempo('TODOS')"
+              >
+                TODOS
+              </button>
+              <button class="tempo-btn" onclick="filtrarPorTempo('T1')">
+                T1
+              </button>
+              <button class="tempo-btn" onclick="filtrarPorTempo('T2')">
+                T2
+              </button>
+              <button class="tempo-btn" onclick="filtrarPorTempo('T3')">
+                T3
+              </button>
+              <button class="tempo-btn" onclick="filtrarPorTempo('T4')">
+                T4
+              </button>
+              <button class="tempo-btn" onclick="filtrarPorTempo('T5')">
+                T5
+              </button>
             </div>
 
-            <div
-              style="
-                display: flex;
-                gap: 1rem;
-                justify-content: flex-end;
-                margin-top: 1rem;
-              "
-            >
-              <button class="btn-primary" onclick="aplicarFiltrosRegistros()">
-                <i class="fas fa-search"></i> APLICAR
+            <!-- Barra de Busca -->
+            <div class="search-container">
+              <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input
+                  type="text"
+                  id="buscaEletiva"
+                  placeholder="Buscar por nome, código ou professor..."
+                  oninput="filtrarEletivas()"
+                />
+              </div>
+              <button class="btn-primary" onclick="filtrarEletivas()">
+                <i class="fas fa-search"></i> BUSCAR
               </button>
-              <button class="btn-secondary" onclick="limparFiltrosRegistros()">
+              <button class="btn-secondary" onclick="limparFiltros()">
                 <i class="fas fa-eraser"></i> LIMPAR
               </button>
-              <button class="btn-success" onclick="sincronizarDadosGestor()">
-                <i class="fas fa-sync-alt"></i> SINCRONIZAR
-              </button>
             </div>
           </div>
 
-          <div id="registrosVisualizarContainer"></div>
+          <!-- Grid de Eletivas -->
+          <div id="eletivasGrid" class="eletivas-grid">
+            <!-- Cards serão inseridos via JavaScript -->
+          </div>
         </div>
 
-        <!-- Aba ORGANIZAR ELETIVAS -->
-        <div id="tab-organizar" class="gestor-tab-pane">
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 2rem;
-              flex-wrap: wrap;
-              gap: 1rem;
-            "
-          >
-            <h2>⚙️ ORGANIZAR ELETIVAS</h2>
-            <div style="display: flex; gap: 0.5rem">
-              <button class="btn-primary" onclick="abrirModalJSON()">
-                <i class="fas fa-code"></i> VER JSON
-              </button>
-              <button class="btn-success" onclick="abrirModalImportarJSON()">
-                <i class="fas fa-upload"></i> IMPORTAR JSON
-              </button>
-              <button class="btn-secondary" onclick="salvarTodasAlteracoes()">
-                <i class="fas fa-save"></i> SALVAR TUDO
-              </button>
-            </div>
-          </div>
+        <!-- ABA 2: VER REGISTROS -->
+        <div id="tab-registros" class="gestor-tab-pane active">
+          <h2>📋 VER REGISTROS</h2>
 
-          <!-- NOVO: Busca e Filtros -->
-          <div
-            style="
-              background: var(--bg-light);
-              border-radius: 8px;
-              padding: 1.5rem;
-              margin-bottom: 2rem;
-            "
-          >
-            <div style="display: flex; gap: 1rem; margin-bottom: 1rem">
+          <!-- Filtros e Busca -->
+          <div class="filtros-container" style="margin-bottom: 2rem">
+            <!-- Busca -->
+            <div class="search-container" style="margin-bottom: 1rem">
               <div class="search-box" style="flex: 2">
                 <i class="fas fa-search"></i>
                 <input
                   type="text"
-                  id="buscaOrganizar"
-                  placeholder="Buscar por nome, código ou professor..."
-                  oninput="aplicarFiltrosOrganizar()"
+                  id="buscaRegistros"
+                  placeholder="Buscar por nome da eletiva, código ou professor..."
+                  oninput="aplicarFiltrosRegistros()"
                 />
               </div>
-              <button class="btn-primary" onclick="aplicarFiltrosOrganizar()">
+              <button class="btn-primary" onclick="aplicarFiltrosRegistros()">
                 <i class="fas fa-search"></i> BUSCAR
-              </button>
-              <button class="btn-secondary" onclick="limparFiltrosOrganizar()">
-                <i class="fas fa-eraser"></i> LIMPAR
               </button>
             </div>
 
+            <!-- Filtros -->
             <div
               style="
                 display: flex;
@@ -717,378 +595,215 @@
             >
               <div style="display: flex; align-items: center; gap: 0.5rem">
                 <span style="font-weight: 600">📌 FILTRAR POR:</span>
-                <select id="filtroTipoOrganizar" onchange="mudarTipoFiltro()">
+                <select
+                  id="filtroTipoRegistros"
+                  onchange="toggleFiltroRegistros()"
+                >
                   <option value="todas">TODAS AS ELETIVAS</option>
-                  <option value="dia">DIA DA SEMANA</option>
                   <option value="professor">PROFESSOR</option>
+                  <option value="dia">DIA DA SEMANA</option>
                 </select>
               </div>
 
-              <div id="filtroDiaOrganizarContainer" style="display: none">
+              <div id="filtroProfessorContainer" style="display: none">
                 <select
-                  id="filtroDiaOrganizar"
-                  onchange="aplicarFiltrosOrganizar()"
+                  id="filtroProfessorRegistros"
+                  onchange="aplicarFiltrosRegistros()"
                 >
-                  <option value="TODOS">Selecione um dia</option>
+                  <option value="">Selecione um professor</option>
                 </select>
               </div>
 
-              <div id="filtroProfOrganizarContainer" style="display: none">
+              <div id="filtroDiaContainer" style="display: none">
                 <select
-                  id="filtroProfessorOrganizar"
-                  onchange="aplicarFiltrosOrganizar()"
+                  id="filtroDiaRegistros"
+                  onchange="aplicarFiltrosRegistros()"
                 >
-                  <option value="TODOS">Selecione um professor</option>
+                  <option value="">Selecione um dia</option>
                 </select>
               </div>
+
+              <button class="btn-secondary" onclick="limparFiltrosRegistros()">
+                <i class="fas fa-eraser"></i> LIMPAR
+              </button>
             </div>
           </div>
 
+          <!-- Contador de resultados -->
           <h3
-            id="resultadosContador"
+            id="resultadosContadorRegistros"
             style="margin-bottom: 1rem; color: var(--text-light)"
           >
             (0 eletivas encontradas)
           </h3>
 
-          <div id="eletivasOrganizarContainer"></div>
-
-          <div style="margin-top: 2rem; text-align: center">
-            <button class="btn-primary" onclick="abrirModalNovaEletiva()">
-              <i class="fas fa-plus"></i> ADICIONAR NOVA ELETIVA
-            </button>
+          <!-- Grid de Cards -->
+          <div id="registrosCardsGrid" class="eletivas-grid">
+            <!-- Cards serão inseridos via JavaScript -->
           </div>
         </div>
 
-        <!-- Aba HABILITAR NOTAS -->
-        <div id="tab-liberar" class="gestor-tab-pane">
-          <h2>🔓 HABILITAR LANÇAMENTO DE NOTAS</h2>
+        <!-- ABA 3: ORGANIZAR ELETIVAS (com botão para nova página) -->
+        <div id="tab-organizar" class="gestor-tab-pane">
+          <div style="text-align: center; padding: 2rem">
+            <i
+              class="fas fa-cog"
+              style="
+                font-size: 4rem;
+                color: var(--primary-light);
+                margin-bottom: 1rem;
+              "
+            ></i>
+            <h3 style="margin-bottom: 2rem">Organizar Eletivas</h3>
 
-          <div
-            style="
-              background: var(--bg-light);
-              border-radius: 8px;
-              padding: 1.5rem;
-              margin-bottom: 2rem;
-            "
-          >
+            <!-- Botão para acessar painel completo -->
             <div
               style="
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 1rem;
-                margin-bottom: 1.5rem;
+                max-width: 600px;
+                margin: 0 auto;
+                background: var(--bg-light);
+                border-radius: var(--border-radius);
+                padding: 2rem;
+                border: 2px solid var(--primary-light);
               "
             >
-              <div class="filtro-group">
-                <label>Período:</label>
-                <select
-                  id="selectSemestreLiberacao"
-                  onchange="carregarEletivasLiberacao()"
-                >
-                  <option value="1/2026">1º Semestre 2026</option>
-                  <option value="2/2026">2º Semestre 2026</option>
-                </select>
-              </div>
-              <div class="filtro-group">
-                <label>Data de liberação:</label>
-                <input type="date" id="dataLiberacao" />
-              </div>
-              <div class="filtro-group">
-                <label>Data de encerramento:</label>
-                <input type="date" id="dataEncerramento" />
-              </div>
+              <p style="margin-bottom: 1.5rem; font-size: 1.1rem">
+                Acesse o painel completo de gestão para gerenciar professores,
+                eletivas e estudantes.
+              </p>
+              <a
+                href="gestao-completa.html"
+                class="btn-primary"
+                style="
+                  display: inline-block;
+                  padding: 1rem 3rem;
+                  font-size: 1.2rem;
+                  text-decoration: none;
+                "
+              >
+                <i class="fas fa-rocket"></i> ACESSAR PAINEL COMPLETO DE GESTÃO
+              </a>
             </div>
-
-            <div class="status-liberacao bloqueado" id="statusLiberacao">
-              <i class="fas fa-lock" style="font-size: 1.5rem"></i>
-              <div>
-                <strong>Status atual:</strong> 🔒 BLOQUEADO para professores
-              </div>
-            </div>
-          </div>
-
-          <h3 style="margin-bottom: 1rem">📋 ELETIVAS PARA LIBERAÇÃO</h3>
-
-          <div style="margin-bottom: 1rem; display: flex; gap: 1rem">
-            <button
-              class="btn-secondary"
-              onclick="selecionarTodasEletivas(true)"
-            >
-              <i class="fas fa-check-square"></i> SELECIONAR TODAS
-            </button>
-            <button
-              class="btn-secondary"
-              onclick="selecionarTodasEletivas(false)"
-            >
-              <i class="fas fa-square"></i> DESMARCAR TODAS
-            </button>
-          </div>
-
-          <div
-            id="eletivasLiberacaoContainer"
-            style="
-              max-height: 400px;
-              overflow-y: auto;
-              border: 2px solid var(--bg-gray);
-              border-radius: 8px;
-              margin-bottom: 2rem;
-            "
-          ></div>
-
-          <div style="display: flex; gap: 1rem">
-            <button class="btn-success" onclick="habilitarNotasSelecionadas()">
-              <i class="fas fa-lock-open"></i> HABILITAR NOTAS
-            </button>
-            <button class="btn-danger" onclick="bloquearNotasSelecionadas()">
-              <i class="fas fa-lock"></i> BLOQUEAR
-            </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Modais -->
-    <div id="modalDetalhesRegistro" class="modal">
+    <!-- Modal de Detalhes da Eletiva (Estatísticas) -->
+    <div id="modalDetalhesEletiva" class="modal">
       <div class="modal-content modal-gestor">
         <div class="modal-header">
-          <h3 id="modalDetalhesTitulo">📋 DETALHES</h3>
+          <h3 id="modalTitulo">👥 ALUNOS - DANÇA</h3>
           <button class="close-modal" onclick="fecharModalDetalhes()">
             &times;
           </button>
         </div>
-        <div class="modal-body" id="modalDetalhesBody"></div>
+        <div class="modal-body">
+          <div id="modalInfo" style="margin-bottom: 1rem"></div>
+          <div class="alunos-table-container" id="modalTabelaContainer">
+            <!-- Tabela será inserida via JavaScript -->
+          </div>
+        </div>
         <div class="modal-footer">
           <button class="btn-secondary" onclick="fecharModalDetalhes()">
+            FECHAR
+          </button>
+          <button class="btn-primary" id="btnImprimirLista" onclick="">
+            🖨️ IMPRIMIR LISTA
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Seleção de Data para Registros -->
+    <div id="modalSelecionarData" class="modal">
+      <div class="modal-content modal-gestor" style="max-width: 500px">
+        <div class="modal-header">
+          <h3 id="modalDataTitulo">📅 SELECIONAR DATA</h3>
+          <button class="close-modal" onclick="fecharModalSelecionarData()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <p
+            id="modalDataEletiva"
+            style="margin-bottom: 1rem; font-weight: bold"
+          ></p>
+          <div
+            id="listaDatasContainer"
+            class="alunos-table-container"
+            style="max-height: 300px"
+          >
+            <!-- Lista de datas será inserida via JavaScript -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalSelecionarData()">
             🔙 VOLTAR
           </button>
           <button
             class="btn-primary"
-            id="modalDetalhesImprimir"
-            style="display: none"
+            id="btnConfirmarData"
+            onclick="confirmarSelecaoData()"
           >
-            🖨️ IMPRIMIR
+            ✅ SELECIONAR
           </button>
         </div>
       </div>
     </div>
 
-    <div id="modalEditarEletiva" class="modal">
-      <div class="modal-content modal-gestor">
+    <!-- Modal de Opções de Impressão -->
+    <div id="modalOpcoesImpressao" class="modal">
+      <div class="modal-content" style="max-width: 400px">
         <div class="modal-header">
-          <h3 id="modalEditarTitulo">✏️ EDITAR ELETIVA</h3>
-          <button class="close-modal" onclick="fecharModalEditarEletiva()">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body" id="modalEditarBody"></div>
-        <div class="modal-footer">
-          <button class="btn-secondary" onclick="fecharModalEditarEletiva()">
-            ❌ CANCELAR
-          </button>
-          <button class="btn-success" onclick="salvarEdicaoEletiva()">
-            💾 SALVAR
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div id="modalVerAlunos" class="modal">
-      <div class="modal-content modal-gestor">
-        <div class="modal-header">
-          <h3 id="modalAlunosTitulo">👥 ALUNOS</h3>
-          <button class="close-modal" onclick="fecharModalAlunos()">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body" id="modalAlunosBody"></div>
-        <div class="modal-footer">
-          <button class="btn-secondary" onclick="fecharModalAlunos()">
-            🔙 VOLTAR
-          </button>
-          <button class="btn-primary" id="modalAlunosImprimir" onclick="">
-            🖨️ IMPRIMIR LISTA
-          </button>
-          <button class="btn-success" id="modalAlunosExportar" onclick="">
-            📊 EXPORTAR EXCEL
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div id="modalTrocarAluno" class="modal">
-      <div class="modal-content modal-gestor">
-        <div class="modal-header">
-          <h3>🔄 TROCAR ALUNO DE ELETIVA</h3>
-          <button class="close-modal" onclick="fecharModalTrocarAluno()">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body" id="modalTrocarAlunoBody"></div>
-        <div class="modal-footer">
-          <button class="btn-secondary" onclick="fecharModalTrocarAluno()">
-            ❌ CANCELAR
-          </button>
-          <button class="btn-success" onclick="confirmarTrocaAluno()">
-            ✅ CONFIRMAR TROCA
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div id="modalEditarAluno" class="modal">
-      <div class="modal-content modal-pequeno">
-        <div class="modal-header">
-          <h3>✏️ EDITAR ALUNO</h3>
-          <button class="close-modal" onclick="fecharModalEditarAluno()">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body" id="modalEditarAlunoBody"></div>
-        <div class="modal-footer">
-          <button class="btn-secondary" onclick="fecharModalEditarAluno()">
-            ❌ CANCELAR
-          </button>
-          <button class="btn-success" onclick="salvarEdicaoAluno()">
-            ✅ SALVAR
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div id="modalAdicionarAluno" class="modal">
-      <div class="modal-content modal-gestor">
-        <div class="modal-header">
-          <h3 id="modalAdicionarTitulo">➕ ADICIONAR ALUNO</h3>
-          <button class="close-modal" onclick="fecharModalAdicionarAluno()">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body" id="modalAdicionarAlunoBody"></div>
-        <div class="modal-footer">
-          <button class="btn-secondary" onclick="fecharModalAdicionarAluno()">
-            ❌ CANCELAR
-          </button>
-          <button class="btn-success" onclick="confirmarAdicionarAluno()">
-            ✅ ADICIONAR
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div id="modalAdicionarExistente" class="modal">
-      <div class="modal-content modal-gestor">
-        <div class="modal-header">
-          <h3>➕ ADICIONAR ALUNO EXISTENTE</h3>
-          <button class="close-modal" onclick="fecharModalAdicionarExistente()">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body" id="modalAdicionarExistenteBody"></div>
-        <div class="modal-footer">
-          <button
-            class="btn-secondary"
-            onclick="fecharModalAdicionarExistente()"
-          >
-            ❌ CANCELAR
-          </button>
-          <button class="btn-success" onclick="confirmarAdicionarExistente()">
-            ✅ ADICIONAR
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div id="modalVerJSON" class="modal">
-      <div class="modal-content modal-gestor">
-        <div class="modal-header">
-          <h3>📋 JSON ATUAL</h3>
-          <button class="close-modal" onclick="fecharModalJSON()">
+          <h3 id="modalImpressaoTitulo">🖨️ OPÇÕES DE IMPRESSÃO</h3>
+          <button class="close-modal" onclick="fecharModalOpcoesImpressao()">
             &times;
           </button>
         </div>
         <div class="modal-body">
-          <pre
-            id="jsonViewerContent"
-            style="
-              background: var(--bg-light);
-              padding: 1rem;
-              border-radius: 8px;
-              font-family: monospace;
-              font-size: 0.85rem;
-              max-height: 400px;
-              overflow-y: auto;
-            "
-          ></pre>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" onclick="copiarJSON()">
-            📋 COPIAR
-          </button>
-          <button class="btn-primary" onclick="exportarJSON()">
-            💾 EXPORTAR
-          </button>
-          <button class="btn-secondary" onclick="fecharModalJSON()">
-            🔙 VOLTAR
-          </button>
-        </div>
-      </div>
-    </div>
+          <p
+            id="modalImpressaoEletiva"
+            style="margin-bottom: 1.5rem; font-weight: bold"
+          ></p>
 
-    <div id="modalImportarJSON" class="modal">
-      <div class="modal-content modal-gestor">
-        <div class="modal-header">
-          <h3>📤 IMPORTAR JSON</h3>
-          <button class="close-modal" onclick="fecharModalImportarJSON()">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body">
-          <p>Cole abaixo o conteúdo do arquivo dados-planilha.json</p>
-          <textarea
-            id="jsonImportTextarea"
-            rows="15"
-            style="
-              width: 100%;
-              font-family: monospace;
-              padding: 1rem;
-              border: 2px solid var(--bg-gray);
-              border-radius: 8px;
-            "
-          ></textarea>
+          <div style="display: flex; flex-direction: column; gap: 0.8rem">
+            <button
+              class="btn-primary"
+              style="width: 100%; text-align: left; justify-content: flex-start"
+              onclick="selecionarOpcaoImpressao('listaBranco')"
+            >
+              <i class="fas fa-file-alt"></i> 📄 LISTA DE FREQUÊNCIA EM BRANCO
+            </button>
 
-          <div
-            style="
-              margin-top: 1rem;
-              padding: 1rem;
-              background: var(--bg-light);
-              border-radius: 8px;
-            "
-          >
-            <p><strong>⚠️ AVISOS:</strong></p>
-            <ul style="margin-left: 1.5rem">
-              <li>NOVAS eletivas serão CRIADAS</li>
-              <li>ELETIVAS EXISTENTES serão ATUALIZADAS</li>
-              <li>ELETIVAS NÃO LISTADAS serão MANTIDAS</li>
-            </ul>
+            <button
+              class="btn-primary"
+              style="width: 100%; text-align: left; justify-content: flex-start"
+              onclick="selecionarOpcaoImpressao('registrosData')"
+            >
+              <i class="fas fa-calendar-alt"></i> 📅 REGISTROS POR DATA
+            </button>
+
+            <button
+              class="btn-primary"
+              style="width: 100%; text-align: left; justify-content: flex-start"
+              onclick="selecionarOpcaoImpressao('boletim')"
+            >
+              <i class="fas fa-chart-bar"></i> 📊 BOLETIM DE NOTAS
+            </button>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn-secondary" onclick="validarJSON()">
-            🔍 VALIDAR
-          </button>
-          <button class="btn-success" onclick="importarJSON()">
-            📤 IMPORTAR
-          </button>
-          <button class="btn-secondary" onclick="fecharModalImportarJSON()">
-            ❌ CANCELAR
+          <button class="btn-secondary" onclick="fecharModalOpcoesImpressao()">
+            CANCELAR
           </button>
         </div>
       </div>
     </div>
 
+    <!-- Modal de Confirmação -->
     <div id="modalConfirmacao" class="modal">
-      <div class="modal-content modal-pequeno">
+      <div class="modal-content modal-small">
         <div class="modal-header">
           <h3 id="confirmTitle">Confirmação</h3>
         </div>
@@ -1109,259 +824,10 @@
         <p>Carregando...</p>
       </div>
     </div>
-    <!-- Modal de Nova Eletiva -->
-    <div id="modalNovaEletiva" class="modal">
-      <div class="modal-content modal-gestor">
-        <div class="modal-header">
-          <h3>➕ CRIAR NOVA ELETIVA</h3>
-          <button class="close-modal" onclick="fecharModalNovaEletiva()">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body">
-          <h4 style="margin-bottom: 1rem">DADOS BÁSICOS:</h4>
-
-          <div
-            style="
-              background: var(--bg-light);
-              padding: 1rem;
-              border-radius: 8px;
-              margin-bottom: 1.5rem;
-            "
-          >
-            <div class="form-group">
-              <label>Nome da Eletiva:</label>
-              <input
-                type="text"
-                id="novoEletivaNome"
-                placeholder="Digite o nome da eletiva"
-                required
-              />
-            </div>
-
-            <div class="form-group">
-              <label>Código:</label>
-              <input
-                type="text"
-                id="novoEletivaCodigo"
-                placeholder="Ex: DAN01"
-                maxlength="6"
-                oninput="verificarCodigoTempoReal()"
-              />
-              <div
-                id="codigoStatus"
-                style="margin-top: 0.3rem; font-size: 0.9rem"
-              ></div>
-              <small style="color: var(--danger)"
-                >⚠️ Código deve ser único no sistema</small
-              >
-            </div>
-
-            <div class="form-group">
-              <label>Professor(a):</label>
-              <div style="display: flex; gap: 0.5rem">
-                <select
-                  id="selectProfessorNovaEletiva"
-                  style="flex: 2"
-                  required
-                >
-                  <option value="">Selecione um professor</option>
-                </select>
-                <button
-                  class="btn-secondary"
-                  onclick="abrirModalNovoProfessor()"
-                >
-                  <i class="fas fa-user-plus"></i> NOVO
-                </button>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label>Tipo:</label>
-              <div style="display: flex; gap: 2rem">
-                <label
-                  ><input
-                    type="radio"
-                    name="tipoEletiva"
-                    value="MISTA"
-                    id="tipoMista"
-                    checked
-                  />
-                  MISTA</label
-                >
-                <label
-                  ><input type="radio" name="tipoEletiva" value="FIXA" />
-                  FIXA</label
-                >
-              </div>
-            </div>
-          </div>
-
-          <h4 style="margin-bottom: 1rem">HORÁRIO:</h4>
-
-          <div
-            style="
-              background: var(--bg-light);
-              padding: 1rem;
-              border-radius: 8px;
-              margin-bottom: 1.5rem;
-            "
-          >
-            <div class="form-group">
-              <label>Dia da semana:</label>
-              <select id="selectDiaNovaEletiva">
-                <option value="SEGUNDA-FEIRA">SEGUNDA-FEIRA</option>
-                <option value="TERÇA-FEIRA">TERÇA-FEIRA</option>
-                <option value="QUARTA-FEIRA">QUARTA-FEIRA</option>
-                <option value="QUINTA-FEIRA">QUINTA-FEIRA</option>
-                <option value="SEXTA-FEIRA">SEXTA-FEIRA</option>
-                <option value="SÁBADO">SÁBADO</option>
-                <option value="DOMINGO">DOMINGO</option>
-              </select>
-            </div>
-
-            <div
-              style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem"
-            >
-              <div class="form-group">
-                <label>Horário início:</label>
-                <select id="horarioInicio">
-                  <option value="07:00">07:00</option>
-                  <option value="08:55">08:55</option>
-                  <option value="10:50">10:50</option>
-                  <option value="13:30">13:30</option>
-                  <option value="15:25">15:25</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Horário fim:</label>
-                <select id="horarioFim">
-                  <option value="08:40">08:40</option>
-                  <option value="10:35">10:35</option>
-                  <option value="12:30">12:30</option>
-                  <option value="15:10">15:10</option>
-                  <option value="17:05">17:05</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <h4 style="margin-bottom: 1rem">TURMAS ATENDIDAS:</h4>
-
-          <div
-            style="
-              background: var(--bg-light);
-              padding: 1rem;
-              border-radius: 8px;
-              margin-bottom: 1.5rem;
-            "
-          >
-            <div id="turmasCheckboxContainer"></div>
-
-            <div style="display: flex; gap: 1rem; margin-top: 1rem">
-              <button
-                class="btn-secondary btn-small"
-                onclick="selecionarTodasTurmas(true)"
-              >
-                ✅ SELECIONAR TODAS
-              </button>
-              <button
-                class="btn-secondary btn-small"
-                onclick="selecionarTodasTurmas(false)"
-              >
-                ⬜ DESMARCAR TODAS
-              </button>
-            </div>
-          </div>
-
-          <div
-            style="
-              background: var(--bg-light);
-              padding: 1rem;
-              border-radius: 8px;
-              margin-bottom: 1rem;
-            "
-          >
-            <p><strong>ALUNOS:</strong></p>
-            <p>
-              A eletiva será criada sem alunos. Você poderá adicionar alunos
-              posteriormente.
-            </p>
-          </div>
-
-          <div
-            style="
-              margin-top: 1rem;
-              padding: 1rem;
-              background: var(--bg-light);
-              border-radius: 8px;
-            "
-          >
-            <p><strong>⚠️ AVISOS:</strong></p>
-            <ul style="margin-left: 1.5rem">
-              <li>O CÓDIGO DA ELETIVA É DE PREENCHIMENTO OBRIGATÓRIO</li>
-              <li>
-                Deve ser único (não pode existir outra eletiva com o mesmo
-                código)
-              </li>
-            </ul>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" onclick="fecharModalNovaEletiva()">
-            ❌ CANCELAR
-          </button>
-          <button class="btn-success" onclick="criarNovaEletiva()">
-            ✅ CRIAR ELETIVA
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal de Novo Professor -->
-    <div id="modalNovoProfessor" class="modal">
-      <div class="modal-content modal-pequeno">
-        <div class="modal-header">
-          <h3>👤 CADASTRAR NOVO PROFESSOR</h3>
-          <button class="close-modal" onclick="fecharModalNovoProfessor()">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Nome completo:</label>
-            <input
-              type="text"
-              id="novoProfessorNome"
-              placeholder="Digite o nome completo"
-              required
-            />
-          </div>
-          <div class="form-group">
-            <label>Email:</label>
-            <input
-              type="email"
-              id="novoProfessorEmail"
-              placeholder="email@prof.ce.gov.br"
-              required
-            />
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" onclick="fecharModalNovoProfessor()">
-            ❌ CANCELAR
-          </button>
-          <button class="btn-success" onclick="cadastrarNovoProfessor()">
-            ✅ CADASTRAR
-          </button>
-        </div>
-      </div>
-    </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
