@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SAGE 2026 - Sistema de Gestão de Eletivas</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body>
+    <div class="app-container">
+      <header class="app-header">
+        <div class="header-top">
+          <div class="logo-area">
+            <i class="fas fa-graduation-cap"></i>
+            <div class="school-info">
+              <h1>EEMTI FILGUEIRAS LIMA</h1>
+              <span class="sage-badge">SAGE 2026 - Gestão de Eletivas</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section id="perfil-view" class="view active">
+        <div class="login-container">
+          <div class="login-box">
+            <div class="school-brand">
+              <i class="fas fa-users"></i>
+              <h2>Selecione o Perfil de Acesso</h2>
+              <p style="color: var(--text-light); margin-top: 0.5rem">
+                Escolha como deseja acessar o sistema
+              </p>
+            </div>
+
+            <div
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                margin: 2rem 0;
+              "
+            >
+              <a
+                href="selecionar-professor.html"
+                class="btn-primary"
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 1rem;
+                  padding: 1.5rem;
+                  font-size: 1.2rem;
+                  text-decoration: none;
+                "
+              >
+                <i
+                  class="fas fa-chalkboard-teacher"
+                  style="font-size: 2rem"
+                ></i>
+                ACESSAR COMO PROFESSOR
+              </a>
+
+              <a
+                href="selecionar-gestor.html"
+                class="btn-secondary"
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 1rem;
+                  padding: 1.5rem;
+                  font-size: 1.2rem;
+                  text-decoration: none;
+                  background: var(--primary);
+                  color: white;
+                "
+              >
+                <i class="fas fa-user-tie" style="font-size: 2rem"></i>
+                ACESSAR COMO GESTOR
+              </a>
+            </div>
+
+            <div class="login-info">
+              <p><strong>📋 Modo de Demonstração:</strong></p>
+              <p>Selecione o perfil e depois escolha seu nome na lista</p>
+              <p>
+                <small>✅ Dados carregados da planilha automaticamente</small>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script>
+      if (typeof window.carregarTheme === "function") {
+        window.carregarTheme();
+      }
+    </script>
+  </body>
+</html>

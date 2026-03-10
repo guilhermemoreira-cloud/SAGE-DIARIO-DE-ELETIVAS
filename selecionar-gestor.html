@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SAGE 2026 - Selecionar Gestor</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body>
+    <div class="app-container">
+      <header class="app-header">
+        <div class="header-top">
+          <div class="logo-area">
+            <i class="fas fa-graduation-cap"></i>
+            <div class="school-info">
+              <h1>EEMTI FILGUEIRAS LIMA</h1>
+              <span class="sage-badge">SAGE 2026 - Gestão de Eletivas</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="view active">
+        <div class="login-container">
+          <div class="login-box" style="max-width: 600px">
+            <div class="school-brand">
+              <i class="fas fa-user-tie"></i>
+              <h2>Selecione o Perfil</h2>
+              <p style="color: var(--text-light); margin-top: 0.5rem">
+                Escolha o perfil de gestão para acessar o painel
+              </p>
+            </div>
+
+            <div class="search-box" style="margin: 1rem 0">
+              <i class="fas fa-search"></i>
+              <input
+                type="text"
+                id="searchGestor"
+                placeholder="Buscar..."
+                oninput="filtrarGestores()"
+              />
+            </div>
+
+            <div
+              id="listaGestores"
+              class="gestores-lista"
+              style="max-height: 400px; overflow-y: auto; margin: 1rem 0"
+            >
+              <p class="empty-state">Carregando lista...</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 1rem">
+              <a href="index.html" class="btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-sync.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/init-data.js"></script>
+    <script src="js/sincronizacao.js"></script>
+    <script>
+      let gestores = [];
+
+      document.addEventListener("DOMContentLoaded", async function () {
+        console.log("📋 Página de seleção de gestor carregada");
+
+        if (typeof window.carregarTheme === "function") {
+          window.carregarTheme();
+        }
+
+        if (typeof window.carregarEstado === "function") {
+          window.carregarEstado();
+        }
+
+        if (typeof window.carregarDadosDaPlanilha === "function") {
+          await window.carregarDadosDaPlanilha();
+        }
+
+        gestores = (window.state?.professores || []).filter(
+          (p) =>
+            p.perfil === "GESTOR" ||
+            p.perfil === "SECRETARIA" ||
+            p.perfil === "GESTOR_PROFESSOR",
+        );
+
+        renderizarLista(gestores);
+      });
+
+      function renderizarLista(lista) {
+        const container = document.getElementById("listaGestores");
+
+        if (lista.length === 0) {
+          container.innerHTML =
+            '<p class="empty-state">Nenhum perfil encontrado</p>';
+          return;
+        }
+
+        container.innerHTML = "";
+        lista.forEach((gestor) => {
+          const perfilIcon =
+            {
+              GESTOR: "fa-user-tie",
+              SECRETARIA: "fa-user-cog",
+              GESTOR_PROFESSOR: "fa-user-graduate",
+            }[gestor.perfil] || "fa-user";
+
+          const perfilNome =
+            {
+              GESTOR: "Gestor",
+              SECRETARIA: "Secretaria",
+              GESTOR_PROFESSOR: "Gestor/Professor",
+            }[gestor.perfil] || gestor.perfil;
+
+          const btn = document.createElement("button");
+          btn.className = "gestor-select-btn";
+          btn.style.cssText = `
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: var(--bg-white);
+            border: 2px solid var(--bg-gray);
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          `;
+          btn.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <i class="fas ${perfilIcon}" style="font-size: 2rem; color: var(--primary);"></i>
+              <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <strong style="font-size: 1.1rem;">${gestor.nome}</strong>
+                  <span style="background: var(--primary); color: white; padding: 0.2rem 1rem; border-radius: 20px; font-size: 0.8rem;">${perfilNome}</span>
+                </div>
+                <div style="font-size: 0.9rem; color: var(--text-light);">${gestor.email}</div>
+              </div>
+            </div>
+          `;
+          btn.onmouseover = () => {
+            btn.style.background = "var(--primary)";
+            btn.style.color = "white";
+            btn.style.borderColor = "var(--primary-dark)";
+          };
+          btn.onmouseout = () => {
+            btn.style.background = "var(--bg-white)";
+            btn.style.color = "var(--text-dark)";
+            btn.style.borderColor = "var(--bg-gray)";
+          };
+          btn.onclick = () => {
+            localStorage.setItem(
+              "gestor_atual",
+              JSON.stringify({
+                id: gestor.id,
+                nome: gestor.nome,
+                email: gestor.email,
+                perfil: gestor.perfil,
+              }),
+            );
+            window.location.href = "gestor.html";
+          };
+          container.appendChild(btn);
+        });
+      }
+
+      window.filtrarGestores = function () {
+        const termo = document
+          .getElementById("searchGestor")
+          .value.toLowerCase();
+        if (!termo) {
+          renderizarLista(gestores);
+          return;
+        }
+
+        const filtrados = gestores.filter(
+          (g) =>
+            g.nome.toLowerCase().includes(termo) ||
+            g.email.toLowerCase().includes(termo),
+        );
+        renderizarLista(filtrados);
+      };
+    </script>
+  </body>
+</html>

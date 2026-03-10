@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SAGE 2026 - Diário do Professor</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="manifest" href="manifest.json" />
+    <!-- jsPDF e html2canvas para geração de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+      .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+        margin-right: 10px;
+      }
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--danger);
+        transition: 0.3s;
+        border-radius: 34px;
+      }
+      .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.3s;
+        border-radius: 50%;
+      }
+      input:checked + .toggle-slider {
+        background-color: var(--success);
+      }
+      input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+      }
+      .aluno-chamada-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid var(--bg-gray);
+        background: var(--bg-white);
+      }
+      .aluno-info {
+        flex: 1;
+        margin-left: 1rem;
+      }
+      .aluno-info strong {
+        color: var(--primary);
+      }
+      .aluno-turma {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        margin-left: 0.5rem;
+        background: var(--bg-gray);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+      }
+      /* Estilos para os cards de registros */
+      .eletiva-card.registros-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .eletiva-card.registros-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-hover);
+      }
+      .eletiva-card.registros-card.expanded {
+        background: linear-gradient(135deg, var(--bg-white), var(--bg-light));
+        border: 2px solid var(--primary);
+      }
+      .registros-lista {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 2px dashed var(--primary-light);
+      }
+      .registro-item-card {
+        background: var(--bg-white);
+        border-radius: var(--border-radius-sm);
+        padding: 1rem;
+        margin-bottom: 0.8rem;
+        border-left: 4px solid var(--primary);
+        box-shadow: var(--shadow);
+        transition: var(--transition);
+      }
+      .registro-item-card:hover {
+        transform: translateX(5px);
+        box-shadow: var(--shadow-hover);
+      }
+      .registro-header-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      .registro-data-card {
+        font-weight: 600;
+        color: var(--primary);
+      }
+      .registro-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .btn-editar {
+        background: var(--warning);
+        color: var(--text-dark);
+        border: none;
+        border-radius: 4px;
+        padding: 0.3rem 0.8rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        transition: var(--transition);
+      }
+      .btn-editar:hover {
+        background: #e0a800;
+        transform: scale(1.05);
+      }
+      /* Botões de impressão */
+      .btn-imprimir {
+        background: var(--info);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.3rem 0.8rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        transition: var(--transition);
+      }
+      .btn-imprimir:hover {
+        background: #138496;
+        transform: scale(1.05);
+      }
+      .btn-imprimir-lista {
+        background: var(--secondary-dark);
+        color: var(--text-dark);
+        border: none;
+        border-radius: 4px;
+        padding: 0.3rem 0.8rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        transition: var(--transition);
+      }
+      .btn-imprimir-lista:hover {
+        background: var(--secondary);
+        transform: scale(1.05);
+      }
+      .card-header-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: auto;
+      }
+      .registro-footer-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--bg-gray);
+      }
+      .modal-editar {
+        max-width: 700px;
+      }
+      .modal-editar .aluno-chamada-item {
+        padding: 0.8rem;
+      }
+      /* Loader para PDF */
+      .pdf-loader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+      .pdf-loader.active {
+        display: flex;
+      }
+      .loader-content {
+        background: var(--bg-white);
+        padding: 2rem;
+        border-radius: var(--border-radius);
+        text-align: center;
+        box-shadow: var(--shadow-hover);
+      }
+      .loader-spinner {
+        border: 4px solid var(--bg-gray);
+        border-top: 4px solid var(--primary);
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 1rem;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      /* Estilo para botão excluir */
+      .btn-excluir {
+        background: var(--danger);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.3rem 0.8rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        transition: var(--transition);
+      }
+      .btn-excluir:hover {
+        background: #a11f1f;
+        transform: scale(1.05);
+      }
+      /* Estilos para registro de notas */
+      .aluno-nota-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.8rem;
+        border-bottom: 1px solid var(--bg-gray);
+        background: var(--bg-white);
+      }
+      .aluno-nota-item:hover {
+        background: var(--bg-light);
+      }
+      .nota-input {
+        width: 80px;
+        padding: 0.5rem;
+        border: 2px solid var(--bg-gray);
+        border-radius: 8px;
+        font-size: 1rem;
+        text-align: center;
+        transition: var(--transition);
+      }
+      .nota-input:focus {
+        outline: none;
+        border-color: var(--primary);
+      }
+      .nota-input.nota-alterada {
+        border-color: var(--warning);
+        background-color: rgba(255, 193, 7, 0.1);
+      }
+      .notas-resumo {
+        background: var(--bg-light);
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        font-size: 1.1rem;
+        font-weight: 500;
+        text-align: center;
+        border: 1px solid var(--primary-light);
+      }
+      .btn-notas {
+        background: var(--info);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.3rem 0.8rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        transition: var(--transition);
+      }
+      .btn-notas:hover {
+        background: #138496;
+        transform: scale(1.05);
+      }
+      .btn-notas:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+      .modal-notas {
+        max-width: 800px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <header class="app-header">
+        <div class="header-top">
+          <div class="logo-area">
+            <!-- Logotipo adicionado -->
+            <img
+              src="assets/logo.png"
+              alt="SAGE Logo"
+              style="height: 50px; width: auto; margin-right: 1rem"
+            />
+
+            <div class="school-info">
+              <!-- Título alterado -->
+              <h1>DIÁRIO DAS ELETIVAS</h1>
+              <span class="sage-badge">SAGE 2026 - Gestão de Eletivas</span>
+            </div>
+          </div>
+          <!-- Texto "2026-1 ativo" removido -->
+          <div class="header-actions">
+            <!-- Status de conexão -->
+            <div class="connection-status" id="connectionStatus">
+              <i class="fas fa-check-circle"></i> Conectado
+            </div>
+
+            <!-- Botão de sincronização -->
+            <button
+              class="sync-button"
+              id="syncButton"
+              onclick="sincronizarAgora()"
+              disabled
+              title="Tudo sincronizado"
+            >
+              <i class="fas fa-check"></i> Sincronizado
+            </button>
+
+            <div class="user-info">
+              <i class="fas fa-user-circle"></i>
+              <span id="userName">Professor</span>
+              <span class="user-role" id="userRole">Professor</span>
+            </div>
+            <button
+              class="theme-toggle"
+              id="themeToggle"
+              onclick="toggleTheme()"
+            >
+              <i class="fas fa-moon"></i>
+            </button>
+            <button class="logout-btn" onclick="fazerLogout()">
+              <i class="fas fa-sign-out-alt"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <section class="view active">
+        <div class="professor-dashboard">
+          <div class="dashboard-header">
+            <h2>
+              <i class="fas fa-chalkboard-teacher"></i> Diário do Professor -
+              <span id="professorSemestre">2026.1</span>
+            </h2>
+            <div class="professor-info-header" id="professorInfoHeader"></div>
+          </div>
+
+          <!-- Abas: apenas Dashboard e Registros Realizados -->
+          <div class="professor-tabs">
+            <button class="tab-btn active" onclick="mudarTab('dashboard')">
+              <i class="fas fa-home"></i> Dashboard
+            </button>
+            <button class="tab-btn" onclick="mudarTab('registros')">
+              <i class="fas fa-clipboard-list"></i> REGISTROS REALIZADOS
+            </button>
+          </div>
+
+          <!-- Aba Dashboard -->
+          <div id="tab-dashboard" class="tab-pane active">
+            <h3>Minhas Eletivas - <span id="semestreAtual">2026.1</span></h3>
+            <div class="eletivas-cards" id="professorEletivasCards">
+              <p class="empty-state">Carregando eletivas...</p>
+            </div>
+          </div>
+
+          <!-- Aba Registros Realizados -->
+          <div id="tab-registros" class="tab-pane">
+            <h3>REGISTROS REALIZADOS</h3>
+
+            <div
+              class="frequencias-filtros"
+              style="margin: 1rem 0; display: flex; gap: 1rem; flex-wrap: wrap"
+            >
+              <select
+                id="filtroEletivaRegistros"
+                style="
+                  flex: 2;
+                  padding: 0.5rem;
+                  border-radius: 8px;
+                  border: 2px solid var(--bg-gray);
+                "
+              >
+                <option value="">Todas as eletivas</option>
+              </select>
+
+              <input
+                type="date"
+                id="filtroDataInicio"
+                style="
+                  flex: 1;
+                  padding: 0.5rem;
+                  border-radius: 8px;
+                  border: 2px solid var(--bg-gray);
+                "
+                placeholder="Data inicial"
+              />
+
+              <input
+                type="date"
+                id="filtroDataFim"
+                style="
+                  flex: 1;
+                  padding: 0.5rem;
+                  border-radius: 8px;
+                  border: 2px solid var(--bg-gray);
+                "
+                placeholder="Data final"
+              />
+
+              <button
+                class="btn-primary"
+                onclick="carregarRegistrosRealizados()"
+              >
+                <i class="fas fa-search"></i> Filtrar
+              </button>
+
+              <button class="btn-secondary" onclick="limparFiltrosRegistros()">
+                <i class="fas fa-eraser"></i> Limpar
+              </button>
+            </div>
+
+            <div
+              class="sync-status"
+              style="
+                margin: 1rem 0;
+                padding: 0.5rem;
+                background: var(--bg-light);
+                border-radius: 8px;
+              "
+            >
+              <i class="fas fa-cloud"></i> Status de sincronização
+            </div>
+
+            <div id="registrosRealizadosContainer" class="registros-container">
+              <p class="empty-state">Nenhum registro encontrado</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Loader para PDF -->
+    <div id="pdfLoader" class="pdf-loader">
+      <div class="loader-content">
+        <div class="loader-spinner"></div>
+        <p>Gerando PDF...</p>
+      </div>
+    </div>
+
+    <!-- Modal de Registro de Aula (sem observações) -->
+    <div id="modalRegistroAula" class="modal">
+      <div class="modal-content" style="max-width: 600px">
+        <div class="modal-header">
+          <h3 id="modalRegistroTitle">Registrar Aula</h3>
+          <button class="close-modal" onclick="fecharModalRegistro()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="registroAulaForm" onsubmit="salvarRegistroAula(event)">
+            <div class="form-group">
+              <label>Data da Aula *</label>
+              <input type="date" id="dataAula" required />
+            </div>
+
+            <div class="form-group">
+              <label>Conteúdo Trabalhado *</label>
+              <textarea
+                id="conteudoAula"
+                rows="4"
+                required
+                placeholder="Descreva o conteúdo da aula..."
+              ></textarea>
+            </div>
+
+            <!-- Campo Observações removido -->
+
+            <div id="chamadaContainer">
+              <div class="chamada-header">
+                <h4>Registro de Frequência</h4>
+                <div class="chamada-actions">
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    onclick="marcarTodosPresentes()"
+                  >
+                    <i class="fas fa-check-square"></i> Todos Presentes
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    onclick="marcarTodosAusentes()"
+                  >
+                    <i class="fas fa-square"></i> Todos Ausentes
+                  </button>
+                </div>
+              </div>
+
+              <div class="chamada-resumo" id="chamadaResumo">
+                Presentes: <span id="presentesCount">0</span> | Ausentes:
+                <span id="ausentesCount">0</span> | Total:
+                <span id="totalAlunosCount">0</span>
+              </div>
+
+              <div class="alunos-chamada" id="listaAlunosChamada"></div>
+            </div>
+
+            <div class="form-actions" style="margin-top: 1rem">
+              <button type="submit" class="btn-primary">
+                <i class="fas fa-save"></i> Salvar Registro
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Edição de Registro (com campos completos para edição retroativa) -->
+    <div id="modalEditarRegistro" class="modal">
+      <div class="modal-content modal-editar">
+        <div class="modal-header">
+          <h3 id="modalEditarTitle">Editar Registro</h3>
+          <button class="close-modal" onclick="fecharModalEditar()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="editarRegistroForm" onsubmit="salvarEdicaoRegistro(event)">
+            <div class="form-group">
+              <label>Data da Aula *</label>
+              <input type="date" id="editarDataAula" required />
+            </div>
+
+            <div class="form-group">
+              <label>Conteúdo Trabalhado *</label>
+              <textarea
+                id="editarConteudoAula"
+                rows="4"
+                required
+                placeholder="Descreva o conteúdo da aula..."
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Observações</label>
+              <textarea
+                id="editarObservacoesAula"
+                rows="2"
+                placeholder="Observações adicionais..."
+              ></textarea>
+            </div>
+
+            <div class="chamada-header">
+              <h4>Registro de Frequência</h4>
+              <div class="chamada-actions">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  onclick="marcarTodosPresentesEdicao()"
+                >
+                  <i class="fas fa-check-square"></i> Todos Presentes
+                </button>
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  onclick="marcarTodosAusentesEdicao()"
+                >
+                  <i class="fas fa-square"></i> Todos Ausentes
+                </button>
+              </div>
+            </div>
+
+            <div class="chamada-resumo" id="editarChamadaResumo">
+              Presentes: <span id="editarPresentesCount">0</span> | Ausentes:
+              <span id="editarAusentesCount">0</span> | Total:
+              <span id="editarTotalAlunosCount">0</span>
+            </div>
+
+            <div class="alunos-chamada" id="editarListaAlunosChamada"></div>
+
+            <div class="form-actions" style="margin-top: 1rem">
+              <button type="submit" class="btn-primary">
+                <i class="fas fa-save"></i> Salvar Alterações
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modais padrão -->
+    <div id="modalDetalhes" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modalTitle">Detalhes</h3>
+          <button class="close-modal" onclick="fecharModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-footer" id="modalFooter"></div>
+      </div>
+    </div>
+
+    <div id="modalConfirmacao" class="modal">
+      <div class="modal-content modal-small">
+        <div class="modal-header">
+          <h3 id="confirmTitle">Confirmação</h3>
+        </div>
+        <div class="modal-body" id="confirmBody"></div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalConfirmacao()">
+            Cancelar
+          </button>
+          <button class="btn-primary" id="confirmActionBtn">Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <!-- Modal de Registro de Notas -->
+    <div id="modalRegistroNotas" class="modal">
+      <div class="modal-content modal-notas">
+        <div class="modal-header">
+          <h3 id="modalNotasTitle">Registro de Notas</h3>
+          <button class="close-modal" onclick="fecharModalNotas()">
+            &times;
+          </button>
+        </div>
+        <div class="modal-body">
+          <h4
+            id="modalNotasSubtitulo"
+            style="margin-bottom: 1rem; color: var(--text-light)"
+          >
+            1/2026
+          </h4>
+
+          <div class="notas-resumo" id="notasResumo">
+            Total: 0 alunos | Média: 0.0
+          </div>
+
+          <div
+            class="alunos-chamada"
+            id="listaAlunosNotas"
+            style="max-height: 400px"
+          ></div>
+
+          <div
+            class="form-actions"
+            style="
+              margin-top: 1rem;
+              display: flex;
+              gap: 1rem;
+              justify-content: flex-end;
+            "
+          >
+            <button class="btn-secondary" onclick="fecharModalNotas()">
+              <i class="fas fa-times"></i> Cancelar
+            </button>
+            <button class="btn-primary" onclick="salvarNotas()">
+              <i class="fas fa-save"></i> Salvar Notas
+            </button>
+            <button
+              class="btn-imprimir"
+              onclick="
+                if (registroNotasEmEdicao)
+                  imprimirPDFNotas(
+                    registroNotasEmEdicao.eletivaId,
+                    registroNotasEmEdicao.semestre,
+                  );
+              "
+            >
+              <i class="fas fa-print"></i> Gerar PDF
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-sync.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/init-data.js"></script>
+    <script src="js/sincronizacao.js"></script>
+    <script src="js/professor.js"></script>
+  </body>
+</html>

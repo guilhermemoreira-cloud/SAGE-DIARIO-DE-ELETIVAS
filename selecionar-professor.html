@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SAGE 2026 - Selecionar Professor</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="manifest" href="manifest.json" />
+  </head>
+  <body>
+    <div class="app-container">
+      <header class="app-header">
+        <div class="header-top">
+          <div class="logo-area">
+            <i class="fas fa-graduation-cap"></i>
+            <div class="school-info">
+              <h1>EEMTI FILGUEIRAS LIMA</h1>
+              <span class="sage-badge">SAGE 2026 - Gestão de Eletivas</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section class="view active">
+        <div class="login-container">
+          <div class="login-box" style="max-width: 600px">
+            <div class="school-brand">
+              <i class="fas fa-chalkboard-teacher"></i>
+              <h2>Selecione seu Nome</h2>
+              <p style="color: var(--text-light); margin-top: 0.5rem">
+                Escolha seu nome na lista para acessar o diário
+              </p>
+            </div>
+
+            <div class="search-box" style="margin: 1rem 0">
+              <i class="fas fa-search"></i>
+              <input
+                type="text"
+                id="searchProfessor"
+                placeholder="Buscar professor..."
+                oninput="filtrarProfessores()"
+              />
+            </div>
+
+            <div
+              id="listaProfessores"
+              class="professores-lista"
+              style="max-height: 400px; overflow-y: auto; margin: 1rem 0"
+            >
+              <p class="empty-state">Carregando lista de professores...</p>
+            </div>
+
+            <div style="text-align: center; margin-top: 1rem">
+              <a href="index.html" class="btn-secondary">
+                <i class="fas fa-arrow-left"></i> Voltar
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/firebase-sync.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/init-data.js"></script>
+    <script src="js/sincronizacao.js"></script>
+    <script>
+      let professores = [];
+
+      document.addEventListener("DOMContentLoaded", async function () {
+        console.log("📋 Página de seleção de professor carregada");
+
+        if (typeof window.carregarTheme === "function") {
+          window.carregarTheme();
+        }
+
+        if (typeof window.carregarEstado === "function") {
+          window.carregarEstado();
+        }
+
+        if (typeof window.carregarDadosDaPlanilha === "function") {
+          await window.carregarDadosDaPlanilha();
+        }
+
+        professores = (window.state?.professores || []).filter(
+          (p) => p.perfil === "PROFESSOR" || p.perfil === "GESTOR_PROFESSOR",
+        );
+
+        renderizarLista(professores);
+      });
+
+      function renderizarLista(lista) {
+        const container = document.getElementById("listaProfessores");
+
+        if (lista.length === 0) {
+          container.innerHTML =
+            '<p class="empty-state">Nenhum professor encontrado</p>';
+          return;
+        }
+
+        container.innerHTML = "";
+        lista.forEach((prof) => {
+          const btn = document.createElement("button");
+          btn.className = "professor-select-btn";
+          btn.style.cssText = `
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            background: var(--bg-white);
+            border: 2px solid var(--bg-gray);
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.3s ease;
+          `;
+          btn.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <i class="fas fa-user-circle" style="font-size: 2rem; color: var(--primary);"></i>
+              <div>
+                <strong style="font-size: 1.1rem;">${prof.nome}</strong>
+                <div style="font-size: 0.9rem; color: var(--text-light);">${prof.email}</div>
+              </div>
+            </div>
+          `;
+          btn.onmouseover = () => {
+            btn.style.background = "var(--primary)";
+            btn.style.color = "white";
+            btn.style.borderColor = "var(--primary-dark)";
+          };
+          btn.onmouseout = () => {
+            btn.style.background = "var(--bg-white)";
+            btn.style.color = "var(--text-dark)";
+            btn.style.borderColor = "var(--bg-gray)";
+          };
+          btn.onclick = () => {
+            localStorage.setItem(
+              "professor_atual",
+              JSON.stringify({
+                id: prof.id,
+                nome: prof.nome,
+                email: prof.email,
+                perfil: prof.perfil,
+              }),
+            );
+            window.location.href = "professor.html";
+          };
+          container.appendChild(btn);
+        });
+      }
+
+      window.filtrarProfessores = function () {
+        const termo = document
+          .getElementById("searchProfessor")
+          .value.toLowerCase();
+        if (!termo) {
+          renderizarLista(professores);
+          return;
+        }
+
+        const filtrados = professores.filter(
+          (p) =>
+            p.nome.toLowerCase().includes(termo) ||
+            p.email.toLowerCase().includes(termo),
+        );
+        renderizarLista(filtrados);
+      };
+    </script>
+  </body>
+</html>

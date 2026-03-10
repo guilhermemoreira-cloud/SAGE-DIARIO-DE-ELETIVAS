@@ -1,0 +1,2529 @@
+{
+  "success": true,
+  "timestamp": "2026-03-08T21:25:22.684Z",
+  "estatisticas": {
+    "alunos": 356,
+    "professores": 22,
+    "eletivasFixas": 22,
+    "eletivasMistas": 0
+  },
+  "dados": {
+    "alunos": [
+      {
+        "_linha": 2,
+        "nome": "AGATHA BEATRICE VIANA FERNANDES",
+        "turma": "1ª SÉRIE A",
+        "sige": "4004211"
+      },
+      {
+        "_linha": 3,
+        "nome": "ALICE PIMENTEL ALMEIDA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3528060"
+      },
+      {
+        "_linha": 4,
+        "nome": "ANA CLESSIA RODRIGUES BEZERRA SILVA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3276810"
+      },
+      {
+        "_linha": 5,
+        "nome": "ANA LETICIA DE SOUZA SILVA",
+        "turma": "1ª SÉRIE A",
+        "sige": "4471030"
+      },
+      {
+        "_linha": 6,
+        "nome": "ANA LIDIA OLIVEIRA DE LIMA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3591307"
+      },
+      {
+        "_linha": 7,
+        "nome": "ANTONIO GABRIEL PONTES HOLANDA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3615259"
+      },
+      {
+        "_linha": 8,
+        "nome": "ARTHUR CESAR DE OLIVEIRA MOTA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3972057"
+      },
+      {
+        "_linha": 9,
+        "nome": "BRENO GOMES DE OLIVEIRA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3740779"
+      },
+      {
+        "_linha": 10,
+        "nome": "CRISLANIA PEREIRA DE SOUZA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3039036"
+      },
+      {
+        "_linha": 11,
+        "nome": "DANIEL NUNES DA SILVA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3529121"
+      },
+      {
+        "_linha": 12,
+        "nome": "EMILY SOUZA ALIXANDRE",
+        "turma": "1ª SÉRIE A",
+        "sige": "3484539"
+      },
+      {
+        "_linha": 13,
+        "nome": "FRANCISCO MATHEUS DA SILVA OLIVEIRA",
+        "turma": "1ª SÉRIE A",
+        "sige": "2161481"
+      },
+      {
+        "_linha": 14,
+        "nome": "GABRIELA BATISTA DA SILVA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3420794"
+      },
+      {
+        "_linha": 15,
+        "nome": "GABRIELY MELO DE LIMA",
+        "turma": "1ª SÉRIE A",
+        "sige": "2977408"
+      },
+      {
+        "_linha": 16,
+        "nome": "GRAZIELA RODRIGUES DO NASCIMENTO",
+        "turma": "1ª SÉRIE A",
+        "sige": "3419819"
+      },
+      {
+        "_linha": 17,
+        "nome": "GUILHERME RODRIGUES LOPES",
+        "turma": "1ª SÉRIE A",
+        "sige": "3422555"
+      },
+      {
+        "_linha": 18,
+        "nome": "JOAO VITOR SOUSA DO NASCIMENTO",
+        "turma": "1ª SÉRIE A",
+        "sige": "3277133"
+      },
+      {
+        "_linha": 19,
+        "nome": "JONAS KAUE SOARES DOS SANTOS",
+        "turma": "1ª SÉRIE A",
+        "sige": "4629151"
+      },
+      {
+        "_linha": 20,
+        "nome": "JOSE BRUNO MARTINS GOMES",
+        "turma": "1ª SÉRIE A",
+        "sige": "3275709"
+      },
+      {
+        "_linha": 21,
+        "nome": "JOSE LENDRO DA SILVA GOMES",
+        "turma": "1ª SÉRIE A",
+        "sige": "3363191"
+      },
+      {
+        "_linha": 22,
+        "nome": "JOSE MATHEUS ANDRADE OLIVEIRA",
+        "turma": "1ª SÉRIE A",
+        "sige": "4290047"
+      },
+      {
+        "_linha": 23,
+        "nome": "JOSEFA REBECA ALVES VIEIRA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3365711"
+      },
+      {
+        "_linha": 24,
+        "nome": "LAUANY BALBINA SANTOS SILVA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3536681"
+      },
+      {
+        "_linha": 25,
+        "nome": "LEANDRO KAUAN DE ALMEIDA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3003106"
+      },
+      {
+        "_linha": 26,
+        "nome": "LUANA ALMEIDA ALVES DA COSTA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3486840"
+      },
+      {
+        "_linha": 27,
+        "nome": "LUIS GUSTAVO LOPES BEZERRA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3851087"
+      },
+      {
+        "_linha": 28,
+        "nome": "LYEDSON DARKIAN MONTEIRO FERREIRA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3586529"
+      },
+      {
+        "_linha": 29,
+        "nome": "MARIA EDUARDA FERREIRA DA SILVA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3483252"
+      },
+      {
+        "_linha": 30,
+        "nome": "MARIA ELIZABETY DE FRANCA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3395972"
+      },
+      {
+        "_linha": 31,
+        "nome": "MATEUS DA SILVA MOREIRA BEZERRA",
+        "turma": "1ª SÉRIE A",
+        "sige": "2909426"
+      },
+      {
+        "_linha": 32,
+        "nome": "MATHEUS DUARTE MONTEIRO",
+        "turma": "1ª SÉRIE A",
+        "sige": "3280408"
+      },
+      {
+        "_linha": 33,
+        "nome": "PEDRO HENRIQUE SANTOS DO NASCIMENTO",
+        "turma": "1ª SÉRIE A",
+        "sige": "4051241"
+      },
+      {
+        "_linha": 34,
+        "nome": "PEDRO LUCAS BEZERRA QUEIROZ",
+        "turma": "1ª SÉRIE A",
+        "sige": "2525572"
+      },
+      {
+        "_linha": 35,
+        "nome": "PEDRO TIALISON DA SILVA ARAUJO",
+        "turma": "1ª SÉRIE A",
+        "sige": "3515894"
+      },
+      {
+        "_linha": 36,
+        "nome": "REMILLY KAUANE MENEZES FREIRE",
+        "turma": "1ª SÉRIE A",
+        "sige": "3286038"
+      },
+      {
+        "_linha": 37,
+        "nome": "ROBSON GUILHERME CUEVAS OLIVEIRA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3286063"
+      },
+      {
+        "_linha": 38,
+        "nome": "ROSIANA BATISTA DE LIMA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3830215"
+      },
+      {
+        "_linha": 39,
+        "nome": "SOFIA LAUANNY SOUZA ANDRADE",
+        "turma": "1ª SÉRIE A",
+        "sige": "4642720"
+      },
+      {
+        "_linha": 40,
+        "nome": "THAYLA AYALLA NEVES VIEIRA",
+        "turma": "1ª SÉRIE A",
+        "sige": "5671570"
+      },
+      {
+        "_linha": 41,
+        "nome": "TIAGO HENRIQUE DE SOUZA SILVA",
+        "turma": "1ª SÉRIE A",
+        "sige": "5119400"
+      },
+      {
+        "_linha": 42,
+        "nome": "VITOR EMANUEL TRAJANO DA SILVA",
+        "turma": "1ª SÉRIE A",
+        "sige": "2954849"
+      },
+      {
+        "_linha": 43,
+        "nome": "YUDE RODRIGUES DE ALMEIDA",
+        "turma": "1ª SÉRIE A",
+        "sige": "3787177"
+      },
+      {
+        "_linha": 44,
+        "nome": "ALAN VITOR FELIX ALMEIDA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3274288"
+      },
+      {
+        "_linha": 45,
+        "nome": "ANA JULIA GOMES DA SILVA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3535801"
+      },
+      {
+        "_linha": 46,
+        "nome": "ANA LARYSSA ALVES DE OLIVEIRA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3734930"
+      },
+      {
+        "_linha": 47,
+        "nome": "ANA VITORIA VIANA DA SILVA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3536753"
+      },
+      {
+        "_linha": 48,
+        "nome": "ANTONIO DEYVYDY OLIVEIRA PAIVA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3043045"
+      },
+      {
+        "_linha": 49,
+        "nome": "ATILA KAUAN GONÇALVES DIAS",
+        "turma": "1ª SÉRIE B",
+        "sige": "3841889"
+      },
+      {
+        "_linha": 50,
+        "nome": "BARBARA VIRGINIA GONCALVES QUEIROZ",
+        "turma": "1ª SÉRIE B",
+        "sige": "3939738"
+      },
+      {
+        "_linha": 51,
+        "nome": "DAVI DA SILVA FERREIRA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3274550"
+      },
+      {
+        "_linha": 52,
+        "nome": "DAVID KAUAN ALVES ARAUJO",
+        "turma": "1ª SÉRIE B",
+        "sige": "3419809"
+      },
+      {
+        "_linha": 53,
+        "nome": "EDSON JEFFERSON VIEIRA DE FREITAS",
+        "turma": "1ª SÉRIE B",
+        "sige": "3507391"
+      },
+      {
+        "_linha": 54,
+        "nome": "ERICK EMANUEL AURELIANO MONTEIRO",
+        "turma": "1ª SÉRIE B",
+        "sige": "4947488"
+      },
+      {
+        "_linha": 55,
+        "nome": "ERITON BELARDO SIQUEIRA DE MELO FILHO",
+        "turma": "1ª SÉRIE B",
+        "sige": "4189103"
+      },
+      {
+        "_linha": 56,
+        "nome": "EVERTON MODESTO LIMA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3001940"
+      },
+      {
+        "_linha": 57,
+        "nome": "FRANCISCA VITORIA SILVA ROCHA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3260006"
+      },
+      {
+        "_linha": 58,
+        "nome": "FRANCISCO ADAUCIDES DE OLIVEIRA NETO",
+        "turma": "1ª SÉRIE B",
+        "sige": "3274420"
+      },
+      {
+        "_linha": 59,
+        "nome": "FRANCISCO NICOLAS DA SILVA PAULINO",
+        "turma": "1ª SÉRIE B",
+        "sige": "3257085"
+      },
+      {
+        "_linha": 60,
+        "nome": "FRANCISCO VICENTE DO NASCIMENTO",
+        "turma": "1ª SÉRIE B",
+        "sige": "3482443"
+      },
+      {
+        "_linha": 61,
+        "nome": "GUILHERME VARELA DA SILVA BEZERRA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3616861"
+      },
+      {
+        "_linha": 62,
+        "nome": "ISAAC NILTON SOARES QUEIROZ",
+        "turma": "1ª SÉRIE B",
+        "sige": "3420312"
+      },
+      {
+        "_linha": 63,
+        "nome": "JOSE ALVES DAS CHAGAS NETO",
+        "turma": "1ª SÉRIE B",
+        "sige": "3730964"
+      },
+      {
+        "_linha": 64,
+        "nome": "KAUA BEZERRA DE SOUZA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3503631"
+      },
+      {
+        "_linha": 65,
+        "nome": "KAYO RUANN VIANA DE SOUZA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3804466"
+      },
+      {
+        "_linha": 66,
+        "nome": "LARA LORRANY VIEIRA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3289418"
+      },
+      {
+        "_linha": 67,
+        "nome": "LAZARO GONCALVES SILVA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3536907"
+      },
+      {
+        "_linha": 68,
+        "nome": "LEVI DA COSTA VIEIRA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3971363"
+      },
+      {
+        "_linha": 69,
+        "nome": "LIARA PHENELOPE PORFIRIO DE OLIVEIRA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3501370"
+      },
+      {
+        "_linha": 70,
+        "nome": "MARCOS VINICIUS XAVIER RODRIGUES",
+        "turma": "1ª SÉRIE B",
+        "sige": "3536687"
+      },
+      {
+        "_linha": 71,
+        "nome": "MARIA BEATRIZ DA SILVA LIMA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3615986"
+      },
+      {
+        "_linha": 72,
+        "nome": "MARIA CLARA HENRIQUE DA SILVA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3970570"
+      },
+      {
+        "_linha": 73,
+        "nome": "MOISES HENRIQUE PEREIRA DA SILVA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3484680"
+      },
+      {
+        "_linha": 74,
+        "nome": "NICOLAS BEZERRA MENEZES",
+        "turma": "1ª SÉRIE B",
+        "sige": "3275825"
+      },
+      {
+        "_linha": 75,
+        "nome": "PEDRO HENRIQUE DA SILVA",
+        "turma": "1ª SÉRIE B",
+        "sige": "2979682"
+      },
+      {
+        "_linha": 76,
+        "nome": "PEDRO HENRIQUE FELIPE FERREIRA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3285746"
+      },
+      {
+        "_linha": 77,
+        "nome": "PEDRO RENAN CAZEMIRO RODRIGUES",
+        "turma": "1ª SÉRIE B",
+        "sige": "3644942"
+      },
+      {
+        "_linha": 78,
+        "nome": "PIETRO HENRIQUE AMARAL ARAUJO",
+        "turma": "1ª SÉRIE B",
+        "sige": "3485939"
+      },
+      {
+        "_linha": 79,
+        "nome": "RAMILLY ALVES DE OLIVEIRA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3286007"
+      },
+      {
+        "_linha": 80,
+        "nome": "RAVYLLA DA SILVA ALMEIDA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3616926"
+      },
+      {
+        "_linha": 81,
+        "nome": "SENDY ARIANE ALVES DA SILVA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3616008"
+      },
+      {
+        "_linha": 82,
+        "nome": "SOLANGE RODRIGUES DE OLIVEIRA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3587761"
+      },
+      {
+        "_linha": 83,
+        "nome": "THALITA SILVA MARIANO",
+        "turma": "1ª SÉRIE B",
+        "sige": "3419842"
+      },
+      {
+        "_linha": 84,
+        "nome": "VIVIANE ANTUNES DE LIMA",
+        "turma": "1ª SÉRIE B",
+        "sige": "3272094"
+      },
+      {
+        "_linha": 85,
+        "nome": "ANA EDLA BEZERRA DOS SANTOS",
+        "turma": "1ª SÉRIE C",
+        "sige": "3255135"
+      },
+      {
+        "_linha": 86,
+        "nome": "ANA GRAZIELE DE SOUZA CARMO",
+        "turma": "1ª SÉRIE C",
+        "sige": "3802839"
+      },
+      {
+        "_linha": 87,
+        "nome": "ANA LAURA SALVIANO MAIA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3559932"
+      },
+      {
+        "_linha": 88,
+        "nome": "ANA PRISCILA NUNES DUARTE",
+        "turma": "1ª SÉRIE C",
+        "sige": "3274133"
+      },
+      {
+        "_linha": 89,
+        "nome": "ANNA SOPHIA ALENCAR ALENCAR DE ARAUJO",
+        "turma": "1ª SÉRIE C",
+        "sige": "3246336"
+      },
+      {
+        "_linha": 90,
+        "nome": "ANTONIO ITALO PEREIRA DE SOUSA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3038489"
+      },
+      {
+        "_linha": 91,
+        "nome": "ARTHUR GONCALVES SOUZA",
+        "turma": "1ª SÉRIE C",
+        "sige": "5043820"
+      },
+      {
+        "_linha": 92,
+        "nome": "BRUNA INGRID DE OLIVEIRA BARBOSA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3259104"
+      },
+      {
+        "_linha": 93,
+        "nome": "CARLA MIRELLY DA SILVA PEREIRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "4020581"
+      },
+      {
+        "_linha": 94,
+        "nome": "CICERO CEZAR ALBUQUERQUE NETO",
+        "turma": "1ª SÉRIE C",
+        "sige": "5671588"
+      },
+      {
+        "_linha": 95,
+        "nome": "DEIVID ALVES FERREIRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3591332"
+      },
+      {
+        "_linha": 96,
+        "nome": "EMANUELLE OLIVEIRA DA SILVA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3536783"
+      },
+      {
+        "_linha": 97,
+        "nome": "ENAYAD LORRANE MONTEIRO DA SILVA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3485830"
+      },
+      {
+        "_linha": 98,
+        "nome": "ENZO GABRIEL ALVES VIEIRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "4759511"
+      },
+      {
+        "_linha": 99,
+        "nome": "ERICK HEVERTON BARBOSA DA SILVA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3420586"
+      },
+      {
+        "_linha": 100,
+        "nome": "FRANCISCA ADRIELE MORAIS ALVES",
+        "turma": "1ª SÉRIE C",
+        "sige": "3402218"
+      },
+      {
+        "_linha": 101,
+        "nome": "FRANCISCO JARDEL DA SILVA SOBREIRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3274456"
+      },
+      {
+        "_linha": 102,
+        "nome": "GABRIEL ALVES GOMES",
+        "turma": "1ª SÉRIE C",
+        "sige": "3537220"
+      },
+      {
+        "_linha": 103,
+        "nome": "GUSTAVO RYAN DOMICIANO FERREIRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "2976584"
+      },
+      {
+        "_linha": 104,
+        "nome": "HUGO DE SOUZA SILVA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3987240"
+      },
+      {
+        "_linha": 105,
+        "nome": "ICARO RHYAN DE SOUZA GOMES",
+        "turma": "1ª SÉRIE C",
+        "sige": "3286385"
+      },
+      {
+        "_linha": 106,
+        "nome": "ISABELA AUGUSTO",
+        "turma": "1ª SÉRIE C",
+        "sige": "3850373"
+      },
+      {
+        "_linha": 107,
+        "nome": "JAYSLANIA LOPES DOS SANTOS",
+        "turma": "1ª SÉRIE C",
+        "sige": "3286427"
+      },
+      {
+        "_linha": 108,
+        "nome": "JENNIFER FERREIRA CARMO",
+        "turma": "1ª SÉRIE C",
+        "sige": "3274517"
+      },
+      {
+        "_linha": 109,
+        "nome": "JHONE ALEXIS SANTOS DE OLIVEIRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3913562"
+      },
+      {
+        "_linha": 110,
+        "nome": "JOAO HERCULES MAMEDIO DE SOUZA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3419828"
+      },
+      {
+        "_linha": 111,
+        "nome": "JOERDSON FERREIRA DA SILVA RIBEIRO",
+        "turma": "1ª SÉRIE C",
+        "sige": "3275587"
+      },
+      {
+        "_linha": 112,
+        "nome": "JOYCE LOURENCO MARTINS",
+        "turma": "1ª SÉRIE C",
+        "sige": "3501005"
+      },
+      {
+        "_linha": 113,
+        "nome": "KAUE DE ARAUJO LAVOR",
+        "turma": "1ª SÉRIE C",
+        "sige": "3290364"
+      },
+      {
+        "_linha": 114,
+        "nome": "KAYK DE ARAUJO LAVOR",
+        "turma": "1ª SÉRIE C",
+        "sige": "3290357"
+      },
+      {
+        "_linha": 115,
+        "nome": "KAYO RUANN FELIPE MARTINS",
+        "turma": "1ª SÉRIE C",
+        "sige": "3256270"
+      },
+      {
+        "_linha": 116,
+        "nome": "LEVY ALVES FERREIRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "5473034"
+      },
+      {
+        "_linha": 117,
+        "nome": "LIEDSON VITORIANO DE OLIVEIRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3518068"
+      },
+      {
+        "_linha": 118,
+        "nome": "LUIZ FILIPE SARAIVA AMARO DE ALENCAR",
+        "turma": "1ª SÉRIE C",
+        "sige": "5671542"
+      },
+      {
+        "_linha": 119,
+        "nome": "MAIKON DOUGLAS ALVES DA SILVA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3536943"
+      },
+      {
+        "_linha": 120,
+        "nome": "MARIA CLAUDIA DE SOUSA SENA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3767984"
+      },
+      {
+        "_linha": 121,
+        "nome": "MARIA EDUARDA PEREIRA DA SILVA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3247431"
+      },
+      {
+        "_linha": 122,
+        "nome": "NAILSON MATHEUS VITOR LIMEIRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "1517625"
+      },
+      {
+        "_linha": 123,
+        "nome": "NALPLYA GLORIA LOPES BARBOSA",
+        "turma": "1ª SÉRIE C",
+        "sige": "4202728"
+      },
+      {
+        "_linha": 124,
+        "nome": "PEDRO HENRIQUE FERNANDES CARVALHO",
+        "turma": "1ª SÉRIE C",
+        "sige": "5341419"
+      },
+      {
+        "_linha": 125,
+        "nome": "TAISIS DE QUEIROZ BEZERRA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3536976"
+      },
+      {
+        "_linha": 126,
+        "nome": "YASMIM ARAUJO ALMEIDA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3924121"
+      },
+      {
+        "_linha": 127,
+        "nome": "YASMIM BARBOSA SILVA",
+        "turma": "1ª SÉRIE C",
+        "sige": "3189914"
+      },
+      {
+        "_linha": 128,
+        "nome": "YKARO ADIEL BATISTA DO NASCIMENTO",
+        "turma": "1ª SÉRIE C",
+        "sige": "3275908"
+      },
+      {
+        "_linha": 129,
+        "nome": "ALANY VITORIA SOUZA DOS SANTOS",
+        "turma": "2ª SÉRIE A",
+        "sige": "2683014"
+      },
+      {
+        "_linha": 130,
+        "nome": "ANA ELLEN RICARTE PEREIRA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3772998"
+      },
+      {
+        "_linha": 131,
+        "nome": "ANA RAIKA ALEXANDRE JOTA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3264408"
+      },
+      {
+        "_linha": 132,
+        "nome": "ANTONIA VITORIA ROSENO DO NASCIMENTO",
+        "turma": "2ª SÉRIE A",
+        "sige": "2377759"
+      },
+      {
+        "_linha": 133,
+        "nome": "ARLLYTON MIGUEL REINALDO DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3420783"
+      },
+      {
+        "_linha": 134,
+        "nome": "ARTHUR SOUZA BARBOSA",
+        "turma": "2ª SÉRIE A",
+        "sige": "4808634"
+      },
+      {
+        "_linha": 135,
+        "nome": "CAMILA SILVA PEREIRA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2969219"
+      },
+      {
+        "_linha": 136,
+        "nome": "CICERO RICHARD AGOSTINHO DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3519902"
+      },
+      {
+        "_linha": 137,
+        "nome": "DANIEL DA SILVA VIANA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3263833"
+      },
+      {
+        "_linha": 138,
+        "nome": "EDILANYA MARIA VIEIRA PEREIRA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2683749"
+      },
+      {
+        "_linha": 139,
+        "nome": "EMILLY LOPES MOREIRA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3237434"
+      },
+      {
+        "_linha": 140,
+        "nome": "EVILIN GRAZIELY TOMAZ DE OLIVEIRA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2852864"
+      },
+      {
+        "_linha": 141,
+        "nome": "EVILYN ALVES DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2171150"
+      },
+      {
+        "_linha": 142,
+        "nome": "FRANCISCO RIAN SOUSA CHAVES",
+        "turma": "2ª SÉRIE A",
+        "sige": "3420520"
+      },
+      {
+        "_linha": 143,
+        "nome": "GABRIEL DA SILVA SOUZA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2169261"
+      },
+      {
+        "_linha": 144,
+        "nome": "GABRIEL NASCIMENTO SAMPAIO",
+        "turma": "2ª SÉRIE A",
+        "sige": "3487313"
+      },
+      {
+        "_linha": 145,
+        "nome": "GABRIELY SIRIACO DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2858563"
+      },
+      {
+        "_linha": 146,
+        "nome": "GEOVANNA RODRIGUES SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3263010"
+      },
+      {
+        "_linha": 147,
+        "nome": "GRAZIELE PEREIRA DE SOUZA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3273116"
+      },
+      {
+        "_linha": 148,
+        "nome": "GUILHERME BATISTA DE SOUSA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2677694"
+      },
+      {
+        "_linha": 149,
+        "nome": "IARLEY SOUSA DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3260030"
+      },
+      {
+        "_linha": 150,
+        "nome": "IASMIN FERREIRA DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2860479"
+      },
+      {
+        "_linha": 151,
+        "nome": "JEFTE ALVES DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3422565"
+      },
+      {
+        "_linha": 152,
+        "nome": "JOAO EDER SILVA ALEXANDRE",
+        "turma": "2ª SÉRIE A",
+        "sige": "2850490"
+      },
+      {
+        "_linha": 153,
+        "nome": "JOAO PEDRO TORRES CUNHA DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "5420097"
+      },
+      {
+        "_linha": 154,
+        "nome": "JOAO VICTOR ARAUJO RIBEIRO",
+        "turma": "2ª SÉRIE A",
+        "sige": "3371699"
+      },
+      {
+        "_linha": 155,
+        "nome": "JOSE ARIEL VIEIRA DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2890062"
+      },
+      {
+        "_linha": 156,
+        "nome": "KAUANA RIBEIRO DE MACEDO",
+        "turma": "2ª SÉRIE A",
+        "sige": "3646736"
+      },
+      {
+        "_linha": 157,
+        "nome": "KAYKY DIAS RODRIGUES",
+        "turma": "2ª SÉRIE A",
+        "sige": "3003091"
+      },
+      {
+        "_linha": 158,
+        "nome": "MARIA EDUARDA DA COSTA SALVIANO",
+        "turma": "2ª SÉRIE A",
+        "sige": "2875494"
+      },
+      {
+        "_linha": 159,
+        "nome": "MARIA NAYKELLY LIMA DA SILVA",
+        "turma": "2ª SÉRIE A",
+        "sige": "2875528"
+      },
+      {
+        "_linha": 160,
+        "nome": "NAYLANE LIMA GOMES",
+        "turma": "2ª SÉRIE A",
+        "sige": "3420818"
+      },
+      {
+        "_linha": 161,
+        "nome": "PEDRO HENRIQUE CANDIDO BRAUNA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3259414"
+      },
+      {
+        "_linha": 162,
+        "nome": "RAQUELE OLIVEIRA DE SOUSA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3857761"
+      },
+      {
+        "_linha": 163,
+        "nome": "VICTOR GABRIEL SILVA GALDINO",
+        "turma": "2ª SÉRIE A",
+        "sige": "4259416"
+      },
+      {
+        "_linha": 164,
+        "nome": "VIVIAN VIDAL FERREIRA",
+        "turma": "2ª SÉRIE A",
+        "sige": "3056904"
+      },
+      {
+        "_linha": 165,
+        "nome": "WELLERY FEITOSA APOLINARIO",
+        "turma": "2ª SÉRIE A",
+        "sige": "3761374"
+      },
+      {
+        "_linha": 166,
+        "nome": "WESLEY VIDAL DOS SANTOS",
+        "turma": "2ª SÉRIE A",
+        "sige": "3371774"
+      },
+      {
+        "_linha": 167,
+        "nome": "ANA LARA FERREIRA DE ARAUJO",
+        "turma": "2ª SÉRIE B",
+        "sige": "2855485"
+      },
+      {
+        "_linha": 168,
+        "nome": "ANA LAURA LUCIANO MAIA",
+        "turma": "2ª SÉRIE B",
+        "sige": "4950412"
+      },
+      {
+        "_linha": 169,
+        "nome": "ANA VITORIA DA SILVA VIEIRA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3422301"
+      },
+      {
+        "_linha": 170,
+        "nome": "ANTONIO VINYCIO DE SOUSA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3371250"
+      },
+      {
+        "_linha": 171,
+        "nome": "DAVI DUARTE SOUZA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3051605"
+      },
+      {
+        "_linha": 172,
+        "nome": "DAVI FELIX SANTANA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3289298"
+      },
+      {
+        "_linha": 173,
+        "nome": "EMILLI KETHIN DO NASCIMENTO LEITE",
+        "turma": "2ª SÉRIE B",
+        "sige": "3646375"
+      },
+      {
+        "_linha": 174,
+        "nome": "ESDRAS CARLOS DE LIMA",
+        "turma": "2ª SÉRIE B",
+        "sige": "2857383"
+      },
+      {
+        "_linha": 175,
+        "nome": "FRANCISCO JOSE PEREIRA MATIAS",
+        "turma": "2ª SÉRIE B",
+        "sige": "3271888"
+      },
+      {
+        "_linha": 176,
+        "nome": "FRANCISCO WANDEGLEISON PARENTE DE SOUZA",
+        "turma": "2ª SÉRIE B",
+        "sige": "4063902"
+      },
+      {
+        "_linha": 177,
+        "nome": "GRAZIELE MARIANO DIAS",
+        "turma": "2ª SÉRIE B",
+        "sige": "2875358"
+      },
+      {
+        "_linha": 178,
+        "nome": "GRAZIELLY DA SILVA PEREIRA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3420589"
+      },
+      {
+        "_linha": 179,
+        "nome": "GUSTAVO VIEIRA DA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3258633"
+      },
+      {
+        "_linha": 180,
+        "nome": "JOAO PEDRO FIRMINO COSTA",
+        "turma": "2ª SÉRIE B",
+        "sige": "5420149"
+      },
+      {
+        "_linha": 181,
+        "nome": "JOSE LEVY NOGUEIRA DE FREITAS",
+        "turma": "2ª SÉRIE B",
+        "sige": "2878359"
+      },
+      {
+        "_linha": 182,
+        "nome": "JOSE MAIRTON DO NASCIMENTO DA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3250927"
+      },
+      {
+        "_linha": 183,
+        "nome": "JOSE MOISES DE ARAUJO SANTOS",
+        "turma": "2ª SÉRIE B",
+        "sige": "3248279"
+      },
+      {
+        "_linha": 184,
+        "nome": "JOSE VINICIUS FERREIRA MARTINS",
+        "turma": "2ª SÉRIE B",
+        "sige": "3248151"
+      },
+      {
+        "_linha": 185,
+        "nome": "KAIO RODRIGO CARDOSO RODRIGUES",
+        "turma": "2ª SÉRIE B",
+        "sige": "3271696"
+      },
+      {
+        "_linha": 186,
+        "nome": "KAUAN EVERTON VIANA DE SOUZA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3514581"
+      },
+      {
+        "_linha": 187,
+        "nome": "LEONARDO EIKE PEREIRA DOS SANTOS",
+        "turma": "2ª SÉRIE B",
+        "sige": "3237510"
+      },
+      {
+        "_linha": 188,
+        "nome": "LUCAS EMANOEL ALVES DA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "2349541"
+      },
+      {
+        "_linha": 189,
+        "nome": "LUIDY ELVES PEREIRA DOS SANTOS",
+        "turma": "2ª SÉRIE B",
+        "sige": "3235438"
+      },
+      {
+        "_linha": 190,
+        "nome": "LUIS LOPES DA SILVA FILHO",
+        "turma": "2ª SÉRIE B",
+        "sige": "3269777"
+      },
+      {
+        "_linha": 191,
+        "nome": "MANOEL PEREIRA SOTA",
+        "turma": "2ª SÉRIE B",
+        "sige": "2875454"
+      },
+      {
+        "_linha": 192,
+        "nome": "MANOEL VICTOR RIBEIRO CABRAL",
+        "turma": "2ª SÉRIE B",
+        "sige": "3270271"
+      },
+      {
+        "_linha": 193,
+        "nome": "MARCOS KAYO SOARES DA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3726189"
+      },
+      {
+        "_linha": 194,
+        "nome": "MARCOS RYAN DA SILVA PINHEIRO",
+        "turma": "2ª SÉRIE B",
+        "sige": "3272272"
+      },
+      {
+        "_linha": 195,
+        "nome": "MARIA SHIRLIANI FERNANDES DE SOUZA",
+        "turma": "2ª SÉRIE B",
+        "sige": "2875565"
+      },
+      {
+        "_linha": 196,
+        "nome": "MATHEUS BATISTA OLIVEIRA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "5417670"
+      },
+      {
+        "_linha": 197,
+        "nome": "PAMELLA ABREU DE SOUSA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3250526"
+      },
+      {
+        "_linha": 198,
+        "nome": "PAOLA KELLY LEITE DA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3273822"
+      },
+      {
+        "_linha": 199,
+        "nome": "RAIMUNDO NONATO JHON ALVES DA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3487495"
+      },
+      {
+        "_linha": 200,
+        "nome": "RAYLANY MARQUES BASTOS",
+        "turma": "2ª SÉRIE B",
+        "sige": "3259491"
+      },
+      {
+        "_linha": 201,
+        "nome": "SAIMON SOARES DOS SANTOS",
+        "turma": "2ª SÉRIE B",
+        "sige": "3716490"
+      },
+      {
+        "_linha": 202,
+        "nome": "SAMUEL LUCAS ALVES DA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "3259634"
+      },
+      {
+        "_linha": 203,
+        "nome": "SAMUEL SILVA DO NASCIMENTO",
+        "turma": "2ª SÉRIE B",
+        "sige": "3266779"
+      },
+      {
+        "_linha": 204,
+        "nome": "VITORIA ARMINDO DA SILVA",
+        "turma": "2ª SÉRIE B",
+        "sige": "2920504"
+      },
+      {
+        "_linha": 205,
+        "nome": "ANA BEATRIZ DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "2882174"
+      },
+      {
+        "_linha": 206,
+        "nome": "ANA IVNA GOMES DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3264348"
+      },
+      {
+        "_linha": 207,
+        "nome": "ANDRE LUCAS ALEXANDRE DO NASCIMENTO",
+        "turma": "2ª SÉRIE C",
+        "sige": "2238100"
+      },
+      {
+        "_linha": 208,
+        "nome": "ANDRESSA FERREIRA FREITAS",
+        "turma": "2ª SÉRIE C",
+        "sige": "3164566"
+      },
+      {
+        "_linha": 209,
+        "nome": "ARIANO BEZERRA DOS SANTOS SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3371493"
+      },
+      {
+        "_linha": 210,
+        "nome": "ARTHUR ALVES OLIVEIRA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3623524"
+      },
+      {
+        "_linha": 211,
+        "nome": "ARTHUR LEONIDAS ALVES PINHEIRO",
+        "turma": "2ª SÉRIE C",
+        "sige": "5415429"
+      },
+      {
+        "_linha": 212,
+        "nome": "CARLA ISABELA FERREIRA DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "2264614"
+      },
+      {
+        "_linha": 213,
+        "nome": "DANIEL FELIX PEREIRA",
+        "turma": "2ª SÉRIE C",
+        "sige": "2791789"
+      },
+      {
+        "_linha": 214,
+        "nome": "DEBORA DENISE DAMASCENA DIAS",
+        "turma": "2ª SÉRIE C",
+        "sige": "3613687"
+      },
+      {
+        "_linha": 215,
+        "nome": "ERICK RYAN LIMA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "5022914"
+      },
+      {
+        "_linha": 216,
+        "nome": "EXPEDITO ITALO CORDEIRO DE LIMA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3260606"
+      },
+      {
+        "_linha": 217,
+        "nome": "EXPEDITO JONATAS BATISTA DE ARAUJO",
+        "turma": "2ª SÉRIE C",
+        "sige": "2264618"
+      },
+      {
+        "_linha": 218,
+        "nome": "FATIMA FERREIRA DE SOUSA",
+        "turma": "2ª SÉRIE C",
+        "sige": "2862581"
+      },
+      {
+        "_linha": 219,
+        "nome": "GESLANIA GOMES DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3262746"
+      },
+      {
+        "_linha": 220,
+        "nome": "GISELE YASMIN DA SILVA LEITE",
+        "turma": "2ª SÉRIE C",
+        "sige": "2906731"
+      },
+      {
+        "_linha": 221,
+        "nome": "IRYSBELLA VIEIRA LIMA",
+        "turma": "2ª SÉRIE C",
+        "sige": "2982283"
+      },
+      {
+        "_linha": 222,
+        "nome": "JOAO VITOR LISBOA ALVES",
+        "turma": "2ª SÉRIE C",
+        "sige": "1469136"
+      },
+      {
+        "_linha": 223,
+        "nome": "JOEL GOMES BARBOSA",
+        "turma": "2ª SÉRIE C",
+        "sige": "4237123"
+      },
+      {
+        "_linha": 224,
+        "nome": "JOSE LEONARDO FERREIRA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3494703"
+      },
+      {
+        "_linha": 225,
+        "nome": "JOSE SAMUEL PAULINO DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3274889"
+      },
+      {
+        "_linha": 226,
+        "nome": "LARISSA BATISTA DE ARAUJO",
+        "turma": "2ª SÉRIE C",
+        "sige": "2720496"
+      },
+      {
+        "_linha": 227,
+        "nome": "LUCAS RODRIGUES DE LIMA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3713203"
+      },
+      {
+        "_linha": 228,
+        "nome": "MANUEL DE OLIVEIRA VIANA",
+        "turma": "2ª SÉRIE C",
+        "sige": "5420076"
+      },
+      {
+        "_linha": 229,
+        "nome": "MARCOS DA SILVA MENDONÇA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3274860"
+      },
+      {
+        "_linha": 230,
+        "nome": "MARIA CLARA DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3270064"
+      },
+      {
+        "_linha": 231,
+        "nome": "MARIA EDUARDA FERNANDES DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3262896"
+      },
+      {
+        "_linha": 232,
+        "nome": "MARIANA DE SOUZA OLIVEIRA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3044141"
+      },
+      {
+        "_linha": 233,
+        "nome": "MARLOS MARTINS DOS SANTOS",
+        "turma": "2ª SÉRIE C",
+        "sige": "4758186"
+      },
+      {
+        "_linha": 234,
+        "nome": "MATEUS FERREIRA DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3358391"
+      },
+      {
+        "_linha": 235,
+        "nome": "RAYSLA DA SILVA MUNIZ",
+        "turma": "2ª SÉRIE C",
+        "sige": "2875590"
+      },
+      {
+        "_linha": 236,
+        "nome": "REYSLAN CHAVES MENEZES",
+        "turma": "2ª SÉRIE C",
+        "sige": "5009257"
+      },
+      {
+        "_linha": 237,
+        "nome": "RODRIGO FERREIRA DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "1461062"
+      },
+      {
+        "_linha": 238,
+        "nome": "VITOR EMANUEL PEREIRA DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3277190"
+      },
+      {
+        "_linha": 239,
+        "nome": "VITORIA CAVALCANTE DE OLIVEIRA",
+        "turma": "2ª SÉRIE C",
+        "sige": "3035884"
+      },
+      {
+        "_linha": 240,
+        "nome": "WESLEY GOMES DA SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "2178979"
+      },
+      {
+        "_linha": 241,
+        "nome": "YORRANE KELE CORDEIRO SILVA",
+        "turma": "2ª SÉRIE C",
+        "sige": "4752044"
+      },
+      {
+        "_linha": 242,
+        "nome": "ALCIMAR EXPEDITO SOUZA DA SILVA",
+        "turma": "3ª SÉRIE A",
+        "sige": "1526428"
+      },
+      {
+        "_linha": 243,
+        "nome": "ALEF MARTINS DA SILVA",
+        "turma": "3ª SÉRIE A",
+        "sige": "4480029"
+      },
+      {
+        "_linha": 244,
+        "nome": "ANDERSON CAETANO DE MACEDO",
+        "turma": "3ª SÉRIE A",
+        "sige": "3272520"
+      },
+      {
+        "_linha": 245,
+        "nome": "ANDRESSA UCHOA AMORIM ALVES",
+        "turma": "3ª SÉRIE A",
+        "sige": "2263490"
+      },
+      {
+        "_linha": 246,
+        "nome": "ANNY ALIK GREGORIO DE SOUZA",
+        "turma": "3ª SÉRIE A",
+        "sige": "3406677"
+      },
+      {
+        "_linha": 247,
+        "nome": "ANTONIO MURILO MONTEIRO PINHEIRO",
+        "turma": "3ª SÉRIE A",
+        "sige": "5258233"
+      },
+      {
+        "_linha": 248,
+        "nome": "BRUNA ALVES DE SOUZA",
+        "turma": "3ª SÉRIE A",
+        "sige": "2858437"
+      },
+      {
+        "_linha": 249,
+        "nome": "CLARISSE DE LIMA SOUZA",
+        "turma": "3ª SÉRIE A",
+        "sige": "2982147"
+      },
+      {
+        "_linha": 250,
+        "nome": "CRISTIAN LEVY FAUSTINO CAVALCANTE",
+        "turma": "3ª SÉRIE A",
+        "sige": "3536817"
+      },
+      {
+        "_linha": 251,
+        "nome": "EDUARDA KETHILLEY PEREIRA VASCONCELOS",
+        "turma": "3ª SÉRIE A",
+        "sige": "2872246"
+      },
+      {
+        "_linha": 252,
+        "nome": "ERIKA MONIQUE ALVES COUTO",
+        "turma": "3ª SÉRIE A",
+        "sige": "3401337"
+      },
+      {
+        "_linha": 253,
+        "nome": "GABRIEL HENRIQUE DE SOUSA PEREIRA",
+        "turma": "3ª SÉRIE A",
+        "sige": "2889432"
+      },
+      {
+        "_linha": 254,
+        "nome": "HELOISE SORIANO SILVA",
+        "turma": "3ª SÉRIE A",
+        "sige": "3805393"
+      },
+      {
+        "_linha": 255,
+        "nome": "IASMIN TOMAZ DE OLIVEIRA",
+        "turma": "3ª SÉRIE A",
+        "sige": "3260290"
+      },
+      {
+        "_linha": 256,
+        "nome": "INGRID TOMAZ DE OLIVEIRA",
+        "turma": "3ª SÉRIE A",
+        "sige": "3260267"
+      },
+      {
+        "_linha": 257,
+        "nome": "JAIANE BARROS FERNANDES DE LIMA",
+        "turma": "3ª SÉRIE A",
+        "sige": "2893638"
+      },
+      {
+        "_linha": 258,
+        "nome": "JHONATA CRISTIAN SILVA BEZERRA",
+        "turma": "3ª SÉRIE A",
+        "sige": "2164303"
+      },
+      {
+        "_linha": 259,
+        "nome": "JHONNY SILVA GALDINO ATAIDE",
+        "turma": "3ª SÉRIE A",
+        "sige": "2169591"
+      },
+      {
+        "_linha": 260,
+        "nome": "JOSE LUCAS BELO DE LAVOR",
+        "turma": "3ª SÉRIE A",
+        "sige": "5236937"
+      },
+      {
+        "_linha": 261,
+        "nome": "JOSUE AQUILYS DA SILVA SANTOS",
+        "turma": "3ª SÉRIE A",
+        "sige": "3272649"
+      },
+      {
+        "_linha": 262,
+        "nome": "KAIO DA SILVA FERREIRA",
+        "turma": "3ª SÉRIE A",
+        "sige": "3035929"
+      },
+      {
+        "_linha": 263,
+        "nome": "MARCOS ANDRE CASTELO BRANCO FERNANDESS",
+        "turma": "3ª SÉRIE A",
+        "sige": "2684630"
+      },
+      {
+        "_linha": 264,
+        "nome": "MARIA ARIELLY DUARTE DE ARAUJO",
+        "turma": "3ª SÉRIE A",
+        "sige": "2854912"
+      },
+      {
+        "_linha": 265,
+        "nome": "MARIA BATISTA DE LIMA",
+        "turma": "3ª SÉRIE A",
+        "sige": "3420714"
+      },
+      {
+        "_linha": 266,
+        "nome": "MARIA CLARA SOBREIRA FREITAS",
+        "turma": "3ª SÉRIE A",
+        "sige": "3006338"
+      },
+      {
+        "_linha": 267,
+        "nome": "MARIA SAMYA ALMEIDA DE OLIVEIRA",
+        "turma": "3ª SÉRIE A",
+        "sige": "5244749"
+      },
+      {
+        "_linha": 268,
+        "nome": "NICOLE KETILLY DA SILVA",
+        "turma": "3ª SÉRIE A",
+        "sige": "3266676"
+      },
+      {
+        "_linha": 269,
+        "nome": "NICOLE SOUZA SILVA",
+        "turma": "3ª SÉRIE A",
+        "sige": "3399229"
+      },
+      {
+        "_linha": 270,
+        "nome": "NILTON GEISLAN CORDEIRO TORRES",
+        "turma": "3ª SÉRIE A",
+        "sige": "2896479"
+      },
+      {
+        "_linha": 271,
+        "nome": "PEDRO GABRIEL BELO DE LAVOR",
+        "turma": "3ª SÉRIE A",
+        "sige": "5236953"
+      },
+      {
+        "_linha": 272,
+        "nome": "PEDRO VICTOR ALMEIDA DE MENEZES",
+        "turma": "3ª SÉRIE A",
+        "sige": "2896305"
+      },
+      {
+        "_linha": 273,
+        "nome": "QUITERIA ROSALBA SANTOS BEZERRA",
+        "turma": "3ª SÉRIE A",
+        "sige": "2175820"
+      },
+      {
+        "_linha": 274,
+        "nome": "REINALDO ADONIAS HOLANDA MARTINS",
+        "turma": "3ª SÉRIE A",
+        "sige": "2865816"
+      },
+      {
+        "_linha": 275,
+        "nome": "RICHARD DA SILVA FRIEDRICH",
+        "turma": "3ª SÉRIE A",
+        "sige": "3420662"
+      },
+      {
+        "_linha": 276,
+        "nome": "STEFANE MARIANO DA SILVA",
+        "turma": "3ª SÉRIE A",
+        "sige": "2288244"
+      },
+      {
+        "_linha": 277,
+        "nome": "TALISSON DE SOUZA ARAUJO",
+        "turma": "3ª SÉRIE A",
+        "sige": "3996124"
+      },
+      {
+        "_linha": 278,
+        "nome": "THIERRY CLEMENTINO ALVES",
+        "turma": "3ª SÉRIE A",
+        "sige": "3521497"
+      },
+      {
+        "_linha": 279,
+        "nome": "THYFANY KAELY MONTEIRO VITOR",
+        "turma": "3ª SÉRIE A",
+        "sige": "3266939"
+      },
+      {
+        "_linha": 280,
+        "nome": "VICTOR SANTOS CARMO",
+        "turma": "3ª SÉRIE A",
+        "sige": "2909830"
+      },
+      {
+        "_linha": 281,
+        "nome": "VITORIA BRAGA DE OLIVEIRA",
+        "turma": "3ª SÉRIE A",
+        "sige": "2875067"
+      },
+      {
+        "_linha": 282,
+        "nome": "ANA BEATRIZ PAULINO DE SOUZA",
+        "turma": "3ª SÉRIE B",
+        "sige": "2917976"
+      },
+      {
+        "_linha": 283,
+        "nome": "ANA BEATRIZ RIBEIRO DA SILVA",
+        "turma": "3ª SÉRIE B",
+        "sige": "5253291"
+      },
+      {
+        "_linha": 284,
+        "nome": "ANA JULIA ALMEIDA ALVES DA COSTA",
+        "turma": "3ª SÉRIE B",
+        "sige": "4298495"
+      },
+      {
+        "_linha": 285,
+        "nome": "ANGELYNA DAFYNE CARVALHO DOS SANTOS",
+        "turma": "3ª SÉRIE B",
+        "sige": "2856544"
+      },
+      {
+        "_linha": 286,
+        "nome": "ANTHONY HALLEY BEZERRA MATHIAS",
+        "turma": "3ª SÉRIE B",
+        "sige": "3420086"
+      },
+      {
+        "_linha": 287,
+        "nome": "ANTONIA RANNIELLY FERREIRA CAVALCANTE",
+        "turma": "3ª SÉRIE B",
+        "sige": "1758604"
+      },
+      {
+        "_linha": 288,
+        "nome": "CARLOS EMANUEL DE OLIVEIRA",
+        "turma": "3ª SÉRIE B",
+        "sige": "5237790"
+      },
+      {
+        "_linha": 289,
+        "nome": "CARLOS SAMUEL ALVES DA SILVA",
+        "turma": "3ª SÉRIE B",
+        "sige": "3521300"
+      },
+      {
+        "_linha": 290,
+        "nome": "DIONARA LINDA BATISTA",
+        "turma": "3ª SÉRIE B",
+        "sige": "2696553"
+      },
+      {
+        "_linha": 291,
+        "nome": "DOLGLAS DE SOUSA PINHEIRO ONCA",
+        "turma": "3ª SÉRIE B",
+        "sige": "3398633"
+      },
+      {
+        "_linha": 292,
+        "nome": "FRANCISCO ANDERSON ALVES JUNIOR",
+        "turma": "3ª SÉRIE B",
+        "sige": "3276619"
+      },
+      {
+        "_linha": 293,
+        "nome": "GABRIEL HENRIQUE DA SILVA",
+        "turma": "3ª SÉRIE B",
+        "sige": "5258285"
+      },
+      {
+        "_linha": 294,
+        "nome": "GUILHERME DE CARVALHO ARAUJO",
+        "turma": "3ª SÉRIE B",
+        "sige": "2166826"
+      },
+      {
+        "_linha": 295,
+        "nome": "ISABELE MORAIS DE BARROS SALES",
+        "turma": "3ª SÉRIE B",
+        "sige": "1969915"
+      },
+      {
+        "_linha": 296,
+        "nome": "JOAO VINICIUS GOMES DO CARMO",
+        "turma": "3ª SÉRIE B",
+        "sige": "2887594"
+      },
+      {
+        "_linha": 297,
+        "nome": "JOSE IZAU SOARES DE ARAUJO",
+        "turma": "3ª SÉRIE B",
+        "sige": "3275332"
+      },
+      {
+        "_linha": 298,
+        "nome": "KALIEL WILLYAN BENTO FERRER",
+        "turma": "3ª SÉRIE B",
+        "sige": "2981290"
+      },
+      {
+        "_linha": 299,
+        "nome": "KAYLO CESAR DE SOUSA",
+        "turma": "3ª SÉRIE B",
+        "sige": "2187071"
+      },
+      {
+        "_linha": 300,
+        "nome": "KEVIA PEREIRA BARBOSA",
+        "turma": "3ª SÉRIE B",
+        "sige": "2219703"
+      },
+      {
+        "_linha": 301,
+        "nome": "LEANDRO LAURO DA SILVA",
+        "turma": "3ª SÉRIE B",
+        "sige": "2856244"
+      },
+      {
+        "_linha": 302,
+        "nome": "LUCAS DA SILVA CARLOS",
+        "turma": "3ª SÉRIE B",
+        "sige": "2165031"
+      },
+      {
+        "_linha": 303,
+        "nome": "LUCAS DE ARAUJO LIMA",
+        "turma": "3ª SÉRIE B",
+        "sige": "3252240"
+      },
+      {
+        "_linha": 304,
+        "nome": "MARIA CLARA TEIXEIRA DE OLIVEIRA",
+        "turma": "3ª SÉRIE B",
+        "sige": "3047056"
+      },
+      {
+        "_linha": 305,
+        "nome": "MATHEUS DA SILVA LIMA",
+        "turma": "3ª SÉRIE B",
+        "sige": "4190488"
+      },
+      {
+        "_linha": 306,
+        "nome": "MISAEL ALEXANDRE BATISTA",
+        "turma": "3ª SÉRIE B",
+        "sige": "3420894"
+      },
+      {
+        "_linha": 307,
+        "nome": "NADYLA PEREIRA DE SOUSA",
+        "turma": "3ª SÉRIE B",
+        "sige": "2225683"
+      },
+      {
+        "_linha": 308,
+        "nome": "NEIDE GOMES ESTEVAO",
+        "turma": "3ª SÉRIE B",
+        "sige": "2818854"
+      },
+      {
+        "_linha": 309,
+        "nome": "PEDRO YEGOR DOS SANTOS TAVARES",
+        "turma": "3ª SÉRIE B",
+        "sige": "2288737"
+      },
+      {
+        "_linha": 310,
+        "nome": "RAQUELY DA SILVA LIMA",
+        "turma": "3ª SÉRIE B",
+        "sige": "2257452"
+      },
+      {
+        "_linha": 311,
+        "nome": "RYAN ARAJA FERREIRA LIMA",
+        "turma": "3ª SÉRIE B",
+        "sige": "2137867"
+      },
+      {
+        "_linha": 312,
+        "nome": "SAIMON PEREIRA AMORIM",
+        "turma": "3ª SÉRIE B",
+        "sige": "4091730"
+      },
+      {
+        "_linha": 313,
+        "nome": "SAMILLY VARELA DA SILVA BEZERRA",
+        "turma": "3ª SÉRIE B",
+        "sige": "3052171"
+      },
+      {
+        "_linha": 314,
+        "nome": "SAMUEL TEODORIO FERNANDES DOS SANTOS",
+        "turma": "3ª SÉRIE B",
+        "sige": "3419355"
+      },
+      {
+        "_linha": 315,
+        "nome": "TAINA VITORIA BATISTA FERREIRA",
+        "turma": "3ª SÉRIE B",
+        "sige": "2891112"
+      },
+      {
+        "_linha": 316,
+        "nome": "YANARA BARBOSA FIDELES",
+        "turma": "3ª SÉRIE B",
+        "sige": "3420876"
+      },
+      {
+        "_linha": 317,
+        "nome": "YARA VITORIA SILVA BARBOSA",
+        "turma": "3ª SÉRIE B",
+        "sige": "3399269"
+      },
+      {
+        "_linha": 318,
+        "nome": "ANA BEATRIZ DE LIMA NASCIMENTO",
+        "turma": "3ª SÉRIE C",
+        "sige": "4572628"
+      },
+      {
+        "_linha": 319,
+        "nome": "ANA CLARA RODRIGUES DE SOUZA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3419352"
+      },
+      {
+        "_linha": 320,
+        "nome": "ANA LETICIA RIBEIRO DA SILVA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3521285"
+      },
+      {
+        "_linha": 321,
+        "nome": "ANE ADRIELLI DA SILVA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3404449"
+      },
+      {
+        "_linha": 322,
+        "nome": "ANTONIO CARLOS MARTINS DE SOUZA",
+        "turma": "3ª SÉRIE C",
+        "sige": "2868108"
+      },
+      {
+        "_linha": 323,
+        "nome": "AURIVAN PIMENTEL ALMEIDA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3045220"
+      },
+      {
+        "_linha": 324,
+        "nome": "BRENDA DE OLIVEIRA CORREIA",
+        "turma": "3ª SÉRIE C",
+        "sige": "2228023"
+      },
+      {
+        "_linha": 325,
+        "nome": "CARLOS HENRIQUE DELFINO BENTO",
+        "turma": "3ª SÉRIE C",
+        "sige": "2917295"
+      },
+      {
+        "_linha": 326,
+        "nome": "CARLOS HENRIQUE LIMEIRA BARROS",
+        "turma": "3ª SÉRIE C",
+        "sige": "3555228"
+      },
+      {
+        "_linha": 327,
+        "nome": "DAVI FERREIRA LIMA RODRIGUES",
+        "turma": "3ª SÉRIE C",
+        "sige": "2877260"
+      },
+      {
+        "_linha": 328,
+        "nome": "DENIS DOS SANTOS OLIVEIRA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3055187"
+      },
+      {
+        "_linha": 329,
+        "nome": "ELOARA KAUANY DELMIRO RIBEIRO",
+        "turma": "3ª SÉRIE C",
+        "sige": "3420837"
+      },
+      {
+        "_linha": 330,
+        "nome": "FRANCISCO EDUARDO SERAFIM DE SOUSA",
+        "turma": "3ª SÉRIE C",
+        "sige": "2170631"
+      },
+      {
+        "_linha": 331,
+        "nome": "FRANCISCO IVAN CARVALHO DE OLIVEIRA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3420845"
+      },
+      {
+        "_linha": 332,
+        "nome": "GABRIEL GONCALVES DA CRUZ NETO",
+        "turma": "3ª SÉRIE C",
+        "sige": "3271119"
+      },
+      {
+        "_linha": 333,
+        "nome": "GERLAITON GOMES DA SILVA",
+        "turma": "3ª SÉRIE C",
+        "sige": "2441379"
+      },
+      {
+        "_linha": 334,
+        "nome": "GUILHERME DA SILVA MACHADO",
+        "turma": "3ª SÉRIE C",
+        "sige": "3753826"
+      },
+      {
+        "_linha": 335,
+        "nome": "JOSE WELLINGTON VIDAL DOS SANTOS",
+        "turma": "3ª SÉRIE C",
+        "sige": "2890078"
+      },
+      {
+        "_linha": 336,
+        "nome": "KEVEN MARTINS CAVALCANTE",
+        "turma": "3ª SÉRIE C",
+        "sige": "3506417"
+      },
+      {
+        "_linha": 337,
+        "nome": "LEVI NOGUEIRA DOS SANTOS",
+        "turma": "3ª SÉRIE C",
+        "sige": "2136408"
+      },
+      {
+        "_linha": 338,
+        "nome": "LUCAS MATEUS SILVA LIMEIRA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3785388"
+      },
+      {
+        "_linha": 339,
+        "nome": "MARCOS AUGUSTO FERNANDES DE ARAUJO",
+        "turma": "3ª SÉRIE C",
+        "sige": "2173504"
+      },
+      {
+        "_linha": 340,
+        "nome": "MARCOS DA SILVA NEVES FILHO",
+        "turma": "3ª SÉRIE C",
+        "sige": "3220767"
+      },
+      {
+        "_linha": 341,
+        "nome": "MARIA LETICIA RODRIGUES BANDEIRA",
+        "turma": "3ª SÉRIE C",
+        "sige": "2158703"
+      },
+      {
+        "_linha": 342,
+        "nome": "MARIA MEIRIANE ALMEIDA ROCHA",
+        "turma": "3ª SÉRIE C",
+        "sige": "1488878"
+      },
+      {
+        "_linha": 343,
+        "nome": "MARIA RAICCA CARLOS LAURINDO",
+        "turma": "3ª SÉRIE C",
+        "sige": "2869953"
+      },
+      {
+        "_linha": 344,
+        "nome": "MICHAEL CARDOSO NUNES",
+        "turma": "3ª SÉRIE C",
+        "sige": "2855090"
+      },
+      {
+        "_linha": 345,
+        "nome": "MOISES WESLEY FEITOSA DA SILVA",
+        "turma": "3ª SÉRIE C",
+        "sige": "2167078"
+      },
+      {
+        "_linha": 346,
+        "nome": "NICOLAS KENEDY GOMES DOS SANTOS",
+        "turma": "3ª SÉRIE C",
+        "sige": "2175227"
+      },
+      {
+        "_linha": 347,
+        "nome": "NICOLY DAVID HIPOLITO",
+        "turma": "3ª SÉRIE C",
+        "sige": "3406514"
+      },
+      {
+        "_linha": 348,
+        "nome": "PABLO YAGO DE SOUZA DUARTE",
+        "turma": "3ª SÉRIE C",
+        "sige": "3420895"
+      },
+      {
+        "_linha": 349,
+        "nome": "PAMELLA LARAYNI PORFIRIO DE OLIVEIRA",
+        "turma": "3ª SÉRIE C",
+        "sige": "2855129"
+      },
+      {
+        "_linha": 350,
+        "nome": "PEDRO OTAVIO DE LIMA FERREIRA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3275677"
+      },
+      {
+        "_linha": 351,
+        "nome": "RAVI FELIX LEITE",
+        "turma": "3ª SÉRIE C",
+        "sige": "2196654"
+      },
+      {
+        "_linha": 352,
+        "nome": "REGINALDO MOREIRA SILVA",
+        "turma": "3ª SÉRIE C",
+        "sige": "2288183"
+      },
+      {
+        "_linha": 353,
+        "nome": "RODRIGO MIGUEL DOS SANTOS",
+        "turma": "3ª SÉRIE C",
+        "sige": "5690276"
+      },
+      {
+        "_linha": 354,
+        "nome": "SUELEN APARECIDA SALUSTRIANO DOS SANTOS",
+        "turma": "3ª SÉRIE C",
+        "sige": "2167149"
+      },
+      {
+        "_linha": 355,
+        "nome": "THAVINY DA SILVA SANTANA",
+        "turma": "3ª SÉRIE C",
+        "sige": "2861185"
+      },
+      {
+        "_linha": 356,
+        "nome": "VITORIA LORRANY PEREIRA OLIVEIRA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3044137"
+      },
+      {
+        "_linha": 357,
+        "nome": "WALLACCE FERREIRA DA SILVA",
+        "turma": "3ª SÉRIE C",
+        "sige": "3275923"
+      }
+    ],
+    "professores": [
+      {
+        "_linha": 2,
+        "nome": "ANA CRISTINA DE SOUZA LIMA",
+        "email": "ana.lima41@prof.ce.gov.br",
+        "cpf": "00854826335",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 3,
+        "nome": "ANDREIA FELIZARDO LIMA",
+        "email": "andreia.lima11@prof.ce.gov.br",
+        "cpf": "05574766310",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 4,
+        "nome": "ANDREZA MARTINS DE SOUZA",
+        "email": "andreza.martins@prof.ce.gov.br",
+        "cpf": "04988266354",
+        "perfil": "SECRETARIA"
+      },
+      {
+        "_linha": 5,
+        "nome": "BRENDA SILVA MARQUES VIEIRA",
+        "email": "brenda.vieira@prof.ce.gov.br",
+        "cpf": "07400137344",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 6,
+        "nome": "DANIEL DE ARAUJO NUNES",
+        "email": "daniel.nunes@prof.ce.gov.br",
+        "cpf": "4579533305",
+        "perfil": "GESTOR_PROFESSOR"
+      },
+      {
+        "_linha": 7,
+        "nome": "ERIK WILLER ALVES RODRIGUES",
+        "email": "erik.rodrigues@prof.ce.gov.br",
+        "cpf": "05340154335",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 8,
+        "nome": "FRANCISCA TEIXEIRA RODRIGUES",
+        "email": "francisca.rodrigues10@prof.ce.gov.br",
+        "cpf": "02222911338",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 9,
+        "nome": "FRANCISCO ALFREDO NICOLAU FILHO",
+        "email": "francisco.filho3@prof.ce.gov.br",
+        "cpf": "36943266349",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 10,
+        "nome": "GUILHERME LUIS DOS SANTOS MOREIRA",
+        "email": "guilherme.moreira@prof.ce.gov.br",
+        "cpf": "10711634424",
+        "perfil": "GESTOR_PROFESSOR"
+      },
+      {
+        "_linha": 11,
+        "nome": "HELIO GOMES E SILVA",
+        "email": "helio.silva1@prof.ce.gov.br",
+        "cpf": "01434096386",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 12,
+        "nome": "ITAERCIO PEREIRA DE LIMA",
+        "email": "itaercio.lima@prof.ce.gov.br",
+        "cpf": "06477265303",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 13,
+        "nome": "IVANEIDE ALVES DE ARAUJO",
+        "email": "ivaneide.araujo@prof.ce.gov.br",
+        "cpf": "02154318398",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 14,
+        "nome": "JOÃO IGOR GOMES DE SOUZA",
+        "email": "joao.souza9@prof.ce.gov.br",
+        "cpf": "06293116330",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 15,
+        "nome": "LUIZ GOMES DE OLIVEIRA NETO",
+        "email": "luiz.neto3@prof.ce.gov.br",
+        "cpf": "03753451320",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 16,
+        "nome": "MARCOS JOSE BENTO",
+        "email": "marcos.bento@prof.ce.gov.br",
+        "cpf": "47943130391",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 17,
+        "nome": "MARIA JACKELINE PEREIRA DE LIMA",
+        "email": "maria.lima200@prof.ce.gov.br",
+        "cpf": "07791052300",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 18,
+        "nome": "PAULO VICTOR ARAUJO RICARTE",
+        "email": "paulo.araujo5@prof.ce.gov.br",
+        "cpf": "03235436340",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 19,
+        "nome": "RENATO SIQUEIRA",
+        "email": "renato.siqueira@prof.ce.gov.br",
+        "cpf": "01402593333",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 20,
+        "nome": "ROGERIO GOMES DA SILVA",
+        "email": "rogerio.rgsilva@prof.ce.gov.br",
+        "cpf": "02281397327",
+        "perfil": "GESTOR_PROFESSOR"
+      },
+      {
+        "_linha": 21,
+        "nome": "SILAS MICAEL DO NASCIMENTO GOMES",
+        "email": "silas.gomes@prof.ce.gov.br",
+        "cpf": "03544953307",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 22,
+        "nome": "TAIS NUNES LEMOS",
+        "email": "tais.lemos@prof.ce.gov.br",
+        "cpf": "61091234396",
+        "perfil": "PROFESSOR"
+      },
+      {
+        "_linha": 23,
+        "nome": "TAMIRES SANTIAGO DOS SANTOS FERNANDES",
+        "email": "tamires.fernandes@prof.ce.gov.br",
+        "cpf": "04618702311",
+        "perfil": "PROFESSOR"
+      }
+    ],
+    "eletivasFixas": [
+      {
+        "_linha": 2,
+        "nome": "Educação, Saúde e Bem-estar",
+        "codigo": "CNT009",
+        "tempo": "T3",
+        "local": "1 SÉRIE A",
+        "professor": "ANDREIA FELIZARDO LIMA",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE A"
+      },
+      {
+        "_linha": 3,
+        "nome": "PRIMEIROS SOCORROS",
+        "codigo": "CNT043",
+        "tempo": "T5",
+        "local": "1 SÉRIE A",
+        "professor": "BRENDA SILVA MARQUES VIEIRA",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE A"
+      },
+      {
+        "_linha": 4,
+        "nome": "Criação Literária",
+        "codigo": "LGG008",
+        "tempo": "T2",
+        "local": "1 SÉRIE A",
+        "professor": "LUIZ GOMES DE OLIVEIRA NETO",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE A"
+      },
+      {
+        "_linha": 5,
+        "nome": "PRIMEIROS SOCORROS",
+        "codigo": "CNT043",
+        "tempo": "T2",
+        "local": "1 SÉRIE B",
+        "professor": "BRENDA SILVA MARQUES VIEIRA",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE B"
+      },
+      {
+        "_linha": 6,
+        "nome": "Literatura inglesa e Cinema",
+        "codigo": "LGG042",
+        "tempo": "T5",
+        "local": "1 SÉRIE B",
+        "professor": "MARCOS JOSE BENTO",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE B"
+      },
+      {
+        "_linha": 7,
+        "nome": "EDUCAÇÃO FÍSICA E INTERDISCIPLINARIDADE",
+        "codigo": "LGG050",
+        "tempo": "T2",
+        "local": "1 SÉRIE B",
+        "professor": "TAIS NUNES LEMOS",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE B"
+      },
+      {
+        "_linha": 8,
+        "nome": "PRIMEIROS SOCORROS",
+        "codigo": "CNT043",
+        "tempo": "T1",
+        "local": "1 SÉRIE C",
+        "professor": "BRENDA SILVA MARQUES VIEIRA",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE C"
+      },
+      {
+        "_linha": 9,
+        "nome": "CULTURA POLÍTICA",
+        "codigo": "CHS011",
+        "tempo": "T3",
+        "local": "1 SÉRIE C",
+        "professor": "MARIA JACKELINE PEREIRA DE LIMA",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE C"
+      },
+      {
+        "_linha": 10,
+        "nome": "TEORIA SOCIAL MARXISTA",
+        "codigo": "CHS057",
+        "tempo": "T4",
+        "local": "1 SÉRIE C",
+        "professor": "JOÃO IGOR GOMES DE SOUZA",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE C"
+      },
+      {
+        "_linha": 11,
+        "nome": "CAFÉ FILOSÓFICO: DESPERTANTO O FILOSOFAR",
+        "codigo": "CHS063",
+        "tempo": "T1",
+        "local": "2 SÉRIE A",
+        "professor": "JOÃO IGOR GOMES DE SOUZA",
+        "tipo": "FIXA",
+        "turma": "2 SÉRIE A"
+      },
+      {
+        "_linha": 12,
+        "nome": "DIREITOS HUMANOS E CIDADANIA",
+        "codigo": "CHS013",
+        "tempo": "T1",
+        "local": "2 SÉRIE C",
+        "professor": "MARIA JACKELINE PEREIRA DE LIMA",
+        "tipo": "FIXA",
+        "turma": "2 SÉRIE C"
+      },
+      {
+        "_linha": 13,
+        "nome": "Transformando lixo em arte",
+        "codigo": "CNT036",
+        "tempo": "T1",
+        "local": "3 SÉRIE A",
+        "professor": "IVANEIDE ALVES DE ARAUJO",
+        "tipo": "FIXA",
+        "turma": "3 SÉRIE A"
+      },
+      {
+        "_linha": 14,
+        "nome": "Inglês Básico Através da Música",
+        "codigo": "LGG040",
+        "tempo": "T2",
+        "local": "3 SÉRIE A",
+        "professor": "MARCOS JOSE BENTO",
+        "tipo": "FIXA",
+        "turma": "3 SÉRIE A"
+      },
+      {
+        "_linha": 15,
+        "nome": "lingua portuguesa para as olimpíadas",
+        "codigo": "LGG003",
+        "tempo": "T1",
+        "local": "3 SÉRIE B",
+        "professor": "FRANCISCA TEIXEIRA RODRIGUES",
+        "tipo": "FIXA",
+        "turma": "3 SÉRIE B"
+      },
+      {
+        "_linha": 16,
+        "nome": "lingua portuguesa para o enem",
+        "codigo": "LGG001",
+        "tempo": "T2",
+        "local": "3 SÉRIE C",
+        "professor": "FRANCISCO ALFREDO NICOLAU FILHO",
+        "tipo": "FIXA",
+        "turma": "3 SÉRIE C"
+      },
+      {
+        "_linha": 17,
+        "nome": "MATEMÁTICA BÁSICA I",
+        "codigo": "MAT001",
+        "tempo": "T1",
+        "local": "3 SÉRIE C",
+        "professor": "RENATO SIQUEIRA",
+        "tipo": "FIXA",
+        "turma": "3 SÉRIE C"
+      },
+      {
+        "_linha": 18,
+        "nome": "ORTOGRAFIA",
+        "codigo": "LGG005",
+        "tempo": "T1",
+        "local": "1 SÉRIE A",
+        "professor": "FRANCISCO ALFREDO NICOLAU FILHO",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE A"
+      },
+      {
+        "_linha": 19,
+        "nome": "ORTOGRAFIA",
+        "codigo": "LGG005",
+        "tempo": "T5",
+        "local": "1 SÉRIE C",
+        "professor": "FRANCISCO ALFREDO NICOLAU FILHO",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE C"
+      },
+      {
+        "_linha": 20,
+        "nome": "ORTOGRAFIA",
+        "codigo": "LGG005",
+        "tempo": "T4",
+        "local": "1 SÉRIE B",
+        "professor": "FRANCISCO ALFREDO NICOLAU FILHO",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE B"
+      },
+      {
+        "_linha": 21,
+        "nome": "MATEMÁTICA BÁSICA I",
+        "codigo": "MAT001",
+        "tempo": "T1",
+        "local": "1 SÉRIE B",
+        "professor": "SILAS MICAEL DO NASCIMENTO GOMES",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE B"
+      },
+      {
+        "_linha": 22,
+        "nome": "MATEMÁTICA BÁSICA I",
+        "codigo": "MAT001",
+        "tempo": "T2",
+        "local": "1 SÉRIE C",
+        "professor": "SILAS MICAEL DO NASCIMENTO GOMES",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE C"
+      },
+      {
+        "_linha": 23,
+        "nome": "MATEMÁTICA BÁSICA I",
+        "codigo": "MAT001",
+        "tempo": "T4",
+        "local": "1 SÉRIE A",
+        "professor": "SILAS MICAEL DO NASCIMENTO GOMES",
+        "tipo": "FIXA",
+        "turma": "1 SÉRIE A"
+      }
+    ],
+    "eletivasMistas": []
+  }
+}
