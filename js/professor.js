@@ -2859,46 +2859,41 @@ window.fecharModalEditar = function () {
 // ========== FUNÇÕES DE EXCLUSÃO DE REGISTRO ==========
 
 // Confirmar exclusão de registro
-// Confirmar exclusão de registro
 window.confirmarExclusaoRegistro = function (registroId) {
   console.log("🔍 Confirmar exclusão do registro:", registroId);
 
   registroParaExcluir = registroId;
 
+  const modal = document.getElementById("modalConfirmacao");
   const confirmBody = document.getElementById("confirmBody");
   const confirmTitle = document.getElementById("confirmTitle");
   const confirmBtn = document.getElementById("confirmActionBtn");
 
-  if (confirmBody && confirmTitle && confirmBtn) {
+  if (modal && confirmBody && confirmTitle && confirmBtn) {
     confirmTitle.textContent = "Confirmar Exclusão";
     confirmBody.innerHTML = `
             <p>Tem certeza que deseja excluir este registro?</p>
-            <p style="color: var(--danger); font-weight: bold;">Esta ação não pode ser desfeita!</p>
+            <p style="color: var(--danger); font-weight: bold; margin-top: 10px;">Esta ação não pode ser desfeita!</p>
         `;
 
-    // Remover listeners anteriores clonando o botão
+    // Remover listeners anteriores
     const novoBtn = confirmBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(novoBtn, confirmBtn);
 
     // Adicionar novo listener
     novoBtn.onclick = async function () {
-      console.log("✅ Confirmação recebida, executando exclusão...");
+      console.log("✅ Usuário confirmou exclusão");
       await excluirRegistro(registroId);
       fecharModalConfirmacao();
     };
 
-    document.getElementById("modalConfirmacao").classList.add("active");
+    modal.classList.add("active");
   } else {
-    if (
-      confirm(
-        "Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.",
-      )
-    ) {
+    if (confirm("Tem certeza que deseja excluir este registro?")) {
       excluirRegistro(registroId);
     }
   }
 };
-
 // Fechar modal de confirmação
 window.fecharModalConfirmacao = function () {
   console.log("❌ Fechando modal de confirmação");
@@ -2909,122 +2904,67 @@ window.fecharModalConfirmacao = function () {
 // ===========================================
 // FUNÇÃO DE EXCLUSÃO DE REGISTRO - VERSÃO CORRIGIDA
 // ===========================================
+// ===========================================
+// FUNÇÃO DE EXCLUSÃO DE REGISTRO - VERSÃO CORRIGIDA
+// ===========================================
 async function excluirRegistro(registroId) {
+  console.log("🗑️ Iniciando exclusão do registro:", registroId);
   mostrarLoaderExclusao(true);
 
   try {
-    console.log("🗑️ Iniciando exclusão do registro ID:", registroId);
+    // CONVERTER PARA STRING (importante!)
+    const idString = registroId.toString();
 
-    // Verificar se o registro existe
-    const registro = state.registros?.find((r) => r.id === registroId);
-
-    if (!registro) {
-      console.error("❌ Registro não encontrado no state:", registroId);
-      showToast("Registro não encontrado", "error");
-      return;
-    }
-
-    console.log("📝 Registro encontrado:", registro);
-
-    // ===== 1. REMOVER DO STATE E LOCALSTORAGE =====
-    const index = state.registros.findIndex((r) => r.id === registroId);
+    // 1. REMOVER DO STATE LOCAL
+    const index = state.registros.findIndex(
+      (r) => r.id == idString || r.id == registroId,
+    );
     if (index !== -1) {
       state.registros.splice(index, 1);
       salvarEstado();
-      console.log("✅ Registro removido do state/localStorage");
+      console.log("✅ Removido do state local");
     }
 
-    // ===== 2. REMOVER DO FIREBASE (SE ONLINE) =====
-    let firebaseSuccess = false;
-
-    if (window.FirebaseSync && navigator.onLine) {
-      try {
-        console.log("☁️ Tentando remover do Firebase...");
-
-        // Usar a função do FirebaseSync
-        const resultado = await window.FirebaseSync.deletarDadosFirebase(
-          "registros",
-          registroId,
-        );
-
-        console.log("📡 Resultado Firebase:", resultado);
-
-        if (resultado?.success) {
-          firebaseSuccess = true;
-          console.log("✅ Registro removido do Firebase");
-        } else if (resultado?.offline) {
-          console.log("📡 Registro marcado para exclusão (offline)");
-        }
-      } catch (e) {
-        console.warn(
-          "⚠️ Erro ao remover do Firebase, tentando método direto:",
-          e,
-        );
-
-        // TENTATIVA 2: Exclusão direta via Firebase
-        try {
-          const db = FirebaseConfig.firestore;
-          if (db) {
-            await db
-              .collection("registros")
-              .doc(registroId.toString())
-              .delete();
-            firebaseSuccess = true;
-            console.log("✅ Registro removido do Firebase (método direto)");
-          }
-        } catch (e2) {
-          console.error("❌ Falha também no método direto:", e2);
-        }
+    // 2. REMOVER DO FIREBASE (MÉTODO DIRETO QUE FUNCIONA)
+    try {
+      const db = FirebaseConfig.firestore;
+      if (db) {
+        await db.collection("registros").doc(idString).delete();
+        console.log("✅ Removido do Firebase");
+        showToast("Registro excluído com sucesso!", "success");
       }
-    } else if (window.FirebaseSync) {
-      // Se estiver offline, adicionar à fila
-      window.FirebaseSync.adicionarOperacaoFila(
-        "deletar",
-        "registros",
-        null,
-        registroId,
-      );
-      console.log("📡 Offline - operação adicionada à fila");
+    } catch (firebaseError) {
+      console.error("❌ Erro ao remover do Firebase:", firebaseError);
+      showToast("Registro removido localmente, mas falha na nuvem", "warning");
     }
 
-    // ===== 3. ATUALIZAR INTERFACE =====
+    // 3. FORÇAR RECARREGAMENTO DA INTERFACE
     console.log("🔄 Recarregando interface...");
 
-    // Limpar o container primeiro
+    // Limpar o container
     const container = document.getElementById("registrosRealizadosContainer");
     if (container) {
       container.innerHTML =
         '<div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Atualizando...</div>';
     }
 
-    // Pequeno delay para garantir que o DOM atualize
+    // Pequeno delay para garantir
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    // Recarregar os registros
+    // Recarregar
     await carregarRegistrosRealizados();
     carregarEletivasProfessor();
-
-    // ===== 4. ATUALIZAR STATUS DE SINCRONIZAÇÃO =====
-    if (typeof atualizarStatusSincronizacao === "function") {
-      atualizarStatusSincronizacao();
-    }
-
-    // ===== 5. MOSTRAR MENSAGEM DE SUCESSO =====
-    if (firebaseSuccess) {
-      showToast("✅ Registro excluído com sucesso!", "success");
-    } else if (navigator.onLine) {
-      showToast("⚠️ Registro excluído localmente (falha na nuvem)", "warning");
-    } else {
-      showToast("📡 Registro marcado para exclusão (offline)", "info");
-    }
   } catch (error) {
-    console.error("❌ Erro ao excluir registro:", error);
-    showToast("Erro ao excluir registro: " + error.message, "error");
+    console.error("❌ Erro geral na exclusão:", error);
+    showToast("Erro ao excluir registro", "error");
   } finally {
     mostrarLoaderExclusao(false);
     registroParaExcluir = null;
   }
 }
+
+// Garantir que a função está disponível globalmente
+window.excluirRegistro = excluirRegistro;
 // ========== FUNÇÕES DIVERSAS ==========
 
 // Fazer logout
@@ -3056,3 +2996,6 @@ function forcarRecarregamentoRegistros() {
     carregarEletivasProfessor();
   }
 }
+// Garantir que as funções estão disponíveis globalmente
+window.excluirRegistro = excluirRegistro;
+window.confirmarExclusaoRegistro = confirmarExclusaoRegistro;
