@@ -245,22 +245,27 @@ async function salvarDadosFirebase(colecao, dados, documentoId = null) {
 async function deletarDadosFirebase(colecao, documentoId) {
   if (!documentoId) {
     console.warn("⚠️ Tentativa de deletar sem documentoId");
-    return { error: "documentoId obrigatório" };
+    return { error: "documentoId obrigatório", success: false };
   }
+
+  console.log(`🗑️ Tentando deletar ${colecao}/${documentoId}`);
 
   // Se estiver offline, adicionar à fila
   if (!navigator.onLine) {
+    console.log("📡 Offline - adicionando à fila");
     adicionarOperacaoFila("deletar", colecao, null, documentoId);
     atualizarStatusSincronizacaoGlobal();
-    return { offline: true };
+    return { offline: true, success: true };
   }
 
   try {
+    // Garantir que Firebase está inicializado
     if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
       const initResult = window.FirebaseConfig?.initFirebase();
       if (!initResult) {
+        console.warn("⚠️ Firebase não inicializado, adicionando à fila");
         adicionarOperacaoFila("deletar", colecao, null, documentoId);
-        return { offline: true };
+        return { offline: true, success: true };
       }
     }
 
@@ -269,20 +274,52 @@ async function deletarDadosFirebase(colecao, documentoId) {
       throw new Error("Firestore não disponível");
     }
 
+    // IMPORTANTE: Converter para string para garantir
     const docRef = db.collection(colecao).doc(documentoId.toString());
-    await docRef.delete();
 
-    console.log(
-      `✅ Dados deletados do Firebase: ${colecao} (ID: ${documentoId})`,
+    // Verificar se o documento existe
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      console.log(`ℹ️ Documento ${documentoId} não existe no Firebase`);
+      return { success: true, notFound: true };
+    }
+
+    // EXCLUIR O DOCUMENTO
+    await docRef.delete();
+    console.log(`✅ Documento DELETADO do Firebase: ${colecao}/${documentoId}`);
+
+    // Também remover da fila se estiver lá
+    const indexNaFila = pendingQueue.findIndex(
+      (op) =>
+        op.documentoId === documentoId &&
+        op.colecao === colecao &&
+        op.tipo === "deletar",
     );
+    if (indexNaFila !== -1) {
+      pendingQueue.splice(indexNaFila, 1);
+      salvarFilaPendente();
+      console.log(`✅ Removido da fila de pendentes`);
+    }
+
     return { success: true };
   } catch (error) {
-    console.error(`❌ Erro ao deletar no Firebase: ${colecao}`, error);
+    console.error(
+      `❌ Erro ao deletar no Firebase: ${colecao}/${documentoId}`,
+      error,
+    );
+
+    // Em caso de erro de permissão, mostrar mensagem clara
+    if (error.code === "permission-denied") {
+      console.error("🚫 Erro de permissão! Verifique as regras do Firestore");
+      showToast("Erro de permissão ao excluir do Firebase", "error");
+      return { success: false, error: "permission-denied" };
+    }
+
+    // Adicionar à fila para tentar depois
     adicionarOperacaoFila("deletar", colecao, null, documentoId);
-    return { offline: true, error: error.message };
+    return { offline: true, error: error.message, success: false };
   }
 }
-
 // ========== FUNÇÕES DE CARREGAMENTO ==========
 async function carregarDadosFirebase(colecao, filtros = {}) {
   try {
