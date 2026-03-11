@@ -2910,6 +2910,9 @@ window.fecharModalConfirmacao = function () {
 // ===========================================
 // FUNÇÃO DE EXCLUSÃO - VERSÃO DEFINITIVA
 // ===========================================
+// ===========================================
+// FUNÇÃO DE EXCLUSÃO - VERSÃO COM REMOÇÃO DIRETA
+// ===========================================
 async function excluirRegistro(registroId) {
   console.log("🗑️ Excluindo registro:", registroId);
   mostrarLoaderExclusao(true);
@@ -2936,135 +2939,65 @@ async function excluirRegistro(registroId) {
       console.warn("⚠️ Erro no Firebase:", e);
     }
 
-    // 3. 🚨🚨🚨 SOLUÇÃO RADICAL: RECRIAR O CARD COMPLETAMENTE 🚨🚨🚨
-    console.log("🔄 Recriando interface...");
+    // 3. 🚨 REMOVER O ELEMENTO DA TELA DIRETAMENTE 🚨
+    console.log("🔍 Procurando elemento na tela...");
 
-    // Pegar o container
-    const container = document.getElementById("registrosRealizadosContainer");
-    if (!container) return;
+    // Encontrar o card específico pelo ID
+    const elementos = document.querySelectorAll(".registro-item-card");
+    let elementoRemovido = false;
 
-    // Limpar TUDO
-    container.innerHTML = "";
+    elementos.forEach((el) => {
+      // Procurar pelo ID no HTML
+      if (
+        el.innerHTML.includes(`excluirRegistro(${registroId})`) ||
+        el.innerHTML.includes(`excluirRegistro(${idString})`)
+      ) {
+        el.remove();
+        elementoRemovido = true;
+        console.log("✅ Elemento removido da tela");
+      }
+    });
 
-    // Pegar as eletivas do professor
-    const eletivasProfessor =
-      state.eletivas?.filter((e) => e.professorId === professorAtual?.id) || [];
+    // Se não encontrou pelo método acima, tentar abordagem mais agressiva
+    if (!elementoRemovido) {
+      console.log("⚠️ Não encontrou pelo ID, removendo todos e recriando...");
 
-    if (eletivasProfessor.length === 0) {
-      container.innerHTML =
-        '<p class="empty-state">Nenhuma eletiva encontrada</p>';
-      return;
+      // Pegar o container
+      const container = document.getElementById("registrosRealizadosContainer");
+      if (container) {
+        // Salvar o HTML atual para debug
+        const htmlAntes = container.innerHTML.length;
+
+        // FORÇAR RECRIAÇÃO COMPLETA
+        container.innerHTML =
+          '<div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Atualizando...</div>';
+
+        // Pequeno delay
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // Recarregar os registros
+        await carregarRegistrosRealizados();
+
+        const htmlDepois = container.innerHTML.length;
+        console.log(`📊 HTML antes: ${htmlAntes}, depois: ${htmlDepois}`);
+      }
     }
 
-    // Agrupar por dia
-    const eletivasPorDia = agruparEletivasPorDia(eletivasProfessor);
-
-    // RECRIAR CADA CARD DO ZERO
-    Object.keys(eletivasPorDia).forEach((dia) => {
-      const eletivasDoDia = eletivasPorDia[dia];
-      if (eletivasDoDia.length === 0) return;
-
-      // Título do dia
-      const diaTitulo = document.createElement("h4");
-      diaTitulo.className = "dia-titulo";
-      diaTitulo.textContent = formatarNomeDia(dia);
-      diaTitulo.style.margin = "1.5rem 0 1rem 0";
-      diaTitulo.style.color = "var(--primary)";
-      diaTitulo.style.borderBottom = "2px solid var(--primary-light)";
-      diaTitulo.style.paddingBottom = "0.5rem";
-      container.appendChild(diaTitulo);
-
-      eletivasDoDia.forEach((eletiva) => {
-        // Buscar registros desta eletiva (já deve estar vazio)
-        const registrosEletiva = state.registros.filter(
-          (r) => r.eletivaId === eletiva.id,
-        );
-
-        // Criar card
-        const card = document.createElement("div");
-        card.className = "eletiva-card registros-card";
-        card.dataset.eletivaId = eletiva.id;
-
-        // Header do card
-        const header = document.createElement("div");
-        header.innerHTML = `
-                    <h3 style="display: flex; justify-content: space-between; align-items: center;">
-                        ${eletiva.codigo} - ${eletiva.nome}
-                        <span class="badge" style="background: var(--primary); color: white; padding: 0.2rem 1rem; border-radius: 20px;">
-                            ${registrosEletiva.length} registros
-                        </span>
-                    </h3>
-                `;
-        card.appendChild(header);
-
-        // Lista de registros
-        const registrosLista = document.createElement("div");
-        registrosLista.className = "registros-lista";
-        registrosLista.style.display = "none";
-
-        // Se não houver registros, mostrar mensagem
-        if (registrosEletiva.length === 0) {
-          const vazio = document.createElement("div");
-          vazio.className = "registro-item-card";
-          vazio.innerHTML =
-            '<div style="text-align: center; color: var(--text-light); padding: 1rem;">Nenhum registro encontrado</div>';
-          registrosLista.appendChild(vazio);
-        } else {
-          // Se houver registros, listar
-          registrosEletiva.forEach((reg) => {
-            const item = document.createElement("div");
-            item.className = "registro-item-card";
-            item.innerHTML = `
-                            <div class="registro-header-card">
-                                <span class="registro-data-card">📅 ${formatarDataCorrigida(reg.data)}</span>
-                                <div class="registro-actions">
-                                    <button class="btn-editar" onclick="event.stopPropagation(); abrirEdicaoRegistro(${reg.id})">
-                                        <i class="fas fa-edit"></i> Editar
-                                    </button>
-                                    <button class="btn-excluir" onclick="event.stopPropagation(); confirmarExclusaoRegistro(${reg.id})">
-                                        <i class="fas fa-trash"></i> Excluir
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="registro-conteudo">${reg.conteudo.substring(0, 100)}</div>
-                        `;
-            registrosLista.appendChild(item);
-          });
-        }
-
-        card.appendChild(registrosLista);
-
-        // Evento de clique para expandir/recolher
-        card.addEventListener("click", function (e) {
-          if (
-            e.target.closest(".btn-editar") ||
-            e.target.closest(".btn-excluir")
-          )
-            return;
-
-          const lista = this.querySelector(".registros-lista");
-          const isExpanded = this.classList.contains("expanded");
-
-          if (isExpanded) {
-            this.classList.remove("expanded");
-            lista.style.display = "none";
-          } else {
-            // Fechar outros cards
-            document
-              .querySelectorAll(".eletiva-card.registros-card.expanded")
-              .forEach((c) => {
-                c.classList.remove("expanded");
-                c.querySelector(".registros-lista").style.display = "none";
-              });
-
-            this.classList.add("expanded");
-            lista.style.display = "block";
+    // 4. ATUALIZAR CONTADORES
+    document
+      .querySelectorAll(".eletiva-card.registros-card")
+      .forEach((card) => {
+        const eletivaId = card.dataset.eletivaId;
+        if (eletivaId) {
+          const count = state.registros.filter(
+            (r) => r.eletivaId == eletivaId,
+          ).length;
+          const badge = card.querySelector(".badge");
+          if (badge) {
+            badge.textContent = `${count} registros`;
           }
-        });
-
-        container.appendChild(card);
+        }
       });
-    });
 
     showToast("✅ Registro excluído com sucesso!", "success");
   } catch (error) {
@@ -3111,6 +3044,24 @@ function forcarRecarregamentoRegistros() {
     carregarEletivasProfessor();
   }
 }
+
+// Função para forçar limpeza da tela
+function limparTelaRegistros() {
+  console.log("🧹 Forçando limpeza da tela...");
+
+  // Remover todos os elementos de registro
+  document.querySelectorAll(".registro-item-card").forEach((el) => el.remove());
+
+  // Resetar contadores
+  document.querySelectorAll(".eletiva-card.registros-card").forEach((card) => {
+    const badge = card.querySelector(".badge");
+    if (badge) {
+      badge.textContent = "0 registros";
+    }
+  });
+}
+
+window.limparTelaRegistros = limparTelaRegistros;
 // Garantir que as funções estão disponíveis globalmente
 window.excluirRegistro = excluirRegistro;
 window.confirmarExclusaoRegistro = confirmarExclusaoRegistro;
