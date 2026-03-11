@@ -127,6 +127,144 @@ function carregarTheme() {
   }
 }
 
+// ========== FUNÇÕES ADICIONADAS PARA GERENCIAMENTO DE IDS ==========
+
+// Gerar UUID v4 para identificadores únicos
+function gerarUUID() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+// Versão melhorada de gerarIdUnico que usa UUID
+function gerarIdUnicoMelhorado() {
+  // Tentar usar gerarUUID se disponível
+  if (typeof gerarUUID === "function") {
+    return gerarUUID();
+  }
+  // Fallback para o método antigo
+  return Date.now() + Math.floor(Math.random() * 1000);
+}
+
+// Garantir que objetos tenham IDs únicos
+function garantirIdUnico(objeto, prefixo = "") {
+  if (!objeto.id) {
+    objeto.id = prefixo ? `${prefixo}_${gerarUUID()}` : gerarUUID();
+  }
+  return objeto;
+}
+
+// Migrar IDs numéricos para UUID (para uso futuro)
+function migrarIdsParaUuid(colecao) {
+  if (!Array.isArray(colecao)) return colecao;
+
+  return colecao.map((item) => {
+    if (!item.id || typeof item.id === "number") {
+      // Guardar o ID antigo como referência
+      const idAntigo = item.id;
+      item.id = gerarUUID();
+      item._idAntigo = idAntigo;
+      item._idMigrado = true;
+    }
+    return item;
+  });
+}
+
+// ========== FUNÇÕES PARA TRATAMENTO DE ERROS ==========
+
+// Wrapper para funções assíncronas com tratamento de erro e loader
+async function executarComLoader(
+  funcao,
+  mostrarLoader = true,
+  mensagemErro = "Ocorreu um erro",
+) {
+  if (mostrarLoader) {
+    const loader =
+      document.getElementById("gestorLoader") ||
+      document.getElementById("pdfLoader");
+    if (loader) {
+      loader.classList.add("active");
+    }
+  }
+
+  try {
+    const resultado = await funcao();
+    return resultado;
+  } catch (error) {
+    console.error("❌ Erro na execução:", error);
+    if (typeof window.showToast === "function") {
+      window.showToast(`${mensagemErro}: ${error.message}`, "error");
+    }
+    throw error;
+  } finally {
+    if (mostrarLoader) {
+      // Tentar esconder todos os loaders possíveis
+      const loaders = ["gestorLoader", "pdfLoader"];
+      loaders.forEach((id) => {
+        const loader = document.getElementById(id);
+        if (loader) {
+          loader.classList.remove("active");
+        }
+      });
+    }
+  }
+}
+
+// Garantir que o loader seja removido em caso de erro
+window.addEventListener("error", function () {
+  const loaders = ["gestorLoader", "pdfLoader"];
+  loaders.forEach((id) => {
+    const loader = document.getElementById(id);
+    if (loader) {
+      loader.classList.remove("active");
+    }
+  });
+});
+
+// ========== FUNÇÃO PARA VERIFICAR INTEGRIDADE DOS DADOS ==========
+
+function verificarIntegridadeDados(dados) {
+  const problemas = [];
+
+  // Verificar alunos
+  if (dados.alunos) {
+    const alunosSemId = dados.alunos.filter((a) => !a.id);
+    if (alunosSemId.length > 0) {
+      problemas.push(`${alunosSemId.length} alunos sem ID`);
+    }
+
+    const idsDuplicados = dados.alunos
+      .map((a) => a.id)
+      .filter((id, index, self) => self.indexOf(id) !== index);
+    if (idsDuplicados.length > 0) {
+      problemas.push(`IDs duplicados em alunos: ${idsDuplicados.join(", ")}`);
+    }
+  }
+
+  // Verificar professores
+  if (dados.professores) {
+    const professoresSemId = dados.professores.filter((p) => !p.id);
+    if (professoresSemId.length > 0) {
+      problemas.push(`${professoresSemId.length} professores sem ID`);
+    }
+  }
+
+  // Verificar eletivas
+  if (dados.eletivas) {
+    const eletivasSemId = dados.eletivas.filter((e) => !e.id);
+    if (eletivasSemId.length > 0) {
+      problemas.push(`${eletivasSemId.length} eletivas sem ID`);
+    }
+  }
+
+  return {
+    valido: problemas.length === 0,
+    problemas,
+  };
+}
+
 // Exportar funções
 window.showToast = showToast;
 window.formatarData = formatarData;
@@ -143,3 +281,11 @@ window.validarCodigoTempo = validarCodigoTempo;
 window.validarSeriePermitida = validarSeriePermitida;
 window.toggleTheme = toggleTheme;
 window.carregarTheme = carregarTheme;
+
+// Novas funções exportadas
+window.gerarUUID = gerarUUID;
+window.gerarIdUnicoMelhorado = gerarIdUnicoMelhorado;
+window.garantirIdUnico = garantirIdUnico;
+window.migrarIdsParaUuid = migrarIdsParaUuid;
+window.executarComLoader = executarComLoader;
+window.verificarIntegridadeDados = verificarIntegridadeDados;
