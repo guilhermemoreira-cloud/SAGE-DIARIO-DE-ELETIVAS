@@ -13,7 +13,7 @@ let filtroDiaRegistros = "";
 let buscaRegistros = "";
 let eletivaSelecionadaParaData = null;
 let dataSelecionada = null;
-let eletivaSelecionadaParaImpressao = null; // Nova variável para o modal de impressão
+let eletivaSelecionadaParaImpressao = null;
 
 // Mapeamento de tempo eletivo baseado no horário
 const mapaTempo = {
@@ -44,7 +44,7 @@ const nomesDias = {
   domingo: "DOMINGO",
 };
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
   console.log("👔 Inicializando página do gestor...");
 
   carregarTheme();
@@ -58,10 +58,23 @@ document.addEventListener("DOMContentLoaded", function () {
   gestorAtual = JSON.parse(gestorStorage);
   console.log("👤 Gestor:", gestorAtual.nome, "Perfil:", gestorAtual.perfil);
 
+  // 🔥 INICIALIZAR FIREBASE PRIMEIRO
+  console.log("🔥 Inicializando Firebase...");
+  if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
+    const initResult = window.FirebaseConfig.initFirebase();
+    console.log("🔥 Firebase inicializado:", initResult);
+  } else {
+    console.warn("⚠️ FirebaseConfig.initFirebase não disponível");
+  }
+
+  // Aguardar um pouco para garantir que o Firestore está pronto
+  await new Promise(resolve => setTimeout(resolve, 500));
+
   if (typeof carregarEstado === "function") {
     carregarEstado();
     todasEletivas = state.eletivas || [];
     console.log("📚 Eletivas carregadas:", todasEletivas.length);
+    console.log("📋 Registros no state inicial:", state.registros?.length || 0);
   }
 
   document.getElementById("userName").textContent = gestorAtual.nome;
@@ -73,6 +86,16 @@ document.addEventListener("DOMContentLoaded", function () {
   };
   document.getElementById("userRole").textContent =
     roleMap[gestorAtual.perfil] || "Gestor";
+
+  // 🔥 CARREGAR REGISTROS DO FIREBASE ANTES DE CARREGAR OS CARDS
+  console.log("📡 Carregando registros do Firebase...");
+  await carregarRegistrosDoFirebase();
+  
+  console.log("✅ Estado após carregar Firebase:", {
+    registros: state.registros?.length || 0,
+    eletivas: state.eletivas?.length || 0,
+    alunos: state.alunos?.length || 0
+  });
 
   // Carregar dados iniciais
   carregarEstatisticas();
@@ -104,6 +127,8 @@ function formatarData(dataString) {
 
 // Mudar de aba
 window.mudarTabGestor = function (tab) {
+  console.log("🔄 Mudando para aba:", tab);
+  
   document
     .querySelectorAll(".gestor-tab-btn")
     .forEach((btn) => btn.classList.remove("active"));
@@ -121,56 +146,85 @@ window.mudarTabGestor = function (tab) {
   if (tab === "estatisticas") {
     carregarEstatisticas();
   } else if (tab === "registros") {
-    // 🔥 FORÇAR RECARREGAMENTO DOS DADOS DO FIREBASE AO ENTRAR NA ABA REGISTROS
+    console.log("📋 Carregando aba registros...");
     carregarRegistrosDoFirebase().then(() => {
+      console.log("✅ Registros carregados, total:", state.registros?.length || 0);
       inicializarFiltrosRegistros();
       carregarCardsRegistros();
     });
   }
 };
 
-// 🔥 NOVA FUNÇÃO: Carregar registros do Firebase e sincronizar com state
+// 🔥 FUNÇÃO CORRIGIDA: Carregar registros do Firebase
 async function carregarRegistrosDoFirebase() {
   console.log("🔥 Carregando registros do Firebase...");
   
-  if (!window.FirebaseSync || !window.FirebaseSync.carregarRegistrosFirebase) {
-    console.log("⚠️ FirebaseSync não disponível, usando apenas localStorage");
+  // Verificar se FirebaseSync está disponível
+  if (!window.FirebaseSync) {
+    console.warn("⚠️ FirebaseSync não disponível");
+    return false;
+  }
+  
+  if (!window.FirebaseSync.carregarRegistrosFirebase) {
+    console.warn("⚠️ FirebaseSync.carregarRegistrosFirebase não disponível");
     return false;
   }
 
+  // 🔥 GARANTIR QUE FIREBASE ESTÁ INICIALIZADO
+  if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
+    console.log("🔄 Inicializando Firebase (carregarRegistrosDoFirebase)...");
+    const initResult = window.FirebaseConfig.initFirebase();
+    console.log("🔥 Resultado da inicialização:", initResult);
+    
+    // Aguardar um pouco para garantir
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
   try {
+    console.log("📡 Chamando FirebaseSync.carregarRegistrosFirebase()...");
     const registrosFirebase = await window.FirebaseSync.carregarRegistrosFirebase();
-    console.log(`📥 Carregados ${registrosFirebase.length} registros do Firebase`);
+    console.log(`📥 Quantidade: ${registrosFirebase?.length || 0} registros`);
     
     if (registrosFirebase && registrosFirebase.length > 0) {
       // Inicializar state.registros se não existir
       if (!state.registros) state.registros = [];
       
-      // Mesclar dados do Firebase com state local (priorizando Firebase)
+      // Mostrar os primeiros registros para debug
+      console.log("📋 Primeiro registro do Firebase:", registrosFirebase[0]);
+      
+      // Mesclar dados do Firebase com state local
       registrosFirebase.forEach(regFirebase => {
-        const indexLocal = state.registros.findIndex(r => r.id === regFirebase.id);
+        const indexLocal = state.registros.findIndex(r => r.id == regFirebase.id);
         if (indexLocal !== -1) {
           // Atualizar registro existente
           state.registros[indexLocal] = regFirebase;
+          console.log(`🔄 Atualizado registro local ID: ${regFirebase.id}`);
         } else {
           // Adicionar novo registro
           state.registros.push(regFirebase);
+          console.log(`➕ Adicionado novo registro ID: ${regFirebase.id}`);
         }
       });
       
       // Salvar no localStorage para cache
       if (typeof salvarEstado === "function") {
         salvarEstado();
+        console.log("💾 Estado salvo no localStorage");
       }
       
       console.log(`✅ Sincronizados ${registrosFirebase.length} registros com state`);
+      console.log(`📊 Total no state: ${state.registros.length} registros`);
       return true;
+    } else {
+      console.log("⚠️ Nenhum registro retornado do Firebase");
+      console.log("📋 Registros locais existentes:", state.registros?.length || 0);
+      return false;
     }
   } catch (error) {
     console.error("❌ Erro ao carregar registros do Firebase:", error);
+    console.error("Detalhes do erro:", error.message);
+    return false;
   }
-  
-  return false;
 }
 
 // Fechar modal de confirmação
@@ -313,9 +367,10 @@ window.limparFiltros = function () {
   carregarCardsEletivas();
 };
 
-// Carregar estatísticas (🔥 MODIFICADO para carregar do Firebase)
+// Carregar estatísticas
 function carregarEstatisticas() {
-  // 🔥 Carregar registros do Firebase antes de calcular estatísticas
+  console.log("📊 Carregando estatísticas...");
+  
   carregarRegistrosDoFirebase().then(() => {
     todasEletivas = state.eletivas || [];
 
@@ -651,7 +706,7 @@ function filtrarEletivasRegistros() {
   return eletivas;
 }
 
-// Carregar cards da aba registros (🔥 MODIFICADO para carregar do Firebase)
+// Carregar cards da aba registros
 async function carregarCardsRegistros() {
   const container = document.getElementById("registrosCardsGrid");
   if (!container) return;
@@ -785,10 +840,6 @@ window.fecharModalOpcoesImpressao = function () {
 // Selecionar opção de impressão
 window.selecionarOpcaoImpressao = function (opcao) {
   console.log("🎯 Opção selecionada:", opcao);
-  console.log(
-    "📌 eletivaSelecionadaParaImpressao:",
-    eletivaSelecionadaParaImpressao,
-  );
 
   if (!eletivaSelecionadaParaImpressao) {
     console.error("❌ Nenhuma eletiva selecionada!");
