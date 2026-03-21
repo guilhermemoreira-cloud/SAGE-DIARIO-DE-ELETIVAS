@@ -1,4 +1,4 @@
-// js/gestor.js - Lógica do gestor
+// js/gestor.js - Lógica do gestor (VERSÃO CORRIGIDA COM FIREBASE)
 console.log("👔 gestor.js carregado");
 
 let gestorAtual = null;
@@ -121,10 +121,57 @@ window.mudarTabGestor = function (tab) {
   if (tab === "estatisticas") {
     carregarEstatisticas();
   } else if (tab === "registros") {
-    inicializarFiltrosRegistros();
-    carregarCardsRegistros();
+    // 🔥 FORÇAR RECARREGAMENTO DOS DADOS DO FIREBASE AO ENTRAR NA ABA REGISTROS
+    carregarRegistrosDoFirebase().then(() => {
+      inicializarFiltrosRegistros();
+      carregarCardsRegistros();
+    });
   }
 };
+
+// 🔥 NOVA FUNÇÃO: Carregar registros do Firebase e sincronizar com state
+async function carregarRegistrosDoFirebase() {
+  console.log("🔥 Carregando registros do Firebase...");
+  
+  if (!window.FirebaseSync || !window.FirebaseSync.carregarRegistrosFirebase) {
+    console.log("⚠️ FirebaseSync não disponível, usando apenas localStorage");
+    return false;
+  }
+
+  try {
+    const registrosFirebase = await window.FirebaseSync.carregarRegistrosFirebase();
+    console.log(`📥 Carregados ${registrosFirebase.length} registros do Firebase`);
+    
+    if (registrosFirebase && registrosFirebase.length > 0) {
+      // Inicializar state.registros se não existir
+      if (!state.registros) state.registros = [];
+      
+      // Mesclar dados do Firebase com state local (priorizando Firebase)
+      registrosFirebase.forEach(regFirebase => {
+        const indexLocal = state.registros.findIndex(r => r.id === regFirebase.id);
+        if (indexLocal !== -1) {
+          // Atualizar registro existente
+          state.registros[indexLocal] = regFirebase;
+        } else {
+          // Adicionar novo registro
+          state.registros.push(regFirebase);
+        }
+      });
+      
+      // Salvar no localStorage para cache
+      if (typeof salvarEstado === "function") {
+        salvarEstado();
+      }
+      
+      console.log(`✅ Sincronizados ${registrosFirebase.length} registros com state`);
+      return true;
+    }
+  } catch (error) {
+    console.error("❌ Erro ao carregar registros do Firebase:", error);
+  }
+  
+  return false;
+}
 
 // Fechar modal de confirmação
 window.fecharModalConfirmacao = function () {
@@ -266,19 +313,22 @@ window.limparFiltros = function () {
   carregarCardsEletivas();
 };
 
-// Carregar estatísticas
+// Carregar estatísticas (🔥 MODIFICADO para carregar do Firebase)
 function carregarEstatisticas() {
-  todasEletivas = state.eletivas || [];
+  // 🔥 Carregar registros do Firebase antes de calcular estatísticas
+  carregarRegistrosDoFirebase().then(() => {
+    todasEletivas = state.eletivas || [];
 
-  const stats = calcularEstatisticasGerais();
+    const stats = calcularEstatisticasGerais();
 
-  document.getElementById("totalEletivas").textContent = stats.totalEletivas;
-  document.getElementById("totalEstudantes").textContent =
-    stats.totalEstudantes;
-  document.getElementById("totalAusencias").textContent = stats.totalAusencias;
-  document.getElementById("mediaGeral").textContent = stats.mediaGeral;
+    document.getElementById("totalEletivas").textContent = stats.totalEletivas;
+    document.getElementById("totalEstudantes").textContent =
+      stats.totalEstudantes;
+    document.getElementById("totalAusencias").textContent = stats.totalAusencias;
+    document.getElementById("mediaGeral").textContent = stats.mediaGeral;
 
-  carregarCardsEletivas();
+    carregarCardsEletivas();
+  });
 }
 
 // Carregar cards das eletivas (estatísticas)
@@ -601,10 +651,13 @@ function filtrarEletivasRegistros() {
   return eletivas;
 }
 
-// Carregar cards da aba registros
-function carregarCardsRegistros() {
+// Carregar cards da aba registros (🔥 MODIFICADO para carregar do Firebase)
+async function carregarCardsRegistros() {
   const container = document.getElementById("registrosCardsGrid");
   if (!container) return;
+
+  // 🔥 Carregar registros do Firebase antes de exibir
+  await carregarRegistrosDoFirebase();
 
   const eletivas = filtrarEletivasRegistros();
 
@@ -729,7 +782,7 @@ window.fecharModalOpcoesImpressao = function () {
   eletivaSelecionadaParaImpressao = null;
 };
 
-//// Selecionar opção de impressão (CORRIGIDO)
+// Selecionar opção de impressão
 window.selecionarOpcaoImpressao = function (opcao) {
   console.log("🎯 Opção selecionada:", opcao);
   console.log(
@@ -737,7 +790,6 @@ window.selecionarOpcaoImpressao = function (opcao) {
     eletivaSelecionadaParaImpressao,
   );
 
-  // Verificar se a eletiva ainda existe
   if (!eletivaSelecionadaParaImpressao) {
     console.error("❌ Nenhuma eletiva selecionada!");
     showToast("Erro: eletiva não selecionada", "error");
@@ -745,7 +797,6 @@ window.selecionarOpcaoImpressao = function (opcao) {
     return;
   }
 
-  // Verificar se o ID é válido
   if (!eletivaSelecionadaParaImpressao.id) {
     console.error("❌ ID da eletiva inválido!");
     showToast("Erro: ID da eletiva inválido", "error");
@@ -755,10 +806,8 @@ window.selecionarOpcaoImpressao = function (opcao) {
 
   const eletivaId = eletivaSelecionadaParaImpressao.id;
 
-  // Fechar o modal primeiro
   fecharModalOpcoesImpressao();
 
-  // Pequeno delay para garantir que o modal fechou
   setTimeout(() => {
     switch (opcao) {
       case "listaBranco":
@@ -779,7 +828,7 @@ window.selecionarOpcaoImpressao = function (opcao) {
   }, 100);
 };
 
-// ========== FUNÇÕES DE IMPRESSÃO DA ABA REGISTROS (CORRIGIDAS) ==========
+// ========== FUNÇÕES DE IMPRESSÃO DA ABA REGISTROS ==========
 
 // Imprimir lista em branco
 window.imprimirListaBrancoGestor = async function (eletivaId) {
@@ -1674,6 +1723,7 @@ async function gerarPDFBoletimGestor(
     }
   });
 }
+
 // ========== FUNÇÕES DE IMPRESSÃO DA ABA ESTATÍSTICAS ==========
 
 // Imprimir lista de alunos (estatísticas)
@@ -1706,7 +1756,6 @@ function imprimirListaAlunos(
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 10;
 
-    // TÍTULO PRINCIPAL
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
@@ -1714,7 +1763,6 @@ function imprimirListaAlunos(
     });
     y += 7;
 
-    // ESCOLA
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
     doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, {
@@ -1722,7 +1770,6 @@ function imprimirListaAlunos(
     });
     y += 7;
 
-    // TÍTULO DA LISTA
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text(`LISTA DE ALUNOS - ${eletiva.nome}`, pageWidth / 2, y, {
@@ -1730,7 +1777,6 @@ function imprimirListaAlunos(
     });
     y += 6;
 
-    // INFORMAÇÕES DA ELETIVA
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
     doc.text(
@@ -1741,7 +1787,6 @@ function imprimirListaAlunos(
     );
     y += 8;
 
-    // CABEÇALHO DA TABELA
     const colWidths = [70, 18, 18, 20, 25];
     const posNota = pageWidth - margin - colWidths[4];
     const posAus = posNota - colWidths[3] - 2;
@@ -1835,6 +1880,7 @@ function imprimirListaAlunos(
     mostrarLoaderGestor(false);
   }
 }
+
 // ========== FUNÇÕES DE REDIRECIONAMENTO PARA GESTÃO COMPLETA ==========
 
 window.abrirModalEditarTempos = function () {
