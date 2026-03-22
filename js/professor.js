@@ -8,30 +8,23 @@ let eletivaSelecionadaRegistro = null;
 let registroParaExcluir = null;
 let operacoesPendentes = 0;
 
-// Função para verificar se notas estão liberadas para uma eletiva (AGORA INTEGRADA COM state.liberacaoNotas)
+// Função para verificar se notas estão liberadas para uma eletiva
 function verificarNotasLiberadas(eletivaId, semestre = "1/2026") {
-  // Se não houver configuração de liberação, assumir que não está liberado
   if (!state.liberacaoNotas) {
-    console.log("📊 Nenhuma configuração de liberação encontrada");
     return false;
   }
 
-  // Verificar se o semestre corresponde
   if (state.liberacaoNotas.semestre !== semestre) {
-    console.log(`📊 Semestre diferente: config=${state.liberacaoNotas.semestre}, solicitado=${semestre}`);
     return false;
   }
 
-  // Verificar se a eletiva está na lista de liberadas
   const chaveLiberacao = `${eletivaId}_${semestre}`;
   const estaNaLista = state.liberacaoNotas.eletivasLiberadas?.includes(chaveLiberacao) || false;
 
   if (!estaNaLista) {
-    console.log(`📊 Eletiva ${eletivaId} não está na lista de liberadas`);
     return false;
   }
 
-  // Verificar período de liberação
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
@@ -45,34 +38,28 @@ function verificarNotasLiberadas(eletivaId, semestre = "1/2026") {
     const dentroDoPeriodo = hoje >= dataInicio && hoje <= dataFim;
 
     if (!dentroDoPeriodo) {
-      console.log(`📊 Fora do período de liberação: ${hoje.toLocaleDateString()} não está entre ${dataInicio.toLocaleDateString()} e ${dataFim.toLocaleDateString()}`);
       return false;
     }
   }
 
-  console.log(`✅ Notas liberadas para eletiva ${eletivaId} - ${semestre}`);
   return true;
 }
 
 // Inicializar jsPDF
 const { jsPDF } = window.jspdf;
 
-// Função utilitária para formatar data com fuso horário corrigido
 function formatarDataCorrigida(dataString) {
   if (!dataString) return "";
-
   if (typeof dataString === "string" && dataString.includes("-")) {
     const [ano, mes, dia] = dataString.split("-");
     return `${dia}/${mes}/${ano}`;
   }
-
   if (dataString instanceof Date) {
     const dia = dataString.getDate().toString().padStart(2, "0");
     const mes = (dataString.getMonth() + 1).toString().padStart(2, "0");
     const ano = dataString.getFullYear();
     return `${dia}/${mes}/${ano}`;
   }
-
   return dataString;
 }
 
@@ -170,7 +157,7 @@ window.sincronizarAgora = async function () {
 };
 
 function carregarLogoBase64() {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "Anonymous";
     img.onload = function () {
@@ -183,7 +170,6 @@ function carregarLogoBase64() {
       resolve(dataURL);
     };
     img.onerror = function () {
-      console.warn("⚠️ Erro ao carregar logo, usando placeholder");
       resolve(null);
     };
     img.src = "assets/logo-escola.png";
@@ -191,10 +177,9 @@ function carregarLogoBase64() {
 }
 
 async function adicionarCabecalhoPadronizado(doc, eletiva, dataFormatada = null, semestre = null) {
-  const marginTop = 15;
   const marginSides = 15;
   const pageWidth = doc.internal.pageSize.getWidth();
-  let y = marginTop;
+  let y = 15;
 
   try {
     const logoBase64 = await carregarLogoBase64();
@@ -205,7 +190,6 @@ async function adicionarCabecalhoPadronizado(doc, eletiva, dataFormatada = null,
       y += 5;
     }
   } catch (e) {
-    console.warn("Erro ao adicionar logo:", e);
     y += 5;
   }
 
@@ -239,7 +223,7 @@ async function adicionarCabecalhoPadronizado(doc, eletiva, dataFormatada = null,
   doc.line(marginSides, y, pageWidth - marginSides, y);
   y += 6;
 
-  return { y, marginTop, marginSides };
+  return { y, marginTop: 15, marginSides };
 }
 
 function adicionarCabecalhoTabela(doc, x, y, larguras, tipo = "frequencia") {
@@ -296,13 +280,7 @@ function adicionarNumeracaoPagina(doc, paginaAtual, totalPaginas) {
 
 function ordenarEletivasPorDia(eletivas) {
   const ordemDias = {
-    segunda: 1,
-    terca: 2,
-    quarta: 3,
-    quinta: 4,
-    sexta: 5,
-    sabado: 6,
-    domingo: 7,
+    segunda: 1, terca: 2, quarta: 3, quinta: 4, sexta: 5, sabado: 6, domingo: 7,
   };
 
   return eletivas.sort((a, b) => {
@@ -354,8 +332,6 @@ function formatarNomeDia(dia) {
   return nomes[dia] || dia.toUpperCase();
 }
 
-// ========== FUNÇÕES DE CARREGAMENTO ==========
-
 function mostrarLoaderPDF(mostrar) {
   const loader = document.getElementById("pdfLoader");
   if (loader) {
@@ -402,9 +378,20 @@ async function carregarEletivasProfessor() {
         const eletivasFirebase = await window.FirebaseSync.carregarDadosFirebase("eletivas");
         if (eletivasFirebase && eletivasFirebase.length > 0) {
           console.log(`📥 Carregadas ${eletivasFirebase.length} eletivas do Firebase`);
-          eletivas = eletivasFirebase;
-          state.eletivas = eletivasFirebase;
-          localStorage.setItem(CONFIG.storageKeys.eletivas, JSON.stringify(eletivasFirebase));
+          
+          const eletivasUnicas = [];
+          const idsVistos = new Set();
+          eletivasFirebase.forEach(e => {
+            if (!idsVistos.has(e.id)) {
+              idsVistos.add(e.id);
+              eletivasUnicas.push(e);
+            }
+          });
+          
+          eletivas = eletivasUnicas;
+          state.eletivas = eletivasUnicas;
+          localStorage.setItem(CONFIG.storageKeys.eletivas, JSON.stringify(eletivasUnicas));
+          console.log(`✅ Após remover duplicatas: ${eletivasUnicas.length} eletivas`);
         } else {
           console.log("⚠️ Nenhuma eletiva retornada do Firebase, usando localStorage");
           eletivas = state.eletivas || [];
@@ -519,7 +506,7 @@ function montarHTMLListaBranco(dados) {
       <td style="padding: 4px; border: 1px solid #000; text-align: center;">${aluno.sige}</td>
       <td style="padding: 4px; border: 1px solid #000; text-align: center;">_________</td>
       <td style="padding: 4px; border: 1px solid #000; text-align: center;">___</td>
-    </tr>
+     </tr>
   `).join("");
 
   return `
@@ -2051,7 +2038,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   professorAtual = JSON.parse(profStorage);
   console.log("👤 Professor:", professorAtual.nome);
 
-  // 🔥 INICIALIZAR FIREBASE
+  // Inicializar Firebase
   if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
     console.log("🔥 Inicializando Firebase...");
     window.FirebaseConfig.initFirebase();
@@ -2076,7 +2063,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   setTimeout(atualizarStatusSincronizacao, 1000);
 
-  // 🔥 CARREGAR ELETIVAS DO FIREBASE
+  // Carregar eletivas do Firebase
   await carregarEletivasProfessor();
   
   carregarSelectEletivasRegistros();
