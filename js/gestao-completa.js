@@ -869,6 +869,7 @@ window.selecionarTodasTurmas = function (selecionar) {
   });
 };
 
+// ========== FUNÇÃO CORRIGIDA - PERMITIR CÓDIGOS DUPLICADOS ==========
 window.salvarEletiva = async function () {
   const nome = document.getElementById("eletivaNome")?.value.trim();
   const codigo = document.getElementById("eletivaCodigo")?.value.trim().toUpperCase();
@@ -909,20 +910,31 @@ window.salvarEletiva = async function () {
     return;
   }
 
-  // Verificar se código já existe
-  const codigoExistente = state.eletivas?.some(e => e.codigo === codigo && normalizarIdParaComparacao(e.id) !== normalizarIdParaComparacao(eletivaEmEdicao?.id));
-  if (codigoExistente) {
-    showToast(`Já existe uma eletiva com o código ${codigo}`, "error");
+  // VERIFICAR APENAS SE O MESMO PROFESSOR JÁ TEM UMA ELETIVA COM O MESMO CÓDIGO NO MESMO HORÁRIO
+  // Isso evita conflitos, mas permite que diferentes professores usem o mesmo código
+  const professor = state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(professorId));
+  const horarioCompleto = `${horarioInicio}-${horarioFim}`;
+  const codigoTempo = mapaTempoEletiva[horarioCompleto] || "T1";
+
+  // Verificar conflito: mesmo professor, mesmo código, mesmo horário
+  const conflitoExistente = state.eletivas?.some(e => {
+    if (eletivaEmEdicao && normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaEmEdicao.id)) {
+      return false; // Ignorar a própria eletiva em edição
+    }
+    return normalizarIdParaComparacao(e.professorId) === normalizarIdParaComparacao(professorId) &&
+           e.codigo === codigo &&
+           e.horario?.diaSemana === dia &&
+           getTempoFromHorario(e.horario) === codigoTempo;
+  });
+
+  if (conflitoExistente) {
+    showToast(`O professor ${professor?.nome} já possui uma eletiva com o código ${codigo} no mesmo horário (${dia} ${codigoTempo})`, "error");
     return;
   }
 
   mostrarLoader(true);
 
   try {
-    const professor = state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(professorId));
-    const horarioCompleto = `${horarioInicio}-${horarioFim}`;
-    const codigoTempo = mapaTempoEletiva[horarioCompleto] || "T1";
-
     if (eletivaEmEdicao) {
       const index = state.eletivas.findIndex((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaEmEdicao.id));
       if (index !== -1) {
@@ -990,7 +1002,6 @@ window.salvarEletiva = async function () {
     mostrarLoader(false);
   }
 };
-
 // ========== FUNÇÃO PARA EDITAR CATEGORIA DA ELETIVA ==========
 window.abrirModalEditarCategoria = function (eletivaId) {
   const eletiva = state.eletivas?.find((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
