@@ -25,7 +25,7 @@ function initSyncQueue() {
   }
 
   lastSyncTime = localStorage.getItem("sage_last_sync");
-
+  
   // Processar fila pendente após inicialização
   setTimeout(() => {
     processarFilaPendente();
@@ -43,7 +43,7 @@ function salvarFilaPendente() {
 
 function adicionarOperacaoFila(tipo, colecao, dados, documentoId = null) {
   const operacao = {
-    id: gerarUUID(),
+    id: window.gerarUUID ? window.gerarUUID() : Date.now().toString(),
     tipo: tipo, // 'salvar' ou 'deletar'
     colecao: colecao,
     documentoId: documentoId,
@@ -58,6 +58,8 @@ function adicionarOperacaoFila(tipo, colecao, dados, documentoId = null) {
   console.log(
     `📝 Operação adicionada à fila: ${tipo} - ${colecao} (${pendingQueue.length} pendentes)`,
   );
+  
+  window.logSistema?.("INFO", "Sync", `Operação adicionada à fila: ${tipo} - ${colecao}`);
 
   // Tentar processar imediatamente se estiver online
   if (navigator.onLine && !syncInProgress) {
@@ -88,17 +90,18 @@ async function processarFilaPendente() {
 
   // Garantir que Firebase está inicializado
   if (!window.FirebaseConfig.isInitialized) {
-    const initResult = window.FirebaseConfig.initFirebase();
-    if (!initResult) {
-      console.warn("⚠️ Firebase não pôde ser inicializado");
+    try {
+      await window.FirebaseConfig.aguardarInicializacaoFirebase(5000);
+    } catch (e) {
+      console.warn("⚠️ Firebase não pôde ser inicializado:", e.message);
       return;
     }
   }
 
-  const online = await FirebaseConfig.verificarConexaoFirebase();
+  const online = await window.FirebaseConfig.verificarConexaoFirebase();
   if (!online) {
     console.log(`📡 Offline: ${pendingQueue.length} operações aguardando`);
-    atualizarStatusSincronizacaoGlobal();
+    window.atualizarStatusSincronizacaoGlobal?.();
     return;
   }
 
@@ -111,23 +114,23 @@ async function processarFilaPendente() {
     try {
       op.tentativas++;
 
-      const db = FirebaseConfig.firestore;
+      const db = window.FirebaseConfig.firestore;
       if (!db) {
         throw new Error("Firestore não disponível");
       }
 
       const collectionRef = db.collection(op.colecao);
-
-      // Usar o documentoId se fornecido, caso contrário criar um novo ID
       let docRef;
+      
       if (op.documentoId) {
-        docRef = collectionRef.doc(op.documentoId.toString());
+        docRef = collectionRef.doc(String(op.documentoId));
+      } else if (op.tipo === "salvar" && op.dados && op.dados.id) {
+        docRef = collectionRef.doc(String(op.dados.id));
       } else {
-        docRef = collectionRef.doc(); // Firebase gera ID automático
+        docRef = collectionRef.doc();
       }
 
       if (op.tipo === "salvar" && op.dados) {
-        // Garantir que o documento tenha um ID
         const dadosParaSalvar = {
           ...op.dados,
           id: op.documentoId || docRef.id,
@@ -157,9 +160,8 @@ async function processarFilaPendente() {
           `❌ Operação descartada após ${MAX_RETRY_ATTEMPTS} tentativas:`,
           op,
         );
-        if (typeof window.showToast === "function") {
-          window.showToast("Falha na sincronização de alguns dados", "error");
-        }
+        window.showToast?.("Falha na sincronização de alguns dados", "error");
+        window.logSistema?.("ERROR", "Sync", `Operação descartada: ${op.colecao}`, error);
       }
     }
   }
@@ -167,6 +169,8 @@ async function processarFilaPendente() {
   pendingQueue = novasPendentes;
   salvarFilaPendente();
   syncInProgress = false;
+  
+  window.atualizarStatusSincronizacaoGlobal?.();
 
   if (pendingQueue.length > 0) {
     console.log(`⏳ ${pendingQueue.length} operações ainda pendentes`);
@@ -175,11 +179,8 @@ async function processarFilaPendente() {
     console.log("✅ Todas as operações sincronizadas!");
     lastSyncTime = new Date().toISOString();
     localStorage.setItem("sage_last_sync", lastSyncTime);
-    atualizarStatusSincronizacaoGlobal();
-
-    if (typeof window.showToast === "function") {
-      window.showToast("Todos os dados sincronizados com a nuvem!", "success");
-    }
+    
+    window.showToast?.("Todos os dados sincronizados com a nuvem!", "success");
   }
 }
 
@@ -188,7 +189,7 @@ async function salvarDadosFirebase(colecao, dados, documentoId = null) {
   // Se estiver offline, adicionar à fila
   if (!navigator.onLine) {
     adicionarOperacaoFila("salvar", colecao, dados, documentoId);
-    atualizarStatusSincronizacaoGlobal();
+    window.atualizarStatusSincronizacaoGlobal?.();
     return {
       offline: true,
       queueId: pendingQueue[pendingQueue.length - 1]?.id,
@@ -198,15 +199,10 @@ async function salvarDadosFirebase(colecao, dados, documentoId = null) {
   // Se estiver online, tentar salvar imediatamente
   try {
     if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
-      const initResult = window.FirebaseConfig?.initFirebase();
-      if (!initResult) {
-        // Se não conseguir inicializar, adicionar à fila
-        adicionarOperacaoFila("salvar", colecao, dados, documentoId);
-        return { offline: true };
-      }
+      await window.FirebaseConfig?.aguardarInicializacaoFirebase(5000);
     }
 
-    const db = FirebaseConfig.firestore;
+    const db = window.FirebaseConfig.firestore;
     if (!db) {
       throw new Error("Firestore não disponível");
     }
@@ -215,10 +211,11 @@ async function salvarDadosFirebase(colecao, dados, documentoId = null) {
     let docRef;
 
     if (documentoId) {
-      docRef = collectionRef.doc(documentoId.toString());
+      docRef = collectionRef.doc(String(documentoId));
+    } else if (dados.id) {
+      docRef = collectionRef.doc(String(dados.id));
     } else {
-      docRef = collectionRef.doc(); // Firebase gera ID automático
-      // Se não tinha ID, atualizar o ID gerado nos dados
+      docRef = collectionRef.doc();
       dados.id = docRef.id;
     }
 
@@ -231,10 +228,16 @@ async function salvarDadosFirebase(colecao, dados, documentoId = null) {
 
     await docRef.set(dadosComMeta, { merge: true });
     console.log(`✅ Dados salvos no Firebase: ${colecao} (ID: ${docRef.id})`);
+    
+    // Atualizar versão no state
+    if (window.atualizarVersao) {
+      window.atualizarVersao(colecao, dadosComMeta._syncTimestamp);
+    }
 
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error(`❌ Erro ao salvar no Firebase: ${colecao}`, error);
+    window.logSistema?.("ERROR", "Sync", `Erro ao salvar ${colecao}`, error);
 
     // Em caso de erro, adicionar à fila para tentar depois
     adicionarOperacaoFila("salvar", colecao, dados, documentoId);
@@ -254,28 +257,21 @@ async function deletarDadosFirebase(colecao, documentoId) {
   if (!navigator.onLine) {
     console.log("📡 Offline - adicionando à fila");
     adicionarOperacaoFila("deletar", colecao, null, documentoId);
-    atualizarStatusSincronizacaoGlobal();
+    window.atualizarStatusSincronizacaoGlobal?.();
     return { offline: true, success: true };
   }
 
   try {
-    // Garantir que Firebase está inicializado
     if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
-      const initResult = window.FirebaseConfig?.initFirebase();
-      if (!initResult) {
-        console.warn("⚠️ Firebase não inicializado, adicionando à fila");
-        adicionarOperacaoFila("deletar", colecao, null, documentoId);
-        return { offline: true, success: true };
-      }
+      await window.FirebaseConfig?.aguardarInicializacaoFirebase(5000);
     }
 
-    const db = FirebaseConfig.firestore;
+    const db = window.FirebaseConfig.firestore;
     if (!db) {
       throw new Error("Firestore não disponível");
     }
 
-    // IMPORTANTE: Converter para string para garantir
-    const docRef = db.collection(colecao).doc(documentoId.toString());
+    const docRef = db.collection(colecao).doc(String(documentoId));
 
     // Verificar se o documento existe
     const doc = await docRef.get();
@@ -284,14 +280,13 @@ async function deletarDadosFirebase(colecao, documentoId) {
       return { success: true, notFound: true };
     }
 
-    // EXCLUIR O DOCUMENTO
     await docRef.delete();
     console.log(`✅ Documento DELETADO do Firebase: ${colecao}/${documentoId}`);
 
-    // Também remover da fila se estiver lá
+    // Remover da fila se estiver lá
     const indexNaFila = pendingQueue.findIndex(
       (op) =>
-        op.documentoId === documentoId &&
+        String(op.documentoId) === String(documentoId) &&
         op.colecao === colecao &&
         op.tipo === "deletar",
     );
@@ -307,11 +302,12 @@ async function deletarDadosFirebase(colecao, documentoId) {
       `❌ Erro ao deletar no Firebase: ${colecao}/${documentoId}`,
       error,
     );
+    window.logSistema?.("ERROR", "Sync", `Erro ao deletar ${colecao}/${documentoId}`, error);
 
     // Em caso de erro de permissão, mostrar mensagem clara
     if (error.code === "permission-denied") {
       console.error("🚫 Erro de permissão! Verifique as regras do Firestore");
-      showToast("Erro de permissão ao excluir do Firebase", "error");
+      window.showToast?.("Erro de permissão ao excluir do Firebase", "error");
       return { success: false, error: "permission-denied" };
     }
 
@@ -320,18 +316,15 @@ async function deletarDadosFirebase(colecao, documentoId) {
     return { offline: true, error: error.message, success: false };
   }
 }
+
 // ========== FUNÇÕES DE CARREGAMENTO ==========
 async function carregarDadosFirebase(colecao, filtros = {}) {
   try {
     if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
-      const initResult = window.FirebaseConfig?.initFirebase();
-      if (!initResult) {
-        console.warn("⚠️ Firebase não disponível para leitura");
-        return [];
-      }
+      await window.FirebaseConfig?.aguardarInicializacaoFirebase(5000);
     }
 
-    const db = FirebaseConfig.firestore;
+    const db = window.FirebaseConfig.firestore;
     if (!db) {
       throw new Error("Firestore não disponível");
     }
@@ -349,9 +342,14 @@ async function carregarDadosFirebase(colecao, filtros = {}) {
     const resultados = [];
 
     snapshot.forEach((doc) => {
+      const data = doc.data();
+      // Garantir ID consistente
+      if (data && window.garantirIdConsistente) {
+        window.garantirIdConsistente(data, colecao);
+      }
       resultados.push({
         id: doc.id,
-        ...doc.data(),
+        ...data,
       });
     });
 
@@ -371,7 +369,7 @@ async function carregarRegistrosFirebase(
   try {
     const filtros = {};
     if (eletivaId) {
-      filtros.eletivaId = parseInt(eletivaId);
+      filtros.eletivaId = String(eletivaId);
     }
 
     let registros = await carregarDadosFirebase("registros", filtros);
@@ -404,7 +402,7 @@ async function carregarNotasFirebase(eletivaId = null, semestre = null) {
   try {
     const filtros = {};
     if (eletivaId) {
-      filtros.eletivaId = parseInt(eletivaId);
+      filtros.eletivaId = String(eletivaId);
     }
     if (semestre) {
       filtros.semestre = semestre;
@@ -419,15 +417,12 @@ async function carregarNotasFirebase(eletivaId = null, semestre = null) {
 
 // ========== FUNÇÕES ESPECÍFICAS PARA REGISTRO DE AULA (OFFLINE) ==========
 async function salvarRegistroAulaOffline(registro) {
-  // Salvar no state já é feito pelo professor.js
-  // Esta função adiciona à fila do Firebase
   return await salvarDadosFirebase("registros", registro, registro.id);
 }
 
 // ========== FUNÇÕES AUXILIARES ==========
 function normalizarDataParaComparacao(dataString) {
   if (!dataString) return "";
-  // Garantir formato YYYY-MM-DD para comparação
   if (dataString.includes("/")) {
     const [dia, mes, ano] = dataString.split("/");
     return `${ano}-${mes}-${dia}`;
@@ -435,34 +430,7 @@ function normalizarDataParaComparacao(dataString) {
   return dataString;
 }
 
-function gerarUUID() {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
-function atualizarStatusSincronizacaoGlobal() {
-  if (typeof window.atualizarStatusSincronizacao === "function") {
-    window.atualizarStatusSincronizacao();
-  }
-}
-
-// ========== EVENT LISTENERS ==========
-window.addEventListener("online", () => {
-  console.log("📡 Conexão restabelecida. Processando fila pendente...");
-  setTimeout(processarFilaPendente, 2000);
-});
-
-window.addEventListener("offline", () => {
-  console.log("📡 Conexão perdida. Operações serão armazenadas localmente.");
-  atualizarStatusSincronizacaoGlobal();
-});
-
-
 // ========== SINCRONIZACAO DE COLECOES DO GESTOR ==========
-
 async function carregarColecoesGestor() {
   console.log('🔄 Sincronizando coleções do gestor a partir do Firebase...');
 
@@ -472,12 +440,12 @@ async function carregarColecoesGestor() {
   }
 
   if (!window.FirebaseConfig.isInitialized) {
-    const initResult = window.FirebaseConfig.initFirebase();
-    if (!initResult) {
-      console.warn('⚠️ Firebase não pôde ser inicializado para sincronização');
+    try {
+      await window.FirebaseConfig.aguardarInicializacaoFirebase(10000);
+    } catch (e) {
+      console.warn('⚠️ Firebase não inicializado para sincronização:', e.message);
       return false;
     }
-    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   const db = window.FirebaseConfig.firestore;
@@ -487,7 +455,14 @@ async function carregarColecoesGestor() {
 
   function isDocValido(data) {
     if (!data) return false;
-    return !!(data.nome || data.alunoId || data.eletivaId || data.codigo || data.codigoSige || data.professorId);
+    const temDados = !!(data.nome || data.alunoId || data.eletivaId || data.codigo || data.codigoSige || data.professorId);
+    if (!temDados) return false;
+    
+    // Verificar formato do ID
+    if (data.id && window.garantirIdConsistente) {
+      window.garantirIdConsistente(data);
+    }
+    return true;
   }
 
   async function mesclarColecao(colecao, chaveState, chaveStorage) {
@@ -518,6 +493,7 @@ async function carregarColecoesGestor() {
       algumDadoCarregado = true;
     } catch (err) {
       console.warn('⚠️ Erro ao carregar ' + colecao + ':', err.message);
+      window.logSistema?.("WARN", "Sync", `Erro ao carregar ${colecao}`, err);
     }
   }
 
@@ -532,6 +508,7 @@ async function carregarColecoesGestor() {
       snapNotas.forEach((doc) => {
         const data = doc.data();
         if (data) {
+          if (window.garantirIdConsistente) window.garantirIdConsistente(data, "notas");
           const idx = state.notas.findIndex((n) => String(n.id) === String(doc.id));
           if (idx !== -1) {
             state.notas[idx] = { ...data, id: doc.id };
@@ -541,6 +518,7 @@ async function carregarColecoesGestor() {
           algumDadoCarregado = true;
         }
       });
+      localStorage.setItem("sage_notas_2026", JSON.stringify(state.notas));
       console.log('✅ Notas sincronizadas do Firebase');
     }
   } catch (err) {
@@ -571,6 +549,7 @@ async function carregarColecoesGestor() {
   return algumDadoCarregado;
 }
 
+// ========== LISTENERS EM TEMPO REAL ==========
 function escutarColecoesGestor(onAtualizado) {
   if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
     console.warn('⚠️ Firebase não disponível para listener em tempo real');
@@ -581,25 +560,45 @@ function escutarColecoesGestor(onAtualizado) {
 
   const unsubscribers = [];
   const storageKeyMap = { eletivas: 'eletivas', alunos: 'alunos', matriculas: 'matriculas' };
+  let ultimosTimestamps = {};
 
   function isDocValido(data) {
     if (!data) return false;
-    return !!(data.nome || data.alunoId || data.eletivaId || data.codigo || data.codigoSige || data.professorId);
+    const temDados = !!(data.nome || data.alunoId || data.eletivaId || data.codigo || data.codigoSige || data.professorId);
+    if (!temDados) return false;
+    if (data.id && window.garantirIdConsistente) window.garantirIdConsistente(data);
+    return true;
   }
 
-  ['eletivas', 'alunos', 'matriculas'].forEach((colecao) => {
+  function criarListener(colecao, storageKey = colecao) {
     let primeiraExecucao = true;
+    
     try {
       const unsub = db.collection(colecao).onSnapshot((snap) => {
-        if (primeiraExecucao) { primeiraExecucao = false; return; }
+        if (primeiraExecucao) { 
+          primeiraExecucao = false; 
+          return; 
+        }
         if (!state[colecao]) state[colecao] = [];
         let mudou = false;
+        
         snap.docChanges().forEach((change) => {
           const data = { ...change.doc.data(), id: change.doc.id };
+          const novoTimestamp = data._syncTimestamp || data._lastSync || data.dataCriacao || new Date().toISOString();
+          
+          // Versionamento: só atualizar se o dado for mais recente
+          const ultimoTimestamp = ultimosTimestamps[`${colecao}_${data.id}`];
+          if (ultimoTimestamp && novoTimestamp <= ultimoTimestamp) return;
+          ultimosTimestamps[`${colecao}_${data.id}`] = novoTimestamp;
+          
           if (change.type === 'added' || change.type === 'modified') {
             if (isDocValido(data)) {
               const idx = state[colecao].findIndex((item) => String(item.id) === String(data.id));
-              if (idx !== -1) { state[colecao][idx] = data; } else { state[colecao].push(data); }
+              if (idx !== -1) {
+                state[colecao][idx] = data;
+              } else {
+                state[colecao].push(data);
+              }
               mudou = true;
             }
           } else if (change.type === 'removed') {
@@ -607,22 +606,40 @@ function escutarColecoesGestor(onAtualizado) {
             mudou = true;
           }
         });
+        
         if (mudou) {
-          const chaveStorage = storageKeyMap[colecao];
-          if (chaveStorage && typeof CONFIG !== 'undefined' && CONFIG.storageKeys[chaveStorage]) {
+          const chaveStorage = storageKeyMap[colecao] || storageKey;
+          if (chaveStorage && typeof CONFIG !== 'undefined' && CONFIG.storageKeys && CONFIG.storageKeys[chaveStorage]) {
             localStorage.setItem(CONFIG.storageKeys[chaveStorage], JSON.stringify(state[colecao]));
           }
           if (typeof window.salvarEstado === 'function') window.salvarEstado();
-          console.log('🔄 Atualização em tempo real: ' + colecao);
+          
+          console.log(`🔄 Atualização em tempo real: ${colecao} (${snap.docChanges().length} mudanças)`);
+          window.logSistema?.("INFO", "Sync", `Atualização em tempo real: ${colecao}`);
           if (typeof onAtualizado === 'function') onAtualizado(colecao);
         }
-      }, (err) => { console.warn('⚠️ Erro no listener de ' + colecao + ':', err.message); });
+      }, (err) => { 
+        console.warn(`⚠️ Erro no listener de ${colecao}:`, err.message);
+        window.logSistema?.("WARN", "Sync", `Erro no listener de ${colecao}`, err);
+        setTimeout(() => {
+          console.log(`🔄 Tentando reconectar listener de ${colecao}...`);
+        }, 5000);
+      });
+      
       unsubscribers.push(unsub);
     } catch (err) {
-      console.warn('⚠️ Erro ao configurar listener de ' + colecao + ':', err.message);
+      console.warn(`⚠️ Erro ao configurar listener de ${colecao}:`, err.message);
     }
-  });
+  }
 
+  // Criar listeners para todas as coleções - EXPANDIDO para notas e registros
+  criarListener('eletivas', 'eletivas');
+  criarListener('alunos', 'alunos');
+  criarListener('matriculas', 'matriculas');
+  criarListener('notas', 'notas');
+  criarListener('registros', 'registros');
+  
+  // Listener para liberação de notas
   try {
     let primeiraLiber = true;
     const unsubLib = db.collection('liberacao_notas').onSnapshot((snap) => {
@@ -634,6 +651,7 @@ function escutarColecoesGestor(onAtualizado) {
         state.liberacaoNotas = liberacao;
         localStorage.setItem('sage_liberacao_notas', JSON.stringify(liberacao));
         console.log('🔄 Liberação de notas atualizada em tempo real');
+        window.logSistema?.("INFO", "Sync", "Liberação de notas atualizada");
         if (typeof onAtualizado === 'function') onAtualizado('liberacao_notas');
       }
     }, (err) => { console.warn('⚠️ Erro no listener de liberacao_notas:', err.message); });
@@ -642,35 +660,181 @@ function escutarColecoesGestor(onAtualizado) {
     console.warn('⚠️ Erro ao configurar listener de liberacao_notas:', err.message);
   }
 
-  console.log('👂 Listeners em tempo real ativos');
-  return () => unsubscribers.forEach((fn) => fn());
+  console.log(`👂 ${unsubscribers.length} listeners em tempo real ativos`);
+  return () => unsubscribers.forEach(fn => fn());
 }
 
+// ========== STATUS DE SINCRONIZAÇÃO GLOBAL ==========
+let ultimoStatusAtualizado = null;
+
+function atualizarStatusSincronizacaoGlobal() {
+  const connectionStatus = document.getElementById("connectionStatus");
+  const syncBtn = document.getElementById("syncButton");
+  const syncBadge = document.getElementById("syncBadge");
+  
+  if (!connectionStatus) return;
+  
+  const online = navigator.onLine && window.FirebaseConfig?.isInitialized;
+  const pendentes = getPendingCount();
+  
+  let statusClass = "";
+  let statusIcon = "";
+  let statusText = "";
+  
+  if (!online) {
+    statusClass = "offline";
+    statusIcon = '<i class="fas fa-wifi-slash"></i>';
+    statusText = " Offline";
+  } else if (pendentes > 0) {
+    statusClass = "pending";
+    statusIcon = '<i class="fas fa-clock"></i>';
+    statusText = ` Sincronizando (${pendentes} pendente${pendentes !== 1 ? "s" : ""})`;
+  } else {
+    statusClass = "online";
+    statusIcon = '<i class="fas fa-check-circle"></i>';
+    statusText = " Sincronizado";
+  }
+  
+  connectionStatus.className = `connection-status ${statusClass}`;
+  connectionStatus.innerHTML = `${statusIcon}${statusText}`;
+  
+  if (syncBtn) {
+    if (!online || pendentes === 0) {
+      syncBtn.disabled = true;
+      syncBtn.innerHTML = '<i class="fas fa-check"></i> Sincronizado';
+      if (syncBadge) syncBadge.style.display = "none";
+    } else {
+      syncBtn.disabled = false;
+      syncBtn.innerHTML = `<i class="fas fa-sync-alt"></i> Sincronizar${pendentes > 0 ? ` (${pendentes})` : ""}`;
+      if (syncBadge) {
+        syncBadge.textContent = pendentes;
+        syncBadge.style.display = "inline-block";
+      }
+    }
+  }
+  
+  if (ultimoStatusAtualizado !== statusClass) {
+    window.logSistema?.("INFO", "Sync", `Status alterado: ${statusClass} (pendentes=${pendentes})`);
+    ultimoStatusAtualizado = statusClass;
+  }
+}
+
+// ========== FUNÇÃO DE RETRY COM BACKOFF ==========
+async function executarComRetry(fn, maxTentativas = 3, delayInicial = 1000) {
+  let ultimoErro;
+  for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
+    try {
+      return await fn();
+    } catch (erro) {
+      ultimoErro = erro;
+      console.warn(`⚠️ Tentativa ${tentativa}/${maxTentativas} falhou:`, erro.message);
+      window.logSistema?.("WARN", "Sync", `Tentativa ${tentativa} falhou: ${erro.message}`);
+      if (tentativa < maxTentativas) {
+        const delay = delayInicial * Math.pow(2, tentativa - 1);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  throw ultimoErro;
+}
+
+// ========== FUNÇÃO DE EXCLUSÃO ATÔMICA DE ELETIVA ==========
+async function excluirEletivaCompleta(eletivaId) {
+  console.log(`🗑️ Iniciando exclusão atômica da eletiva ID: ${eletivaId}`);
+  
+  const idString = String(eletivaId);
+  
+  // 1. Buscar dados relacionados ANTES de iniciar o batch
+  const matriculasVinculadas = (state.matriculas || []).filter(
+    m => String(m.eletivaId) === idString
+  );
+  const registrosVinculados = (state.registros || []).filter(
+    r => String(r.eletivaId) === idString
+  );
+  const notasVinculadas = (state.notas || []).filter(
+    n => String(n.eletivaId) === idString
+  );
+  
+  console.log(`📊 Dados relacionados encontrados:`, {
+    matriculas: matriculasVinculadas.length,
+    registros: registrosVinculados.length,
+    notas: notasVinculadas.length
+  });
+  
+  // 2. Executar exclusão atômica no Firebase (com retry)
+  if (window.FirebaseConfig?.firestore) {
+    await executarComRetry(async () => {
+      const db = window.FirebaseConfig.firestore;
+      const batch = db.batch();
+      
+      // Adicionar exclusão da eletiva
+      const eletivaRef = db.collection('eletivas').doc(idString);
+      batch.delete(eletivaRef);
+      
+      // Adicionar exclusões de matrículas
+      matriculasVinculadas.forEach(mat => {
+        const matRef = db.collection('matriculas').doc(String(mat.id));
+        batch.delete(matRef);
+      });
+      
+      // Adicionar exclusões de registros
+      registrosVinculados.forEach(reg => {
+        const regRef = db.collection('registros').doc(String(reg.id));
+        batch.delete(regRef);
+      });
+      
+      // Adicionar exclusões de notas
+      notasVinculadas.forEach(nota => {
+        const notaRef = db.collection('notas').doc(String(nota.id));
+        batch.delete(notaRef);
+      });
+      
+      await batch.commit();
+      console.log(`✅ Batch commit realizado com sucesso. ${batch._ops.length} operações.`);
+      return true;
+    });
+  }
+  
+  return {
+    matriculas: matriculasVinculadas,
+    registros: registrosVinculados,
+    notas: notasVinculadas
+  };
+}
+
+// ========== EVENT LISTENERS ==========
+window.addEventListener("online", () => {
+  console.log("📡 Conexão restabelecida. Processando fila pendente...");
+  window.logSistema?.("INFO", "Sync", "Conexão restabelecida");
+  setTimeout(processarFilaPendente, 2000);
+  atualizarStatusSincronizacaoGlobal();
+});
+
+window.addEventListener("offline", () => {
+  console.log("📡 Conexão perdida. Operações serão armazenadas localmente.");
+  window.logSistema?.("INFO", "Sync", "Conexão perdida");
+  atualizarStatusSincronizacaoGlobal();
+});
 
 // ========== EXPORTAÇÃO ==========
 window.FirebaseSync = {
-  // Fila
   processarFilaPendente,
   getPendingCount,
-
-  // Salvamento
   salvarDadosFirebase,
   deletarDadosFirebase,
   salvarRegistroAulaOffline,
-
-  // Carregamento
   carregarDadosFirebase,
   carregarRegistrosFirebase,
   carregarNotasFirebase,
-
-  // Sincronizacao completa (gestor -> professor)
   carregarColecoesGestor,
   escutarColecoesGestor,
-
-  // Utilitários
   adicionarOperacaoFila,
   removerOperacaoFila,
+  atualizarStatusSincronizacaoGlobal,
+  executarComRetry,
+  excluirEletivaCompleta,
 };
 
 // Inicializar
 initSyncQueue();
+setInterval(atualizarStatusSincronizacaoGlobal, 5000);
