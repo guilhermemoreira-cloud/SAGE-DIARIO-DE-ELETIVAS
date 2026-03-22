@@ -89,10 +89,8 @@ function escapeHtml(str) {
 // ========== FUNÇÃO AUXILIAR PARA NORMALIZAR IDs ==========
 function normalizarIdParaComparacao(id) {
   if (id === undefined || id === null) return null;
-  if (typeof id === 'string' && /^\d+$/.test(id)) {
-    return parseInt(id, 10);
-  }
-  return id;
+  // Sempre converter para string para comparação
+  return String(id);
 }
 
 // ========== FUNÇÃO PARA OBTER TEMPO DE UMA ELETIVA ==========
@@ -104,32 +102,32 @@ function getTempoDaEletiva(eletivaId) {
   return null;
 }
 
-// ========== FUNÇÃO PARA OBTER ELETIVAS DO MESMO TEMPO ==========
-function getEletivasDoMesmoTempo(eletivaId, estudanteId = null) {
-  const eletivaAlvo = state.eletivas?.find(e => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
-  if (!eletivaAlvo || !eletivaAlvo.horario) return [];
+// ========== FUNÇÃO PARA OBTER A SÉRIE DO ESTUDANTE ==========
+function getSerieEstudante(estudante) {
+  if (!estudante) return null;
+  const turma = estudante.turmaOrigem || "";
+  if (turma.includes("1ª")) return "1ª";
+  if (turma.includes("2ª")) return "2ª";
+  if (turma.includes("3ª")) return "3ª";
+  return null;
+}
+
+// ========== FUNÇÃO PARA FILTRAR ELETIVAS POR SÉRIE DO ESTUDANTE ==========
+function filtrarEletivasPorSerie(eletivas, serieEstudante) {
+  if (!serieEstudante) return eletivas;
   
-  const tempoAlvo = eletivaAlvo.horario.codigoTempo;
+  const temposPermitidosPorSerie = {
+    "1ª": ["T1", "T2", "T3", "T4", "T5"],
+    "2ª": ["T1"],
+    "3ª": ["T1", "T2"]
+  };
   
-  if (!estudanteId) {
-    return state.eletivas?.filter(e => 
-      e.horario && e.horario.codigoTempo === tempoAlvo && 
-      normalizarIdParaComparacao(e.id) !== normalizarIdParaComparacao(eletivaId)
-    ) || [];
-  }
+  const temposPermitidos = temposPermitidosPorSerie[serieEstudante] || [];
   
-  const matriculasEstudante = state.matriculas?.filter(m => 
-    normalizarIdParaComparacao(m.alunoId) === normalizarIdParaComparacao(estudanteId)
-  ) || [];
-  
-  const eletivasEstudante = matriculasEstudante.map(m => 
-    state.eletivas?.find(e => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(m.eletivaId))
-  ).filter(e => e && e.horario);
-  
-  return eletivasEstudante.filter(e => 
-    e.horario && e.horario.codigoTempo === tempoAlvo && 
-    normalizarIdParaComparacao(e.id) !== normalizarIdParaComparacao(eletivaId)
-  );
+  return eletivas.filter(eletiva => {
+    const tempoEletiva = getTempoDaEletiva(eletiva.id);
+    return temposPermitidos.includes(tempoEletiva);
+  });
 }
 
 // ========== INICIALIZAÇÃO ==========
@@ -413,7 +411,7 @@ window.salvarProfessor = async function () {
         return typeof num === 'number' && num > max ? num : max;
       }, 0) + 1;
       const novoProfessor = {
-        id: novoId,
+        id: String(novoId),
         nome: nome,
         email: email,
         perfil: "PROFESSOR",
@@ -423,7 +421,7 @@ window.salvarProfessor = async function () {
       state.professores.push(novoProfessor);
 
       if (window.FirebaseSync) {
-        await window.FirebaseSync.salvarDadosFirebase("professores", novoProfessor, novoId);
+        await window.FirebaseSync.salvarDadosFirebase("professores", novoProfessor, String(novoId));
       }
 
       showToast("Professor adicionado com sucesso!", "success");
@@ -972,7 +970,7 @@ window.salvarEletiva = async function () {
           ...state.eletivas[index],
           nome: nome,
           codigo: codigo,
-          professorId: parseInt(professorId, 10),
+          professorId: String(professorId),
           professorNome: professor?.nome || "",
           local: local,
           horario: {
@@ -995,11 +993,11 @@ window.salvarEletiva = async function () {
         return typeof num === 'number' && num > max ? num : max;
       }, 0) + 1;
       const novaEletiva = {
-        id: novoId,
+        id: String(novoId),
         codigo: codigo,
         nome: nome,
         tipo: tipo,
-        professorId: parseInt(professorId, 10),
+        professorId: String(professorId),
         professorNome: professor?.nome || "",
         horario: {
           diaSemana: dia,
@@ -1016,7 +1014,7 @@ window.salvarEletiva = async function () {
       state.eletivas.push(novaEletiva);
 
       if (window.FirebaseSync) {
-        await window.FirebaseSync.salvarDadosFirebase("eletivas", novaEletiva, novoId);
+        await window.FirebaseSync.salvarDadosFirebase("eletivas", novaEletiva, String(novoId));
       }
 
       showToast("Eletiva criada com sucesso!", "success");
@@ -1681,7 +1679,7 @@ function atualizarTabelaEstudantes() {
   document.getElementById("btnPaginaProxima").disabled = paginaAtualEstudantes >= totalPaginas;
 
   if (totalEstudantes === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum estudante encontrado</td></tr>';
+    tbody.innerHTML = 'eba<td colspan="5" class="empty-state">Nenhum estudante encontrado</td> </tr>';
     return;
   }
 
@@ -1705,10 +1703,10 @@ function atualizarTabelaEstudantes() {
     
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td><strong>${escapeHtml(estudante.nome)}</strong></td>
-      <td>${escapeHtml(estudante.turmaOrigem)}</td>
-      <td>${escapeHtml(estudante.codigoSige)}</td>
-      <td>${eletivasHTML}</td>
+       <td><strong>${escapeHtml(estudante.nome)}</strong></td>
+       <td>${escapeHtml(estudante.turmaOrigem)}</td>
+       <td>${escapeHtml(estudante.codigoSige)}</td>
+       <td>${eletivasHTML}</td>
       <td style="white-space: nowrap;">
         <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante('${estudanteIdStr}')" title="Editar" style="margin-right: 5px;">
           <i class="fas fa-edit"></i>
@@ -1742,7 +1740,18 @@ function carregarEletivasCheckbox(estudanteId = null) {
   const container = document.getElementById("eletivasCheckboxContainer");
   if (!container) return;
 
-  console.log("📋 Carregando eletivas checkbox para estudante ID:", estudanteId, "tipo:", typeof estudanteId);
+  console.log("📋 Carregando eletivas checkbox para estudante ID:", estudanteId);
+  
+  // Buscar o estudante para saber a série
+  let serieEstudante = null;
+  if (estudanteId) {
+    const idNormalizado = normalizarIdParaComparacao(estudanteId);
+    const estudante = state.alunos?.find(a => normalizarIdParaComparacao(a.id) === idNormalizado);
+    if (estudante) {
+      serieEstudante = getSerieEstudante(estudante);
+      console.log("🎓 Série do estudante:", serieEstudante);
+    }
+  }
   
   const idNormalizado = estudanteId !== null ? normalizarIdParaComparacao(estudanteId) : null;
   
@@ -1755,7 +1764,11 @@ function carregarEletivasCheckbox(estudanteId = null) {
 
   console.log("Matrículas atuais encontradas:", matriculasAtuais.length);
 
-  const eletivas = state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  // Filtrar eletivas por série do estudante
+  let eletivas = state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  eletivas = filtrarEletivasPorSerie(eletivas, serieEstudante);
+  
+  console.log(`📚 Eletivas disponíveis para série ${serieEstudante || "?"}: ${eletivas.length}`);
 
   const eletivasPorTempo = {};
   eletivas.forEach(e => {
@@ -1767,13 +1780,31 @@ function carregarEletivasCheckbox(estudanteId = null) {
   let html = "";
   const tempos = ["T1", "T2", "T3", "T4", "T5", "OUTROS"];
   const nomesTempo = {
-    T1: "TEMPO 1 (07:00-08:40)",
-    T2: "TEMPO 2 (08:55-10:35)",
-    T3: "TEMPO 3 (10:50-12:30)",
-    T4: "TEMPO 4 (13:30-15:10)",
-    T5: "TEMPO 5 (15:25-17:05)",
+    T1: "TEMPO 1 (07:00-08:40) - SEGUNDA-FEIRA",
+    T2: "TEMPO 2 (08:55-10:35) - QUINTA-FEIRA",
+    T3: "TEMPO 3 (10:50-12:30) - TERÇA-FEIRA",
+    T4: "TEMPO 4 (13:30-15:10) - SEXTA-FEIRA",
+    T5: "TEMPO 5 (15:25-17:05) - QUARTA-FEIRA",
     OUTROS: "OUTROS HORÁRIOS",
   };
+
+  if (serieEstudante) {
+    let textoSerie = "";
+    let corBg = "var(--info)";
+    if (serieEstudante === "1ª") {
+      textoSerie = "1ª SÉRIE - TODOS OS TEMPOS DISPONÍVEIS";
+    } else if (serieEstudante === "2ª") {
+      textoSerie = "2ª SÉRIE - APENAS TEMPO T1 (SEGUNDA-FEIRA)";
+      corBg = "var(--warning)";
+    } else if (serieEstudante === "3ª") {
+      textoSerie = "3ª SÉRIE - TEMPOS T1 (SEGUNDA) e T2 (QUINTA)";
+      corBg = "var(--warning)";
+    }
+    
+    html += `<div style="margin-bottom: 1rem; padding: 0.5rem; background: ${corBg}; color: white; border-radius: 8px; text-align: center;">
+      <i class="fas fa-info-circle"></i> ${textoSerie}
+    </div>`;
+  }
 
   tempos.forEach(tempo => {
     const eletivasDoTempo = eletivasPorTempo[tempo];
@@ -1789,7 +1820,7 @@ function carregarEletivasCheckbox(estudanteId = null) {
       html += `
         <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border-bottom: 1px solid var(--bg-light);">
           <input type="checkbox" class="eletiva-checkbox" value="${e.id}" ${checked} 
-                 onchange="gerenciarTrocaEletivaMesmoTempo(this, ${estudanteId || 'null'})">
+                 onchange="gerenciarTrocaEletivaMesmoTempo(this, '${estudanteId || ''}')">
           <div style="flex: 1;">
             <strong>${e.nome}</strong> (${e.codigo}) - ${professor} - ${matriculados} alunos
           </div>
@@ -1799,7 +1830,15 @@ function carregarEletivasCheckbox(estudanteId = null) {
   });
 
   if (eletivas.length === 0) {
-    html = '<p style="color: var(--text-light);">Nenhuma eletiva cadastrada</p>';
+    let msg = "Nenhuma eletiva disponível";
+    if (serieEstudante === "2ª") {
+      msg = "⚠️ Alunos da 2ª SÉRIE só podem se matricular em eletivas no TEMPO T1 (SEGUNDA-FEIRA). Nenhuma eletiva disponível neste horário.";
+    } else if (serieEstudante === "3ª") {
+      msg = "⚠️ Alunos da 3ª SÉRIE só podem se matricular em eletivas nos TEMPOS T1 (SEGUNDA) e T2 (QUINTA). Nenhuma eletiva disponível nestes horários.";
+    } else {
+      msg = "Nenhuma eletiva cadastrada";
+    }
+    html = `<p class="empty-state" style="padding: 2rem; text-align: center;">${msg}</p>`;
   }
 
   container.innerHTML = html;
@@ -1809,17 +1848,19 @@ function carregarEletivasCheckbox(estudanteId = null) {
 window.gerenciarTrocaEletivaMesmoTempo = function(checkbox, estudanteId) {
   if (!checkbox.checked) return;
   
-  const eletivaId = parseInt(checkbox.value, 10);
+  const eletivaId = checkbox.value;
   const tempoEletiva = getTempoDaEletiva(eletivaId);
   
   if (!tempoEletiva) return;
   
   // Buscar todas as checkboxes do mesmo tempo
   const container = document.getElementById("eletivasCheckboxContainer");
+  if (!container) return;
+  
   const checkboxesMesmoTempo = container.querySelectorAll(`.eletiva-checkbox`);
   
   checkboxesMesmoTempo.forEach(cb => {
-    const cbEletivaId = parseInt(cb.value, 10);
+    const cbEletivaId = cb.value;
     const cbTempo = getTempoDaEletiva(cbEletivaId);
     
     if (cbTempo === tempoEletiva && cb !== checkbox && cb.checked) {
@@ -1843,6 +1884,7 @@ window.abrirModalAdicionarEstudante = function () {
   document.getElementById("modalEstudante").classList.add("active");
 };
 
+// ========== FUNÇÃO CORRIGIDA: Abrir modal de editar estudante ==========
 window.abrirModalEditarEstudante = function (estudanteId) {
   console.log("✏️ abrirModalEditarEstudante chamada com ID:", estudanteId);
   
@@ -1850,11 +1892,9 @@ window.abrirModalEditarEstudante = function (estudanteId) {
   paginaAntesEdicao = paginaAtualEstudantes;
   console.log("📄 Página atual salva:", paginaAntesEdicao);
   
-  const idString = String(estudanteId);
+  const idNormalizado = normalizarIdParaComparacao(estudanteId);
   
-  const estudante = state.alunos?.find((a) => {
-    return String(a.id) === idString;
-  });
+  const estudante = state.alunos?.find((a) => normalizarIdParaComparacao(a.id) === idNormalizado);
   
   if (!estudante) {
     console.error("❌ Estudante não encontrado");
@@ -1883,6 +1923,7 @@ window.fecharModalEstudante = function () {
   estudanteEmEdicao = null;
 };
 
+// ========== FUNÇÃO CORRIGIDA: Salvar estudante ==========
 window.salvarEstudante = async function () {
   const nome = document.getElementById("estudanteNome")?.value.trim();
   const sige = document.getElementById("estudanteSige")?.value.trim();
@@ -1890,7 +1931,7 @@ window.salvarEstudante = async function () {
   
   const eletivasSelecionadas = [];
   document.querySelectorAll("#eletivasCheckboxContainer .eletiva-checkbox:checked").forEach(cb => {
-    eletivasSelecionadas.push(parseInt(cb.value, 10));
+    eletivasSelecionadas.push(cb.value);
   });
 
   if (!nome || nome.length < 3) {
@@ -1985,7 +2026,7 @@ window.salvarEstudante = async function () {
       }, 0) + 1;
       
       const novoEstudante = {
-        id: novoId,
+        id: String(novoId),
         nome: nome,
         codigoSige: sige,
         turmaOrigem: turma,
@@ -1996,7 +2037,7 @@ window.salvarEstudante = async function () {
       state.alunos.push(novoEstudante);
       
       if (window.FirebaseSync) {
-        await window.FirebaseSync.salvarDadosFirebase("alunos", novoEstudante, novoId);
+        await window.FirebaseSync.salvarDadosFirebase("alunos", novoEstudante, String(novoId));
       }
       
       for (const eletivaId of eletivasSelecionadas) {
@@ -2006,7 +2047,7 @@ window.salvarEstudante = async function () {
             return typeof num === 'number' && num > max ? num : max;
           }, 0) + 1,
           eletivaId: eletivaId,
-          alunoId: novoId,
+          alunoId: String(novoId),
           tipoMatricula: "manual",
           dataMatricula: new Date().toISOString().split("T")[0],
           semestreId: "2026-1",
@@ -2044,11 +2085,9 @@ window.salvarEstudante = async function () {
 window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
   console.log("🔄 abrirModalTrocarEletivaEstudante chamada com ID:", estudanteId);
   
-  const idString = String(estudanteId);
+  const idNormalizado = normalizarIdParaComparacao(estudanteId);
   
-  const estudante = state.alunos?.find((a) => {
-    return String(a.id) === idString;
-  });
+  const estudante = state.alunos?.find((a) => normalizarIdParaComparacao(a.id) === idNormalizado);
   
   if (!estudante) {
     console.error("❌ Estudante não encontrado para troca");
@@ -2085,7 +2124,21 @@ function carregarEletivasDisponiveisTroca(estudanteId = null) {
   const container = document.getElementById("eletivasDisponiveisContainer");
   if (!container) return;
 
-  const eletivas = state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  // Buscar o estudante para saber a série
+  let serieEstudante = null;
+  if (estudanteId) {
+    const idNormalizado = normalizarIdParaComparacao(estudanteId);
+    const estudante = state.alunos?.find(a => normalizarIdParaComparacao(a.id) === idNormalizado);
+    if (estudante) {
+      serieEstudante = getSerieEstudante(estudante);
+      console.log("🎓 Série do estudante (troca):", serieEstudante);
+    }
+  }
+
+  let eletivas = state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  eletivas = filtrarEletivasPorSerie(eletivas, serieEstudante);
+  
+  console.log(`📚 Eletivas disponíveis para troca (série ${serieEstudante || "?"}): ${eletivas.length}`);
 
   const eletivasPorTempo = {};
   eletivas.forEach((e) => {
@@ -2096,12 +2149,38 @@ function carregarEletivasDisponiveisTroca(estudanteId = null) {
 
   let html = "";
   const tempos = ["T1", "T2", "T3", "T4", "T5", "OUTROS"];
+  const nomesTempo = {
+    T1: "TEMPO 1 (07:00-08:40) - SEGUNDA-FEIRA",
+    T2: "TEMPO 2 (08:55-10:35) - QUINTA-FEIRA",
+    T3: "TEMPO 3 (10:50-12:30) - TERÇA-FEIRA",
+    T4: "TEMPO 4 (13:30-15:10) - SEXTA-FEIRA",
+    T5: "TEMPO 5 (15:25-17:05) - QUARTA-FEIRA",
+    OUTROS: "OUTROS HORÁRIOS",
+  };
+
+  if (serieEstudante) {
+    let textoSerie = "";
+    let corBg = "var(--info)";
+    if (serieEstudante === "1ª") {
+      textoSerie = "1ª SÉRIE - TODOS OS TEMPOS DISPONÍVEIS";
+    } else if (serieEstudante === "2ª") {
+      textoSerie = "2ª SÉRIE - APENAS TEMPO T1 (SEGUNDA-FEIRA)";
+      corBg = "var(--warning)";
+    } else if (serieEstudante === "3ª") {
+      textoSerie = "3ª SÉRIE - TEMPOS T1 (SEGUNDA) e T2 (QUINTA)";
+      corBg = "var(--warning)";
+    }
+    
+    html += `<div style="margin-bottom: 1rem; padding: 0.5rem; background: ${corBg}; color: white; border-radius: 8px; text-align: center;">
+      <i class="fas fa-info-circle"></i> ${textoSerie}
+    </div>`;
+  }
 
   tempos.forEach((tempo) => {
     const eletivasDoTempo = eletivasPorTempo[tempo];
     if (!eletivasDoTempo || eletivasDoTempo.length === 0) return;
 
-    html += `<div style="margin-top: 1rem;"><strong>TEMPO ${tempo}:</strong></div>`;
+    html += `<div style="margin-top: 1rem;"><strong>${nomesTempo[tempo]}:</strong></div>`;
 
     eletivasDoTempo.forEach((e) => {
       const professor = state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(e.professorId))?.nome || "Não atribuído";
@@ -2119,7 +2198,15 @@ function carregarEletivasDisponiveisTroca(estudanteId = null) {
   });
 
   if (eletivas.length === 0) {
-    html = '<p style="color: var(--text-light);">Nenhuma eletiva cadastrada</p>';
+    let msg = "Nenhuma eletiva disponível";
+    if (serieEstudante === "2ª") {
+      msg = "⚠️ Alunos da 2ª SÉRIE só podem se matricular em eletivas no TEMPO T1 (SEGUNDA-FEIRA). Nenhuma eletiva disponível neste horário.\n\nEntre em contato com a gestão para criar eletivas neste horário.";
+    } else if (serieEstudante === "3ª") {
+      msg = "⚠️ Alunos da 3ª SÉRIE só podem se matricular em eletivas nos TEMPOS T1 (SEGUNDA) e T2 (QUINTA). Nenhuma eletiva disponível nestes horários.\n\nEntre em contato com a gestão para criar eletivas nestes horários.";
+    } else {
+      msg = "Nenhuma eletiva cadastrada";
+    }
+    html = `<p class="empty-state" style="padding: 2rem; text-align: center;">${msg}</p>`;
   }
 
   container.innerHTML = html;
@@ -2180,7 +2267,7 @@ window.confirmarTrocaEletivaEstudante = async function () {
         const num = normalizarIdParaComparacao(id);
         return typeof num === 'number' && num > max ? num : max;
       }, 0) + 1,
-      eletivaId: parseInt(eletivaDestinoId, 10),
+      eletivaId: eletivaDestinoId,
       alunoId: estudanteParaTroca.id,
       tipoMatricula: "troca",
       dataMatricula: new Date().toISOString().split("T")[0],
@@ -2444,9 +2531,9 @@ function carregarTabelaTempos() {
     const tempoConfig = config[tempo] || { diaSemana: "?", series: [] };
 
     row.innerHTML = `
-      <tr><strong>${tempo}</strong>49<
-      <td>${tempoConfig.diaSemana || "?"}49<
-      <td>${tempoConfig.series?.join(", ") || "Todas"}49<
+        <td><strong>${tempo}</strong></td>
+        <td>${tempoConfig.diaSemana || "?"}</td>
+        <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
     `;
 
     tbody.appendChild(row);
