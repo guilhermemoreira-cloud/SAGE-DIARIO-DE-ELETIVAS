@@ -18,16 +18,13 @@ function verificarNotasLiberadas(eletivaId, semestre = "1/2026") {
 
   // Verificar se o semestre corresponde
   if (state.liberacaoNotas.semestre !== semestre) {
-    console.log(
-      `📊 Semestre diferente: config=${state.liberacaoNotas.semestre}, solicitado=${semestre}`,
-    );
+    console.log(`📊 Semestre diferente: config=${state.liberacaoNotas.semestre}, solicitado=${semestre}`);
     return false;
   }
 
   // Verificar se a eletiva está na lista de liberadas
   const chaveLiberacao = `${eletivaId}_${semestre}`;
-  const estaNaLista =
-    state.liberacaoNotas.eletivasLiberadas?.includes(chaveLiberacao) || false;
+  const estaNaLista = state.liberacaoNotas.eletivasLiberadas?.includes(chaveLiberacao) || false;
 
   if (!estaNaLista) {
     console.log(`📊 Eletiva ${eletivaId} não está na lista de liberadas`);
@@ -38,12 +35,8 @@ function verificarNotasLiberadas(eletivaId, semestre = "1/2026") {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
-  const dataInicio = state.liberacaoNotas.periodo?.inicio
-    ? new Date(state.liberacaoNotas.periodo.inicio)
-    : null;
-  const dataFim = state.liberacaoNotas.periodo?.fim
-    ? new Date(state.liberacaoNotas.periodo.fim)
-    : null;
+  const dataInicio = state.liberacaoNotas.periodo?.inicio ? new Date(state.liberacaoNotas.periodo.inicio) : null;
+  const dataFim = state.liberacaoNotas.periodo?.fim ? new Date(state.liberacaoNotas.periodo.fim) : null;
 
   if (dataInicio && dataFim) {
     dataInicio.setHours(0, 0, 0, 0);
@@ -52,9 +45,7 @@ function verificarNotasLiberadas(eletivaId, semestre = "1/2026") {
     const dentroDoPeriodo = hoje >= dataInicio && hoje <= dataFim;
 
     if (!dentroDoPeriodo) {
-      console.log(
-        `📊 Fora do período de liberação: ${hoje.toLocaleDateString()} não está entre ${dataInicio.toLocaleDateString()} e ${dataFim.toLocaleDateString()}`,
-      );
+      console.log(`📊 Fora do período de liberação: ${hoje.toLocaleDateString()} não está entre ${dataInicio.toLocaleDateString()} e ${dataFim.toLocaleDateString()}`);
       return false;
     }
   }
@@ -70,13 +61,11 @@ const { jsPDF } = window.jspdf;
 function formatarDataCorrigida(dataString) {
   if (!dataString) return "";
 
-  // Se for string ISO (YYYY-MM-DD)
   if (typeof dataString === "string" && dataString.includes("-")) {
     const [ano, mes, dia] = dataString.split("-");
     return `${dia}/${mes}/${ano}`;
   }
 
-  // Se for objeto Date
   if (dataString instanceof Date) {
     const dia = dataString.getDate().toString().padStart(2, "0");
     const mes = (dataString.getMonth() + 1).toString().padStart(2, "0");
@@ -87,16 +76,11 @@ function formatarDataCorrigida(dataString) {
   return dataString;
 }
 
-// Função para garantir que a data seja salva no formato correto
 function normalizarDataParaSalvar(data) {
   if (!data) return "";
-
-  // Se for string no formato YYYY-MM-DD, manter
   if (data.match(/^\d{4}-\d{2}-\d{2}$/)) {
     return data;
   }
-
-  // Tentar criar objeto Date e converter
   try {
     const dateObj = new Date(data);
     if (!isNaN(dateObj.getTime())) {
@@ -108,30 +92,18 @@ function normalizarDataParaSalvar(data) {
   } catch (e) {
     console.warn("Erro ao normalizar data:", e);
   }
-
   return data;
 }
 
-// Função para calcular número de linhas por página
-function calcularLinhasPorPagina(
-  pageHeight,
-  marginTop,
-  marginBottom,
-  headerHeight,
-  footerHeight,
-) {
-  const espacoDisponivel =
-    pageHeight - marginTop - marginBottom - headerHeight - footerHeight;
-  // Altura por linha: aproximadamente 5mm
+function calcularLinhasPorPagina(pageHeight, marginTop, marginBottom, headerHeight, footerHeight) {
+  const espacoDisponivel = pageHeight - marginTop - marginBottom - headerHeight - footerHeight;
   return Math.floor(espacoDisponivel / 5);
 }
 
-// Função para verificar status da conexão
 function verificarConexao() {
   return navigator.onLine;
 }
 
-// Função para atualizar interface de sincronização
 function atualizarStatusSincronizacao() {
   const syncBtn = document.getElementById("syncButton");
   const syncBadge = document.getElementById("syncBadge");
@@ -143,23 +115,19 @@ function atualizarStatusSincronizacao() {
   const pendentes = window.FirebaseSync?.getPendingCount?.() || 0;
   operacoesPendentes = pendentes;
 
-  // Atualizar status de conexão
   if (connectionStatus) {
     if (!online) {
-      connectionStatus.innerHTML =
-        '<i class="fas fa-wifi-slash"></i> Modo sem internet';
+      connectionStatus.innerHTML = '<i class="fas fa-wifi-slash"></i> Modo sem internet';
       connectionStatus.className = "connection-status offline";
     } else if (pendentes > 0) {
       connectionStatus.innerHTML = `<i class="fas fa-clock"></i> Você tem ${pendentes} registro(s) para enviar`;
       connectionStatus.className = "connection-status pending";
     } else {
-      connectionStatus.innerHTML =
-        '<i class="fas fa-check-circle"></i> Conectado';
+      connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i> Conectado';
       connectionStatus.className = "connection-status online";
     }
   }
 
-  // Atualizar botão de sincronização
   if (!online) {
     syncBtn.disabled = true;
     syncBtn.title = "Sem conexão com a internet";
@@ -181,11 +149,8 @@ function atualizarStatusSincronizacao() {
   }
 }
 
-// Função para sincronizar manualmente
 window.sincronizarAgora = async function () {
   const syncBtn = document.getElementById("syncButton");
-  const originalText = syncBtn.innerHTML;
-
   syncBtn.disabled = true;
   syncBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
@@ -204,7 +169,6 @@ window.sincronizarAgora = async function () {
   }
 };
 
-// Função para carregar imagem da logo como base64
 function carregarLogoBase64() {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -226,23 +190,15 @@ function carregarLogoBase64() {
   });
 }
 
-// Função para adicionar cabeçalho padronizado aos PDFs
-async function adicionarCabecalhoPadronizado(
-  doc,
-  eletiva,
-  dataFormatada = null,
-  semestre = null,
-) {
+async function adicionarCabecalhoPadronizado(doc, eletiva, dataFormatada = null, semestre = null) {
   const marginTop = 15;
   const marginSides = 15;
   const pageWidth = doc.internal.pageSize.getWidth();
   let y = marginTop;
 
-  // Carregar logo (30% maior)
   try {
     const logoBase64 = await carregarLogoBase64();
     if (logoBase64) {
-      // Logo 30% maior: antes 40mm, agora 52mm
       doc.addImage(logoBase64, "PNG", pageWidth / 2 - 26, y - 5, 52, 19.5);
       y += 24;
     } else {
@@ -253,23 +209,16 @@ async function adicionarCabecalhoPadronizado(
     y += 5;
   }
 
-  // Título (sem ícone)
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
-    align: "center",
-  });
+  doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, { align: "center" });
   y += 8;
 
-  // Nome da escola
   doc.setFontSize(12);
   doc.setFont("helvetica", "normal");
-  doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, {
-    align: "center",
-  });
+  doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, { align: "center" });
   y += 8;
 
-  // Linha de informações
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
 
@@ -286,7 +235,6 @@ async function adicionarCabecalhoPadronizado(
   doc.text(infoTexto, pageWidth / 2, y, { align: "center" });
   y += 8;
 
-  // Linha divisória
   doc.setDrawColor(0, 0, 0);
   doc.line(marginSides, y, pageWidth - marginSides, y);
   y += 6;
@@ -294,7 +242,6 @@ async function adicionarCabecalhoPadronizado(
   return { y, marginTop, marginSides };
 }
 
-// Função para adicionar cabeçalho da tabela
 function adicionarCabecalhoTabela(doc, x, y, larguras, tipo = "frequencia") {
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
@@ -308,24 +255,15 @@ function adicionarCabecalhoTabela(doc, x, y, larguras, tipo = "frequencia") {
   } else {
     doc.text("Status", x + larguras[0] + larguras[1] + larguras[2], y);
     if (tipo === "frequencia") {
-      doc.text(
-        "Observações",
-        x + larguras[0] + larguras[1] + larguras[2] + larguras[3],
-        y,
-      );
+      doc.text("Observações", x + larguras[0] + larguras[1] + larguras[2] + larguras[3], y);
     } else {
-      doc.text(
-        "Tempo Eletivo",
-        x + larguras[0] + larguras[1] + larguras[2] + larguras[3],
-        y,
-      );
+      doc.text("Tempo Eletivo", x + larguras[0] + larguras[1] + larguras[2] + larguras[3], y);
     }
   }
 
   return y + 4;
 }
 
-// Função para adicionar rodapé com assinaturas
 function adicionarRodape(doc, y, incluirData = false) {
   const marginSides = 15;
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -346,7 +284,6 @@ function adicionarRodape(doc, y, incluirData = false) {
   return y + 5;
 }
 
-// Função para adicionar numeração de página
 function adicionarNumeracaoPagina(doc, paginaAtual, totalPaginas) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const marginBottom = 10;
@@ -354,15 +291,9 @@ function adicionarNumeracaoPagina(doc, paginaAtual, totalPaginas) {
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text(
-    `Página ${paginaAtual} de ${totalPaginas}`,
-    pageWidth / 2,
-    pageHeight - marginBottom,
-    { align: "center" },
-  );
+  doc.text(`Página ${paginaAtual} de ${totalPaginas}`, pageWidth / 2, pageHeight - marginBottom, { align: "center" });
 }
 
-// Função para ordenar eletivas por dia da semana
 function ordenarEletivasPorDia(eletivas) {
   const ordemDias = {
     segunda: 1,
@@ -382,25 +313,15 @@ function ordenarEletivasPorDia(eletivas) {
       return diaA - diaB;
     }
 
-    // Se mesmo dia, ordenar por horário (código T1, T2, etc)
     const tempoA = parseInt(a.horario?.codigoTempo?.replace("T", "") || 0);
     const tempoB = parseInt(b.horario?.codigoTempo?.replace("T", "") || 0);
     return tempoA - tempoB;
   });
 }
 
-// Função para agrupar eletivas por dia
 function agruparEletivasPorDia(eletivas) {
   const grupos = {};
-  const dias = [
-    "segunda",
-    "terca",
-    "quarta",
-    "quinta",
-    "sexta",
-    "sabado",
-    "domingo",
-  ];
+  const dias = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"];
 
   dias.forEach((dia) => {
     grupos[dia] = [];
@@ -419,7 +340,6 @@ function agruparEletivasPorDia(eletivas) {
   return grupos;
 }
 
-// Função para formatar nome do dia
 function formatarNomeDia(dia) {
   const nomes = {
     segunda: "SEGUNDA-FEIRA",
@@ -436,52 +356,6 @@ function formatarNomeDia(dia) {
 
 // ========== FUNÇÕES DE CARREGAMENTO ==========
 
-document.addEventListener("DOMContentLoaded", function () {
-  console.log("👨‍🏫 Inicializando página do professor...");
-
-  carregarTheme();
-
-  const profStorage = localStorage.getItem("professor_atual");
-  if (!profStorage) {
-    window.location.href = "selecionar-professor.html";
-    return;
-  }
-
-  professorAtual = JSON.parse(profStorage);
-  console.log("👤 Professor:", professorAtual.nome);
-
-  if (typeof carregarEstado === "function") {
-    carregarEstado();
-
-    // Inicializar estrutura de notas se não existir
-    if (!state.notas) {
-      state.notas = [];
-    }
-  }
-
-  document.getElementById("userName").textContent = professorAtual.nome;
-  document.getElementById("userRole").textContent = "Professor";
-  document.getElementById("professorInfoHeader").innerHTML =
-    `<span>${professorAtual.nome}</span>`;
-
-  // Atualizar status de conexão periodicamente
-  setInterval(atualizarStatusSincronizacao, 5000);
-  window.addEventListener("online", atualizarStatusSincronizacao);
-  window.addEventListener("offline", atualizarStatusSincronizacao);
-
-  // Atualizar status inicial
-  setTimeout(atualizarStatusSincronizacao, 1000);
-
-  carregarEletivasProfessor();
-  carregarSelectEletivasRegistros();
-
-  const hoje = new Date().toISOString().split("T")[0];
-  if (document.getElementById("dataAula")) {
-    document.getElementById("dataAula").value = hoje;
-  }
-});
-
-// Função para mostrar/ocultar loader
 function mostrarLoaderPDF(mostrar) {
   const loader = document.getElementById("pdfLoader");
   if (loader) {
@@ -493,7 +367,6 @@ function mostrarLoaderPDF(mostrar) {
   }
 }
 
-// Função para mostrar/ocultar loader de exclusão
 function mostrarLoaderExclusao(mostrar) {
   const loader = document.getElementById("pdfLoader");
   if (loader) {
@@ -507,16 +380,139 @@ function mostrarLoaderExclusao(mostrar) {
   }
 }
 
-// ========== FUNÇÃO PARA GERAR LISTA DE FREQUÊNCIA EM BRANCO (RESTAURADA) ==========
+// ========== FUNÇÃO PRINCIPAL: CARREGAR ELETIVAS DO FIREBASE ==========
 
-// Função para montar HTML da lista em branco
+async function carregarEletivasProfessor() {
+  const container = document.getElementById("professorEletivasCards");
+  if (!container) return;
+
+  mostrarLoaderPDF(true);
+
+  try {
+    let eletivas = [];
+
+    if (window.FirebaseSync && window.FirebaseSync.carregarDadosFirebase) {
+      try {
+        if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
+          console.log("🔄 Inicializando Firebase...");
+          window.FirebaseConfig.initFirebase();
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        const eletivasFirebase = await window.FirebaseSync.carregarDadosFirebase("eletivas");
+        if (eletivasFirebase && eletivasFirebase.length > 0) {
+          console.log(`📥 Carregadas ${eletivasFirebase.length} eletivas do Firebase`);
+          eletivas = eletivasFirebase;
+          state.eletivas = eletivasFirebase;
+          localStorage.setItem(CONFIG.storageKeys.eletivas, JSON.stringify(eletivasFirebase));
+        } else {
+          console.log("⚠️ Nenhuma eletiva retornada do Firebase, usando localStorage");
+          eletivas = state.eletivas || [];
+        }
+      } catch (error) {
+        console.error("❌ Erro ao carregar do Firebase:", error);
+        eletivas = state.eletivas || [];
+      }
+    } else {
+      eletivas = state.eletivas || [];
+    }
+
+    const eletivasProfessor = eletivas.filter(e => e.professorId === professorAtual.id);
+
+    console.log(`📚 Eletivas encontradas para ${professorAtual.nome}:`, eletivasProfessor.length);
+
+    if (eletivasProfessor.length === 0) {
+      container.innerHTML = '<p class="empty-state">Nenhuma eletiva encontrada para este professor</p>';
+      mostrarLoaderPDF(false);
+      return;
+    }
+
+    const eletivasOrdenadas = ordenarEletivasPorDia(eletivasProfessor);
+    const eletivasPorDia = agruparEletivasPorDia(eletivasOrdenadas);
+
+    container.innerHTML = "";
+
+    Object.keys(eletivasPorDia).forEach((dia) => {
+      const eletivasDoDia = eletivasPorDia[dia];
+      if (eletivasDoDia.length === 0) return;
+
+      const diaTitulo = document.createElement("h4");
+      diaTitulo.className = "dia-titulo";
+      diaTitulo.textContent = formatarNomeDia(dia);
+      diaTitulo.style.margin = "1.5rem 0 1rem 0";
+      diaTitulo.style.color = "var(--primary)";
+      diaTitulo.style.borderBottom = "2px solid var(--primary-light)";
+      diaTitulo.style.paddingBottom = "0.5rem";
+      container.appendChild(diaTitulo);
+
+      eletivasDoDia.forEach((eletiva) => {
+        const matriculas = state.matriculas?.filter(m => m.eletivaId === eletiva.id) || [];
+        const totalAlunos = matriculas.length;
+
+        const registrosEletiva = state.registros?.filter(r => r.eletivaId === eletiva.id) || [];
+        registrosEletiva.sort((a, b) => new Date(b.data) - new Date(a.data));
+        const ultimosRegistros = registrosEletiva.slice(0, 3).map(r => formatarDataCorrigida(r.data).substring(0, 5)).join(", ");
+
+        const semestreAtual = "1/2026";
+        const notasLiberadas = verificarNotasLiberadas(eletiva.id, semestreAtual);
+        const notaExistente = state.notas?.find(n => n.eletivaId === eletiva.id && n.semestre === semestreAtual);
+
+        const iconeNotas = notasLiberadas ? "fa-pen" : "fa-lock";
+        const tooltipNotas = notasLiberadas ? "Registrar notas do semestre" : "Aguardando liberação do gestor";
+        const classeBotaoNotas = notasLiberadas ? "btn-primary" : "btn-secondary btn-bloqueado";
+        const textoNotas = notasLiberadas ? (notaExistente ? "Editar Notas" : "Registrar Notas") : "Notas (bloqueado)";
+
+        const card = document.createElement("div");
+        card.className = "eletiva-card";
+        card.dataset.eletivaId = eletiva.id;
+
+        card.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+            <div style="flex: 1;">
+              <h3 style="margin-bottom: 0.3rem; color: var(--primary);">ELETIVA: ${eletiva.nome} | Código: ${eletiva.codigo}</h3>
+              <p style="margin: 0.2rem 0;"><i class="fas fa-user"></i> Professor: ${professorAtual.nome}</p>
+              <p style="margin: 0.2rem 0;"><i class="fas fa-clock"></i> Horário: ${eletiva.horario?.diaSemana} ${eletiva.horario?.codigoTempo} | Turmas: ${eletiva.turmaOrigem || "Várias"} | Alunos: ${totalAlunos}</p>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap;">
+            <button class="btn-primary btn-small" onclick="abrirRegistroAula(${eletiva.id})" title="Registrar frequência da aula">
+              <i class="fas fa-pen"></i> REGISTRAR FREQUÊNCIA
+            </button>
+            
+            <button class="btn-secondary btn-small" onclick="gerarListaFrequenciaBranco(${eletiva.id})" title="Gerar lista de frequência em branco">
+              <i class="fas fa-print"></i> LISTA EM BRANCO
+            </button>
+            
+            <button class="${classeBotaoNotas} btn-small" onclick="abrirModalNotas(${eletiva.id}, '${semestreAtual}')" title="${tooltipNotas}" ${!notasLiberadas ? "disabled" : ""}>
+              <i class="fas ${iconeNotas}"></i> ${textoNotas}
+            </button>
+          </div>
+          
+          <div style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px dashed var(--bg-gray); font-size: 0.9rem; color: var(--text-light);">
+            <i class="fas fa-history"></i> Últimos registros: ${ultimosRegistros || "Nenhum"}
+            ${!notasLiberadas ? '<span style="margin-left: 1rem; font-style: italic;"><i class="fas fa-lock"></i> Notas aguardando liberação</span>' : ""}
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao carregar eletivas:", error);
+    container.innerHTML = '<p class="empty-state">Erro ao carregar eletivas. Tente novamente.</p>';
+  } finally {
+    mostrarLoaderPDF(false);
+  }
+}
+
+// ========== FUNÇÃO PARA GERAR LISTA DE FREQUÊNCIA EM BRANCO ==========
+
 function montarHTMLListaBranco(dados) {
   const { cabecalho, alunos } = dados;
 
-  // Construir linhas da tabela (todas com campos em branco)
-  const linhasTabela = alunos
-    .map(
-      (aluno) => `
+  const linhasTabela = alunos.map(aluno => `
     <tr>
       <td style="padding: 4px; border: 1px solid #000;">${aluno.nome}</td>
       <td style="padding: 4px; border: 1px solid #000; text-align: center;">${aluno.turma}</td>
@@ -524,9 +520,7 @@ function montarHTMLListaBranco(dados) {
       <td style="padding: 4px; border: 1px solid #000; text-align: center;">_________</td>
       <td style="padding: 4px; border: 1px solid #000; text-align: center;">___</td>
     </tr>
-  `,
-    )
-    .join("");
+  `).join("");
 
   return `
     <div style="font-family: Arial, sans-serif; padding: 20px; width: 100%;">
@@ -577,24 +571,16 @@ function montarHTMLListaBranco(dados) {
   `;
 }
 
-// Função para gerar PDF da lista em branco (usando html2pdf se disponível)
 async function gerarPDFListaBranco(dados, nomeArquivo) {
   return new Promise((resolve, reject) => {
     try {
-      // Verificar se html2pdf está disponível
       if (typeof html2pdf === "undefined") {
-        // Fallback para jsPDF
-        const doc = new jsPDF({
-          orientation: "landscape",
-          unit: "mm",
-          format: "a4",
-        });
+        const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
         let y = 20;
         const pageWidth = doc.internal.pageSize.getWidth();
         const margin = 15;
 
-        // Título
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
         doc.text(dados.cabecalho.titulo, pageWidth / 2, y, { align: "center" });
@@ -612,19 +598,11 @@ async function gerarPDFListaBranco(dados, nomeArquivo) {
 
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text(
-          `${dados.cabecalho.eletiva} | Código: ${dados.cabecalho.codigo} | Professora: ${dados.cabecalho.professor}`,
-          pageWidth / 2,
-          y,
-          { align: "center" },
-        );
+        doc.text(`${dados.cabecalho.eletiva} | Código: ${dados.cabecalho.codigo} | Professora: ${dados.cabecalho.professor}`, pageWidth / 2, y, { align: "center" });
         y += 6;
-        doc.text(`Data: _____/_____/__________`, pageWidth / 2, y, {
-          align: "center",
-        });
+        doc.text(`Data: _____/_____/__________`, pageWidth / 2, y, { align: "center" });
         y += 10;
 
-        // Tabela
         const colWidths = [80, 25, 25, 25, 25];
 
         doc.setFontSize(9);
@@ -632,16 +610,8 @@ async function gerarPDFListaBranco(dados, nomeArquivo) {
         doc.text("NOME DO ALUNO", margin, y);
         doc.text("TURMA", margin + colWidths[0], y);
         doc.text("SIGE", margin + colWidths[0] + colWidths[1], y);
-        doc.text(
-          "STATUS",
-          margin + colWidths[0] + colWidths[1] + colWidths[2],
-          y,
-        );
-        doc.text(
-          "OBS",
-          margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3],
-          y,
-        );
+        doc.text("STATUS", margin + colWidths[0] + colWidths[1] + colWidths[2], y);
+        doc.text("OBS", margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], y);
 
         y += 5;
         doc.line(margin, y, pageWidth - margin, y);
@@ -659,16 +629,8 @@ async function gerarPDFListaBranco(dados, nomeArquivo) {
           doc.text(aluno.nome.substring(0, 30), margin, y);
           doc.text(aluno.turma, margin + colWidths[0], y);
           doc.text(aluno.sige, margin + colWidths[0] + colWidths[1], y);
-          doc.text(
-            "_______",
-            margin + colWidths[0] + colWidths[1] + colWidths[2],
-            y,
-          );
-          doc.text(
-            "___",
-            margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3],
-            y,
-          );
+          doc.text("_______", margin + colWidths[0] + colWidths[1] + colWidths[2], y);
+          doc.text("___", margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], y);
 
           y += 5;
         });
@@ -702,7 +664,6 @@ async function gerarPDFListaBranco(dados, nomeArquivo) {
         window.open(pdfUrl, "_blank");
         resolve(true);
       } else {
-        // Usar html2pdf se disponível
         const elemento = document.createElement("div");
         elemento.innerHTML = montarHTMLListaBranco(dados);
 
@@ -724,7 +685,6 @@ async function gerarPDFListaBranco(dados, nomeArquivo) {
   });
 }
 
-// Função para gerar lista de frequência em branco (ADAPTADA)
 window.gerarListaFrequenciaBranco = async function (eletivaId) {
   mostrarLoaderPDF(true);
 
@@ -735,22 +695,31 @@ window.gerarListaFrequenciaBranco = async function (eletivaId) {
       return;
     }
 
-    // Buscar alunos matriculados
-    const matriculas =
-      state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-    const alunos =
-      state.alunos
-        ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-        .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+    const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+    const alunos = state.alunos?.filter((a) => matriculas.some((m) => m.alunoId === a.id)).sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
     if (alunos.length === 0) {
       showToast("Esta eletiva não possui alunos cadastrados", "warning");
       return;
     }
 
-    // Gerar PDF
-    await gerarPDFListaBranco(eletiva, alunos, professorAtual.nome);
+    const dadosPDF = {
+      cabecalho: {
+        logo: "assets/logo-escola.png",
+        titulo: "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
+        escola: "EEMTI Filgueiras Lima - Inep: 23142804",
+        eletiva: eletiva.nome,
+        codigo: eletiva.codigo,
+        professor: professorAtual.nome,
+      },
+      alunos: alunos.map((aluno) => ({
+        nome: aluno.nome,
+        turma: aluno.turmaOrigem,
+        sige: aluno.codigoSige,
+      })),
+    };
 
+    await gerarPDFListaBranco(dadosPDF, `lista-frequencia-${eletiva.codigo}`);
     showToast("Lista de frequência gerada com sucesso!", "success");
   } catch (error) {
     console.error("Erro ao gerar lista:", error);
@@ -760,234 +729,8 @@ window.gerarListaFrequenciaBranco = async function (eletivaId) {
   }
 };
 
-// Gerar PDF de lista em branco (ADAPTADO DO GESTOR)
-async function gerarPDFListaBranco(eletiva, alunos, professorNome) {
-  return new Promise((resolve, reject) => {
-    try {
-      // Verificar se jsPDF está disponível
-      if (typeof window.jspdf === "undefined") {
-        console.error("❌ jsPDF não está disponível");
-        reject("Biblioteca jsPDF não encontrada");
-        return;
-      }
+// ========== FUNÇÕES DE IMPRESSÃO ==========
 
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      let paginaAtual = 1;
-      let y = 10;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 10;
-
-      // ===== FUNÇÃO PARA CABEÇALHO =====
-      function adicionarCabecalho() {
-        let yCabecalho = 10;
-
-        // TÍTULO PRINCIPAL
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text(
-          "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 7;
-
-        // ESCOLA
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.text(
-          "EEMTI Filgueiras Lima - Inep: 23142804",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 7;
-
-        // TÍTULO DA LISTA
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(
-          `LISTA DE FREQUÊNCIA - ${eletiva.nome}`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 6;
-
-        // INFORMAÇÕES DA ELETIVA
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
-        doc.text(
-          `Professor: ${professorNome} | Total: ${alunos.length} alunos`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 6;
-
-        // DATA EM BRANCO
-        doc.setFontSize(10);
-        doc.text(
-          `Data: ________ / ________ / __________`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 8;
-
-        return yCabecalho;
-      }
-
-      // ===== CABEÇALHO DA TABELA =====
-      function adicionarCabecalhoTabela(yPos) {
-        // Colunas com mesmas larguras do gestor
-        const colWidths = [75, 20, 20, 25, 25]; // OBS com 25mm
-        const posNota = pageWidth - margin - colWidths[4];
-        const posAus = posNota - colWidths[3] - 2;
-        const posSige = posAus - colWidths[2] - 2;
-        const posTurma = posSige - colWidths[1] - 2;
-        const posNome = margin;
-
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-
-        // Fundo cinza no cabeçalho
-        doc.setFillColor(240, 240, 240);
-        doc.rect(margin - 1, yPos - 5, pageWidth - 2 * margin + 2, 6, "F");
-
-        doc.text("NOME", posNome, yPos);
-        doc.text("TURMA", posTurma, yPos);
-        doc.text("SIGE", posSige, yPos);
-        doc.text("STATUS", posAus, yPos);
-        doc.text("OBS", posNota, yPos);
-
-        yPos += 4;
-        doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 4;
-
-        return { yPos, posNome, posTurma, posSige, posAus, posNota, colWidths };
-      }
-
-      // Primeira página
-      y = adicionarCabecalho();
-      let tabelaInfo = adicionarCabecalhoTabela(y);
-      y = tabelaInfo.yPos;
-
-      const posNome = tabelaInfo.posNome;
-      const posTurma = tabelaInfo.posTurma;
-      const posSige = tabelaInfo.posSige;
-      const posAus = tabelaInfo.posAus;
-      const posNota = tabelaInfo.posNota;
-      const colWidths = tabelaInfo.colWidths;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-
-      // Calcular quantos alunos por página
-      const alturaPorLinha = 5.5;
-      const linhasPorPagina = Math.floor(
-        (pageHeight - y - 25) / alturaPorLinha,
-      );
-
-      let alunosProcessados = 0;
-
-      while (alunosProcessados < alunos.length) {
-        const alunosNestaPagina = Math.min(
-          linhasPorPagina,
-          alunos.length - alunosProcessados,
-        );
-
-        for (let i = 0; i < alunosNestaPagina; i++) {
-          const aluno = alunos[alunosProcessados + i];
-
-          doc.text(aluno.nome, posNome, y);
-          doc.text(aluno.turmaOrigem, posTurma, y);
-          doc.text(aluno.codigoSige, posSige, y);
-
-          // Campos em branco
-          const ausX = posAus + colWidths[3] / 2;
-          const notaX = posNota + colWidths[4] / 2;
-
-          doc.text("_______", ausX, y, { align: "center" });
-          doc.text("___", notaX, y, { align: "center" });
-
-          y += alturaPorLinha;
-        }
-
-        alunosProcessados += alunosNestaPagina;
-
-        // Se ainda há alunos, adicionar nova página
-        if (alunosProcessados < alunos.length) {
-          doc.addPage();
-          paginaAtual++;
-          y = adicionarCabecalho();
-          tabelaInfo = adicionarCabecalhoTabela(y);
-          y = tabelaInfo.yPos;
-        }
-      }
-
-      // Linha final da tabela na última página
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 6;
-
-      // Registro da aula (3 linhas)
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text("Registro da Aula:", margin, y);
-      y += 5;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-
-      for (let i = 0; i < 3; i++) {
-        doc.text("_".repeat(100), margin, y);
-        y += 5;
-      }
-
-      y += 4;
-
-      // ASSINATURAS
-      const yAssinaturas = pageHeight - 12;
-
-      doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
-      doc.line(
-        pageWidth - margin - 60,
-        yAssinaturas,
-        pageWidth - margin,
-        yAssinaturas,
-      );
-
-      doc.setFontSize(9);
-      doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
-      doc.text(
-        "Assinatura do Gestor",
-        pageWidth - margin - 60,
-        yAssinaturas + 4,
-      );
-
-      // Gerar PDF
-      const pdfBlob = doc.output("blob");
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl, "_blank");
-
-      resolve(true);
-    } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-      reject(error);
-    }
-  });
-}
-
-// ========== FUNÇÕES DE IMPRESSÃO EXISTENTES ==========
-
-// Função para imprimir lista de frequência (preenchida)
 window.imprimirListaFrequencia = async function (eletivaId) {
   mostrarLoaderPDF(true);
 
@@ -998,24 +741,15 @@ window.imprimirListaFrequencia = async function (eletivaId) {
       return;
     }
 
-    const matriculas = state.matriculas.filter(
-      (m) => m.eletivaId === eletivaId,
-    );
-    const alunos = state.alunos
-      .filter((a) => matriculas.some((m) => m.alunoId === a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome));
+    const matriculas = state.matriculas.filter((m) => m.eletivaId === eletivaId);
+    const alunos = state.alunos.filter((a) => matriculas.some((m) => m.alunoId === a.id)).sort((a, b) => a.nome.localeCompare(b.nome));
 
     if (alunos.length === 0) {
       showToast("Nenhum aluno matriculado nesta eletiva", "warning");
       return;
     }
 
-    const doc = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4",
-    });
-
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     doc.setFont("helvetica");
 
     const marginTop = 15;
@@ -1025,23 +759,10 @@ window.imprimirListaFrequencia = async function (eletivaId) {
     const pageHeight = doc.internal.pageSize.getHeight();
     const contentWidth = pageWidth - 2 * marginSides;
 
-    const larguras = [
-      contentWidth * 0.35,
-      contentWidth * 0.1,
-      contentWidth * 0.15,
-      contentWidth * 0.15,
-      contentWidth * 0.25,
-    ];
-
+    const larguras = [contentWidth * 0.35, contentWidth * 0.1, contentWidth * 0.15, contentWidth * 0.15, contentWidth * 0.25];
     const alturaCabecalho = 55;
     const alturaRodape = 15;
-    const linhasPorPagina = calcularLinhasPorPagina(
-      pageHeight,
-      marginTop,
-      marginBottom,
-      alturaCabecalho,
-      alturaRodape,
-    );
+    const linhasPorPagina = calcularLinhasPorPagina(pageHeight, marginTop, marginBottom, alturaCabecalho, alturaRodape);
 
     const cabecalho = await adicionarCabecalhoPadronizado(doc, eletiva);
     let y = cabecalho.y;
@@ -1063,11 +784,7 @@ window.imprimirListaFrequencia = async function (eletivaId) {
           adicionarRodape(doc, y);
         }
 
-        adicionarNumeracaoPagina(
-          doc,
-          paginaAtual,
-          Math.ceil(alunos.length / linhasPorPagina),
-        );
+        adicionarNumeracaoPagina(doc, paginaAtual, Math.ceil(alunos.length / linhasPorPagina));
 
         doc.addPage();
         paginaAtual++;
@@ -1075,13 +792,7 @@ window.imprimirListaFrequencia = async function (eletivaId) {
 
         const novoCabecalho = await adicionarCabecalhoPadronizado(doc, eletiva);
         y = novoCabecalho.y;
-        y = adicionarCabecalhoTabela(
-          doc,
-          marginSides,
-          y,
-          larguras,
-          "frequencia",
-        );
+        y = adicionarCabecalhoTabela(doc, marginSides, y, larguras, "frequencia");
         y += 2;
         doc.line(marginSides, y, pageWidth - marginSides, y);
         y += 4;
@@ -1093,16 +804,8 @@ window.imprimirListaFrequencia = async function (eletivaId) {
       doc.text(aluno.nome.substring(0, 30), marginSides, y);
       doc.text(aluno.turmaOrigem, marginSides + larguras[0], y);
       doc.text(aluno.codigoSige, marginSides + larguras[0] + larguras[1], y);
-      doc.text(
-        "______",
-        marginSides + larguras[0] + larguras[1] + larguras[2],
-        y,
-      );
-      doc.text(
-        "________________",
-        marginSides + larguras[0] + larguras[1] + larguras[2] + larguras[3],
-        y,
-      );
+      doc.text("______", marginSides + larguras[0] + larguras[1] + larguras[2], y);
+      doc.text("________________", marginSides + larguras[0] + larguras[1] + larguras[2] + larguras[3], y);
 
       y += 5;
       linhasUsadas++;
@@ -1124,11 +827,7 @@ window.imprimirListaFrequencia = async function (eletivaId) {
 
     y += 8;
     adicionarRodape(doc, y);
-    adicionarNumeracaoPagina(
-      doc,
-      paginaAtual,
-      Math.ceil(alunos.length / linhasPorPagina),
-    );
+    adicionarNumeracaoPagina(doc, paginaAtual, Math.ceil(alunos.length / linhasPorPagina));
 
     const pdfBlob = doc.output("blob");
     const pdfUrl = URL.createObjectURL(pdfBlob);
@@ -1143,13 +842,10 @@ window.imprimirListaFrequencia = async function (eletivaId) {
   }
 };
 
-// Função para imprimir registros por data (ADAPTADA)
 window.imprimirRegistrosPorData = async function (eletivaId, dataISO) {
   mostrarLoaderPDF(true);
 
   try {
-    console.log("📄 Gerando PDF para eletiva:", eletivaId, "data:", dataISO);
-
     const eletiva = state.eletivas.find((e) => e.id === eletivaId);
     if (!eletiva) {
       showToast("Eletiva não encontrada", "error");
@@ -1161,44 +857,121 @@ window.imprimirRegistrosPorData = async function (eletivaId, dataISO) {
 
     if (window.FirebaseSync) {
       try {
-        registros =
-          await window.FirebaseSync.carregarRegistrosFirebase(eletivaId);
+        registros = await window.FirebaseSync.carregarRegistrosFirebase(eletivaId);
       } catch (e) {
         console.warn("Erro ao carregar do Firebase:", e);
       }
     }
 
     if (!registros || registros.length === 0) {
-      registros = (window.state?.registros || []).filter(
-        (r) => r.eletivaId === eletivaId,
-      );
+      registros = (window.state?.registros || []).filter((r) => r.eletivaId === eletivaId);
     }
 
     const dataNormalizada = normalizarDataParaSalvar(dataISO);
-    registroEncontrado = registros.find((r) => {
-      const rDataNormalizada = normalizarDataParaSalvar(r.data);
-      return rDataNormalizada === dataNormalizada;
-    });
+    registroEncontrado = registros.find((r) => normalizarDataParaSalvar(r.data) === dataNormalizada);
 
     if (!registroEncontrado) {
       showToast("Nenhum registro encontrado para esta data", "warning");
       return;
     }
 
-    const matriculas = state.matriculas.filter(
-      (m) => m.eletivaId === eletivaId,
-    );
-    const alunos = state.alunos
-      .filter((a) => matriculas.some((m) => m.alunoId === a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome));
+    const matriculas = state.matriculas.filter((m) => m.eletivaId === eletivaId);
+    const alunos = state.alunos.filter((a) => matriculas.some((m) => m.alunoId === a.id)).sort((a, b) => a.nome.localeCompare(b.nome));
 
-    // Gerar PDF
-    await gerarPDFRegistroAula(
-      eletiva,
-      alunos,
-      registroEncontrado,
-      professorAtual.nome,
-    );
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    doc.setFont("helvetica");
+
+    const marginTop = 15;
+    const marginBottom = 10;
+    const marginSides = 15;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - 2 * marginSides;
+
+    const larguras = [contentWidth * 0.35, contentWidth * 0.1, contentWidth * 0.15, contentWidth * 0.15, contentWidth * 0.25];
+    const alturaCabecalho = 55;
+    const alturaRodape = 15;
+    const linhasPorPagina = calcularLinhasPorPagina(pageHeight, marginTop, marginBottom, alturaCabecalho, alturaRodape);
+
+    const dataFormatada = formatarDataCorrigida(registroEncontrado.data);
+    const cabecalho = await adicionarCabecalhoPadronizado(doc, eletiva, dataFormatada);
+    let y = cabecalho.y;
+    let paginaAtual = 1;
+    let linhasUsadas = 0;
+
+    y = adicionarCabecalhoTabela(doc, marginSides, y, larguras, "registro");
+    y += 2;
+    doc.line(marginSides, y, pageWidth - marginSides, y);
+    y += 4;
+
+    for (let i = 0; i < alunos.length; i++) {
+      const aluno = alunos[i];
+
+      if (linhasUsadas >= linhasPorPagina) {
+        const espacoRestante = pageHeight - y - marginBottom - 10;
+        if (espacoRestante > 0) {
+          y = pageHeight - marginBottom - 15;
+          adicionarRodape(doc, y);
+        }
+
+        adicionarNumeracaoPagina(doc, paginaAtual, Math.ceil(alunos.length / linhasPorPagina));
+
+        doc.addPage();
+        paginaAtual++;
+        linhasUsadas = 0;
+
+        const novoCabecalho = await adicionarCabecalhoPadronizado(doc, eletiva, dataFormatada);
+        y = novoCabecalho.y;
+        y = adicionarCabecalhoTabela(doc, marginSides, y, larguras, "registro");
+        y += 2;
+        doc.line(marginSides, y, pageWidth - marginSides, y);
+        y += 4;
+      }
+
+      const isPresente = registroEncontrado.frequencia?.presentes?.includes(aluno.codigoSige);
+      const status = isPresente ? "Presente" : "Ausente";
+      const tempoEletivo = eletiva.horario?.codigoTempo || "T1";
+
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+
+      doc.text(aluno.nome.substring(0, 30), marginSides, y);
+      doc.text(aluno.turmaOrigem, marginSides + larguras[0], y);
+      doc.text(aluno.codigoSige, marginSides + larguras[0] + larguras[1], y);
+      doc.text(status, marginSides + larguras[0] + larguras[1] + larguras[2], y);
+      doc.text(tempoEletivo, marginSides + larguras[0] + larguras[1] + larguras[2] + larguras[3], y);
+
+      y += 5;
+      linhasUsadas++;
+    }
+
+    y += 8;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Registro da Aula:", marginSides, y);
+    y += 5;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+
+    const linhasConteudo = doc.splitTextToSize(registroEncontrado.conteudo, contentWidth);
+    for (let i = 0; i < Math.min(3, linhasConteudo.length); i++) {
+      doc.text(linhasConteudo[i], marginSides, y);
+      y += 5;
+    }
+
+    for (let i = linhasConteudo.length; i < 3; i++) {
+      doc.text("_".repeat(140), marginSides, y);
+      y += 5;
+    }
+
+    y += 8;
+    adicionarRodape(doc, y);
+    adicionarNumeracaoPagina(doc, paginaAtual, Math.ceil(alunos.length / linhasPorPagina));
+
+    const pdfBlob = doc.output("blob");
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    window.open(pdfUrl, "_blank");
 
     showToast("PDF gerado com sucesso!", "success");
   } catch (error) {
@@ -1209,525 +982,6 @@ window.imprimirRegistrosPorData = async function (eletivaId, dataISO) {
   }
 };
 
-// Gerar PDF de registro de aula (ADAPTADO)
-async function gerarPDFRegistroAula(eletiva, alunos, registro, professorNome) {
-  return new Promise((resolve, reject) => {
-    try {
-      // Verificar se jsPDF está disponível
-      if (typeof window.jspdf === "undefined") {
-        console.error("❌ jsPDF não está disponível");
-        reject("Biblioteca jsPDF não encontrada");
-        return;
-      }
-
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      let paginaAtual = 1;
-      let y = 10;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 10;
-
-      // Mapear presenças e ausências
-      const presentesSet = new Set(registro.frequencia?.presentes || []);
-      const justificativas = registro.frequencia?.justificativas || {};
-
-      // ===== FUNÇÃO PARA CABEÇALHO =====
-      function adicionarCabecalho() {
-        let yCabecalho = 10;
-
-        // TÍTULO PRINCIPAL
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text(
-          "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 7;
-
-        // ESCOLA
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.text(
-          "EEMTI Filgueiras Lima - Inep: 23142804",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 7;
-
-        // TÍTULO DA LISTA
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(
-          `REGISTRO DE AULA - ${eletiva.nome}`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 6;
-
-        // INFORMAÇÕES DA ELETIVA
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
-        const dataFormatada = formatarDataCorrigida(registro.data);
-        doc.text(
-          `Professor: ${professorNome} | Data: ${dataFormatada} | Total: ${alunos.length} alunos`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 8;
-
-        return yCabecalho;
-      }
-
-      // ===== CABEÇALHO DA TABELA =====
-      function adicionarCabecalhoTabela(yPos) {
-        // Colunas com mesmas larguras do gestor + STATUS
-        const colWidths = [70, 18, 18, 15, 15, 20]; // NOME, TURMA, SIGE, STATUS, AUS, OBS
-        const posObs = pageWidth - margin - colWidths[5];
-        const posAus = posObs - colWidths[4] - 2;
-        const posStatus = posAus - colWidths[3] - 2;
-        const posSige = posStatus - colWidths[2] - 2;
-        const posTurma = posSige - colWidths[1] - 2;
-        const posNome = margin;
-
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-
-        // Fundo cinza no cabeçalho
-        doc.setFillColor(240, 240, 240);
-        doc.rect(margin - 1, yPos - 5, pageWidth - 2 * margin + 2, 6, "F");
-
-        doc.text("NOME", posNome, yPos);
-        doc.text("TURMA", posTurma, yPos);
-        doc.text("SIGE", posSige, yPos);
-        doc.text("STATUS", posStatus, yPos);
-        doc.text("AUS", posAus, yPos);
-        doc.text("OBS", posObs, yPos);
-
-        yPos += 4;
-        doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 4;
-
-        return {
-          yPos,
-          posNome,
-          posTurma,
-          posSige,
-          posStatus,
-          posAus,
-          posObs,
-          colWidths,
-        };
-      }
-
-      // Primeira página
-      y = adicionarCabecalho();
-      let tabelaInfo = adicionarCabecalhoTabela(y);
-      y = tabelaInfo.yPos;
-
-      const posNome = tabelaInfo.posNome;
-      const posTurma = tabelaInfo.posTurma;
-      const posSige = tabelaInfo.posSige;
-      const posStatus = tabelaInfo.posStatus;
-      const posAus = tabelaInfo.posAus;
-      const posObs = tabelaInfo.posObs;
-      const colWidths = tabelaInfo.colWidths;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-
-      // Calcular quantos alunos por página
-      const alturaPorLinha = 5.5;
-      const linhasPorPagina = Math.floor(
-        (pageHeight - y - 35) / alturaPorLinha,
-      );
-
-      let alunosProcessados = 0;
-
-      while (alunosProcessados < alunos.length) {
-        const alunosNestaPagina = Math.min(
-          linhasPorPagina,
-          alunos.length - alunosProcessados,
-        );
-
-        for (let i = 0; i < alunosNestaPagina; i++) {
-          const aluno = alunos[alunosProcessados + i];
-
-          const isPresente = presentesSet.has(aluno.codigoSige);
-          const status = isPresente ? "✅" : "❌";
-          const ausencias = isPresente ? 0 : 1;
-          const justificativa = justificativas[aluno.codigoSige] || "";
-          const obsDisplay = justificativa.substring(0, 15);
-
-          doc.text(aluno.nome.substring(0, 25), posNome, y);
-          doc.text(aluno.turmaOrigem, posTurma, y);
-          doc.text(aluno.codigoSige, posSige, y);
-
-          // Centralizar status e ausências
-          const statusX = posStatus + colWidths[3] / 2;
-          const ausX = posAus + colWidths[4] / 2;
-          const obsX = posObs + colWidths[5] / 2;
-
-          doc.text(status, statusX, y, { align: "center" });
-          doc.text(ausencias.toString(), ausX, y, { align: "center" });
-          doc.text(obsDisplay, obsX, y, { align: "center" });
-
-          y += alturaPorLinha;
-        }
-
-        alunosProcessados += alunosNestaPagina;
-
-        // Se ainda há alunos, adicionar nova página
-        if (alunosProcessados < alunos.length) {
-          doc.addPage();
-          paginaAtual++;
-          y = adicionarCabecalho();
-          tabelaInfo = adicionarCabecalhoTabela(y);
-          y = tabelaInfo.yPos;
-        }
-      }
-
-      // Linha final da tabela na última página
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 8;
-
-      // RESUMO
-      const totalPresentes = registro.frequencia?.presentes?.length || 0;
-      const totalAusentes = registro.frequencia?.ausentes?.length || 0;
-
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text("📊 RESUMO DA AULA:", margin, y);
-      y += 6;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(`• Total de alunos: ${alunos.length}`, margin + 5, y);
-      y += 5;
-      doc.text(`• Presentes: ${totalPresentes}`, margin + 5, y);
-      y += 5;
-      doc.text(`• Ausentes: ${totalAusentes}`, margin + 5, y);
-      y += 6;
-
-      // CONTEÚDO DA AULA
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text("📝 Conteúdo da Aula:", margin, y);
-      y += 6;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-
-      // Dividir conteúdo em linhas
-      const linhasConteudo = doc.splitTextToSize(
-        registro.conteudo,
-        pageWidth - 2 * margin,
-      );
-      linhasConteudo.forEach((linha) => {
-        if (y > pageHeight - 25) {
-          doc.addPage();
-          paginaAtual++;
-          y = 20;
-        }
-        doc.text(linha, margin, y);
-        y += 5;
-      });
-
-      y += 4;
-
-      // ASSINATURAS (na última página)
-      if (paginaAtual === Math.ceil(alunos.length / linhasPorPagina)) {
-        const yAssinaturas = Math.min(y + 10, pageHeight - 12);
-
-        doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
-        doc.line(
-          pageWidth - margin - 60,
-          yAssinaturas,
-          pageWidth - margin,
-          yAssinaturas,
-        );
-
-        doc.setFontSize(9);
-        doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
-        doc.text(
-          "Assinatura do Gestor",
-          pageWidth - margin - 60,
-          yAssinaturas + 4,
-        );
-      }
-
-      // Gerar PDF
-      const pdfBlob = doc.output("blob");
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl, "_blank");
-
-      resolve(true);
-    } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-      reject(error);
-    }
-  });
-}
-
-// Gerar PDF de boletim de notas (ADAPTADO)
-async function gerarPDFBoletimNotas(
-  eletiva,
-  alunos,
-  registroNotas,
-  professorNome,
-  semestre,
-) {
-  return new Promise((resolve, reject) => {
-    try {
-      // Verificar se jsPDF está disponível
-      if (typeof window.jspdf === "undefined") {
-        console.error("❌ jsPDF não está disponível");
-        reject("Biblioteca jsPDF não encontrada");
-        return;
-      }
-
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      let paginaAtual = 1;
-      let y = 10;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const margin = 10;
-
-      // Mapear notas
-      const mapaNotas = {};
-      if (registroNotas?.notas) {
-        registroNotas.notas.forEach((n) => {
-          mapaNotas[n.alunoId] = n.nota;
-        });
-      }
-
-      // Calcular estatísticas
-      const notasValidas = Object.values(mapaNotas).filter(
-        (n) => n !== undefined,
-      );
-      const mediaGeral =
-        notasValidas.length > 0
-          ? (
-              notasValidas.reduce((a, b) => a + b, 0) / notasValidas.length
-            ).toFixed(1)
-          : "N/A";
-      const maiorNota =
-        notasValidas.length > 0 ? Math.max(...notasValidas).toFixed(1) : "N/A";
-      const menorNota =
-        notasValidas.length > 0 ? Math.min(...notasValidas).toFixed(1) : "N/A";
-
-      // ===== FUNÇÃO PARA CABEÇALHO =====
-      function adicionarCabecalho() {
-        let yCabecalho = 10;
-
-        // TÍTULO PRINCIPAL
-        doc.setFontSize(16);
-        doc.setFont("helvetica", "bold");
-        doc.text(
-          "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 7;
-
-        // ESCOLA
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.text(
-          "EEMTI Filgueiras Lima - Inep: 23142804",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 7;
-
-        // TÍTULO DA LISTA
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "bold");
-        doc.text(
-          `BOLETIM DE NOTAS - ${eletiva.nome}`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 6;
-
-        // INFORMAÇÕES DA ELETIVA
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
-        doc.text(
-          `Professor: ${professorNome} | Semestre: ${semestre} | Total: ${alunos.length} alunos`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
-        yCabecalho += 8;
-
-        return yCabecalho;
-      }
-
-      // ===== CABEÇALHO DA TABELA =====
-      function adicionarCabecalhoTabela(yPos) {
-        // Colunas com mesmas larguras do gestor
-        const colWidths = [75, 20, 20, 25]; // NOME, TURMA, SIGE, NOTA
-        const posNota = pageWidth - margin - colWidths[3];
-        const posSige = posNota - colWidths[2] - 2;
-        const posTurma = posSige - colWidths[1] - 2;
-        const posNome = margin;
-
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-
-        // Fundo cinza no cabeçalho
-        doc.setFillColor(240, 240, 240);
-        doc.rect(margin - 1, yPos - 5, pageWidth - 2 * margin + 2, 6, "F");
-
-        doc.text("NOME", posNome, yPos);
-        doc.text("TURMA", posTurma, yPos);
-        doc.text("SIGE", posSige, yPos);
-        doc.text("NOTA", posNota, yPos);
-
-        yPos += 4;
-        doc.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 4;
-
-        return { yPos, posNome, posTurma, posSige, posNota, colWidths };
-      }
-
-      // Primeira página
-      y = adicionarCabecalho();
-      let tabelaInfo = adicionarCabecalhoTabela(y);
-      y = tabelaInfo.yPos;
-
-      const posNome = tabelaInfo.posNome;
-      const posTurma = tabelaInfo.posTurma;
-      const posSige = tabelaInfo.posSige;
-      const posNota = tabelaInfo.posNota;
-      const colWidths = tabelaInfo.colWidths;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-
-      // Calcular quantos alunos por página
-      const alturaPorLinha = 5.5;
-      const linhasPorPagina = Math.floor(
-        (pageHeight - y - 35) / alturaPorLinha,
-      );
-
-      let alunosProcessados = 0;
-
-      while (alunosProcessados < alunos.length) {
-        const alunosNestaPagina = Math.min(
-          linhasPorPagina,
-          alunos.length - alunosProcessados,
-        );
-
-        for (let i = 0; i < alunosNestaPagina; i++) {
-          const aluno = alunos[alunosProcessados + i];
-          const nota = mapaNotas[aluno.id];
-          const notaDisplay = nota !== undefined ? nota.toFixed(1) : "-";
-
-          doc.text(aluno.nome, posNome, y);
-          doc.text(aluno.turmaOrigem, posTurma, y);
-          doc.text(aluno.codigoSige, posSige, y);
-
-          // Centralizar nota
-          const notaX = posNota + colWidths[3] / 2;
-          doc.text(notaDisplay, notaX, y, { align: "center" });
-
-          y += alturaPorLinha;
-        }
-
-        alunosProcessados += alunosNestaPagina;
-
-        // Se ainda há alunos, adicionar nova página
-        if (alunosProcessados < alunos.length) {
-          doc.addPage();
-          paginaAtual++;
-          y = adicionarCabecalho();
-          tabelaInfo = adicionarCabecalhoTabela(y);
-          y = tabelaInfo.yPos;
-        }
-      }
-
-      // Linha final da tabela na última página
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 8;
-
-      // RESUMO ESTATÍSTICO
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text("📊 RESUMO DA TURMA:", margin, y);
-      y += 6;
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(`• Total de alunos: ${alunos.length}`, margin + 5, y);
-      y += 5;
-      doc.text(`• Média geral: ${mediaGeral}`, margin + 5, y);
-      y += 5;
-      doc.text(`• Maior nota: ${maiorNota}`, margin + 5, y);
-      y += 5;
-      doc.text(`• Menor nota: ${menorNota}`, margin + 5, y);
-      y += 6;
-
-      // ASSINATURAS (na última página)
-      const yAssinaturas = pageHeight - 12;
-
-      doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
-      doc.line(
-        pageWidth - margin - 60,
-        yAssinaturas,
-        pageWidth - margin,
-        yAssinaturas,
-      );
-
-      doc.setFontSize(9);
-      doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
-      doc.text(
-        "Assinatura do Gestor",
-        pageWidth - margin - 60,
-        yAssinaturas + 4,
-      );
-
-      // DATA
-      const dataAtual = new Date().toLocaleDateString("pt-BR");
-      doc.setFontSize(8);
-      doc.text(`Data: ${dataAtual}`, pageWidth / 2, yAssinaturas + 8, {
-        align: "center",
-      });
-
-      // Gerar PDF
-      const pdfBlob = doc.output("blob");
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl, "_blank");
-
-      resolve(true);
-    } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-      reject(error);
-    }
-  });
-}
-
-// Função para imprimir PDF de notas (ADAPTADA)
 window.imprimirPDFNotas = async function (eletivaId, semestre = "1/2026") {
   mostrarLoaderPDF(true);
 
@@ -1738,30 +992,126 @@ window.imprimirPDFNotas = async function (eletivaId, semestre = "1/2026") {
       return;
     }
 
-    const registroNotas = state.notas?.find(
-      (n) => n.eletivaId === eletivaId && n.semestre === semestre,
-    );
-
-    const matriculas = state.matriculas.filter(
-      (m) => m.eletivaId === eletivaId,
-    );
-    const alunos = state.alunos
-      .filter((a) => matriculas.some((m) => m.alunoId === a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome));
+    const registroNotas = state.notas?.find((n) => n.eletivaId === eletivaId && n.semestre === semestre);
+    const matriculas = state.matriculas.filter((m) => m.eletivaId === eletivaId);
+    const alunos = state.alunos.filter((a) => matriculas.some((m) => m.alunoId === a.id)).sort((a, b) => a.nome.localeCompare(b.nome));
 
     if (alunos.length === 0) {
       showToast("Nenhum aluno matriculado nesta eletiva", "warning");
       return;
     }
 
-    // Gerar PDF
-    await gerarPDFBoletimNotas(
-      eletiva,
-      alunos,
-      registroNotas,
-      professorAtual.nome,
-      semestre,
-    );
+    const alunosComNotas = alunos.map((aluno) => {
+      const notaEncontrada = registroNotas?.notas?.find((n) => n.alunoId === aluno.id);
+      return { ...aluno, nota: notaEncontrada ? notaEncontrada.nota : 6.0 };
+    });
+
+    const somaNotas = alunosComNotas.reduce((acc, aluno) => acc + parseFloat(aluno.nota || 0), 0);
+    const mediaTurma = alunosComNotas.length > 0 ? (somaNotas / alunosComNotas.length).toFixed(1) : "0.0";
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    doc.setFont("helvetica");
+
+    const marginTop = 15;
+    const marginBottom = 10;
+    const marginSides = 15;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - 2 * marginSides;
+
+    const larguras = [contentWidth * 0.4, contentWidth * 0.15, contentWidth * 0.2, contentWidth * 0.25];
+    const alturaCabecalho = 65;
+    const alturaRodape = 25;
+    const linhasPorPagina = calcularLinhasPorPagina(pageHeight, marginTop, marginBottom, alturaCabecalho, alturaRodape);
+
+    const cabecalho = await adicionarCabecalhoPadronizado(doc, eletiva, null, semestre);
+    let y = cabecalho.y;
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("BOLETIM DE NOTAS", pageWidth / 2, y, { align: "center" });
+    y += 10;
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+
+    doc.text("Nome do Aluno", marginSides, y);
+    doc.text("Turma", marginSides + larguras[0], y);
+    doc.text("SIGE", marginSides + larguras[0] + larguras[1], y);
+    doc.text("Nota (0-10)", marginSides + larguras[0] + larguras[1] + larguras[2], y);
+
+    y += 4;
+    doc.line(marginSides, y, pageWidth - marginSides, y);
+    y += 4;
+
+    let paginaAtual = 1;
+    let linhasUsadas = 0;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+
+    for (let i = 0; i < alunosComNotas.length; i++) {
+      const aluno = alunosComNotas[i];
+
+      if (linhasUsadas >= linhasPorPagina) {
+        doc.addPage();
+        paginaAtual++;
+        linhasUsadas = 0;
+
+        const novoCabecalho = await adicionarCabecalhoPadronizado(doc, eletiva, null, semestre);
+        y = novoCabecalho.y;
+
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("BOLETIM DE NOTAS", pageWidth / 2, y, { align: "center" });
+        y += 10;
+
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text("Nome do Aluno", marginSides, y);
+        doc.text("Turma", marginSides + larguras[0], y);
+        doc.text("SIGE", marginSides + larguras[0] + larguras[1], y);
+        doc.text("Nota (0-10)", marginSides + larguras[0] + larguras[1] + larguras[2], y);
+
+        y += 4;
+        doc.line(marginSides, y, pageWidth - marginSides, y);
+        y += 4;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+      }
+
+      const notaFormatada = aluno.nota ? parseFloat(aluno.nota).toFixed(1) : "6.0";
+
+      doc.text(aluno.nome.substring(0, 35), marginSides, y);
+      doc.text(aluno.turmaOrigem, marginSides + larguras[0], y);
+      doc.text(aluno.codigoSige, marginSides + larguras[0] + larguras[1], y);
+
+      const larguraNota = doc.getTextWidth(notaFormatada);
+      doc.text(notaFormatada, marginSides + larguras[0] + larguras[1] + larguras[2] + (larguras[3] - larguraNota), y);
+
+      y += 5;
+      linhasUsadas++;
+    }
+
+    y += 8;
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total de Alunos: ${alunosComNotas.length}`, marginSides, y);
+    y += 5;
+    doc.text(`Média da Turma: ${mediaTurma}`, marginSides, y);
+    y += 8;
+
+    doc.line(marginSides, y, pageWidth - marginSides, y);
+    y += 8;
+
+    adicionarRodape(doc, y, true);
+    adicionarNumeracaoPagina(doc, paginaAtual, Math.ceil(alunosComNotas.length / linhasPorPagina));
+
+    const pdfBlob = doc.output("blob");
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    window.open(pdfUrl, "_blank");
 
     showToast("PDF gerado com sucesso!", "success");
   } catch (error) {
@@ -1774,21 +1124,15 @@ window.imprimirPDFNotas = async function (eletivaId, semestre = "1/2026") {
 
 // ========== FUNÇÕES DE MUDANÇA DE ABA ==========
 
-// Função para mudar de aba
 window.mudarTab = function (tab) {
-  document
-    .querySelectorAll(".professor-tabs .tab-btn")
-    .forEach((btn) => btn.classList.remove("active"));
-
+  document.querySelectorAll(".professor-tabs .tab-btn").forEach((btn) => btn.classList.remove("active"));
   document.querySelectorAll(".professor-tabs .tab-btn").forEach((btn) => {
     if (btn.getAttribute("onclick")?.includes(`'${tab}'`)) {
       btn.classList.add("active");
     }
   });
 
-  document
-    .querySelectorAll(".tab-pane")
-    .forEach((pane) => pane.classList.remove("active"));
+  document.querySelectorAll(".tab-pane").forEach((pane) => pane.classList.remove("active"));
   document.getElementById(`tab-${tab}`).classList.add("active");
 
   if (tab === "registros") {
@@ -1798,135 +1142,17 @@ window.mudarTab = function (tab) {
   }
 };
 
-// ========== FUNÇÕES DE CARREGAMENTO DE ELETIVAS ==========
-
-function carregarEletivasProfessor() {
-  const container = document.getElementById("professorEletivasCards");
-  if (!container) return;
-
-  const eletivas = state.eletivas.filter(
-    (e) => e.professorId === professorAtual.id,
-  );
-
-  if (eletivas.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhuma eletiva encontrada para este professor</p>';
-    return;
-  }
-
-  // Ordenar eletivas por dia da semana e horário
-  const eletivasOrdenadas = ordenarEletivasPorDia(eletivas);
-  const eletivasPorDia = agruparEletivasPorDia(eletivasOrdenadas);
-
-  container.innerHTML = "";
-
-  // Para cada dia, criar seção
-  Object.keys(eletivasPorDia).forEach((dia) => {
-    const eletivasDoDia = eletivasPorDia[dia];
-    if (eletivasDoDia.length === 0) return;
-
-    // Título do dia
-    const diaTitulo = document.createElement("h4");
-    diaTitulo.className = "dia-titulo";
-    diaTitulo.textContent = formatarNomeDia(dia);
-    diaTitulo.style.margin = "1.5rem 0 1rem 0";
-    diaTitulo.style.color = "var(--primary)";
-    diaTitulo.style.borderBottom = "2px solid var(--primary-light)";
-    diaTitulo.style.paddingBottom = "0.5rem";
-    container.appendChild(diaTitulo);
-
-    // Cards do dia
-    eletivasDoDia.forEach((eletiva) => {
-      const matriculas = state.matriculas.filter(
-        (m) => m.eletivaId === eletiva.id,
-      ).length;
-
-      // Buscar últimos registros
-      const registrosEletiva =
-        state.registros
-          ?.filter((r) => r.eletivaId === eletiva.id)
-          .sort((a, b) => new Date(b.data) - new Date(a.data))
-          .slice(0, 3) || [];
-
-      const ultimosRegistros = registrosEletiva
-        .map((r) => formatarDataCorrigida(r.data).substring(0, 5))
-        .join(", ");
-
-      // Verificar status das notas
-      const semestreAtual = "1/2026";
-      const notasLiberadas = verificarNotasLiberadas(eletiva.id, semestreAtual);
-      const notaExistente = state.notas?.find(
-        (n) => n.eletivaId === eletiva.id && n.semestre === semestreAtual,
-      );
-
-      const iconeNotas = notasLiberadas ? "fa-pen" : "fa-lock";
-      const tooltipNotas = notasLiberadas
-        ? "Registrar notas do semestre"
-        : "Aguardando liberação do gestor";
-      const classeBotaoNotas = notasLiberadas
-        ? "btn-primary"
-        : "btn-secondary btn-bloqueado";
-      const textoNotas = notasLiberadas
-        ? notaExistente
-          ? "Editar Notas"
-          : "Registrar Notas"
-        : "Notas (bloqueado)";
-
-      const card = document.createElement("div");
-      card.className = "eletiva-card";
-      card.dataset.eletivaId = eletiva.id;
-
-      // CARD COM BOTÃO RESTAURADO (🖨️ LISTA EM BRANCO)
-      card.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                    <div style="flex: 1;">
-                        <h3 style="margin-bottom: 0.3rem; color: var(--primary);">ELETIVA: ${eletiva.nome} | Código: ${eletiva.codigo}</h3>
-                        <p style="margin: 0.2rem 0;"><i class="fas fa-user"></i> Professor: ${professorAtual.nome}</p>
-                        <p style="margin: 0.2rem 0;"><i class="fas fa-clock"></i> Horário: ${eletiva.horario.diaSemana} ${eletiva.horario.codigoTempo} | Turmas: ${eletiva.turmaOrigem || "Várias"}</p>
-                    </div>
-                </div>
-                
-                <div style="display: flex; gap: 0.5rem; margin: 1rem 0; flex-wrap: wrap;">
-                    <button class="btn-primary btn-small" onclick="abrirRegistroAula(${eletiva.id})" title="Registrar frequência da aula">
-                        <i class="fas fa-pen"></i> REGISTRAR FREQUÊNCIA
-                    </button>
-                    
-                    <!-- BOTÃO RESTAURADO: LISTA EM BRANCO -->
-                    <button class="btn-secondary btn-small" onclick="gerarListaFrequenciaBranco(${eletiva.id})" title="Gerar lista de frequência em branco">
-                        <i class="fas fa-print"></i> LISTA EM BRANCO
-                    </button>
-                    
-                    <button class="${classeBotaoNotas} btn-small" onclick="abrirModalNotas(${eletiva.id}, '${semestreAtual}')" title="${tooltipNotas}" ${!notasLiberadas ? "disabled" : ""}>
-                        <i class="fas ${iconeNotas}"></i> ${textoNotas}
-                    </button>
-                </div>
-                
-                <div style="margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px dashed var(--bg-gray); font-size: 0.9rem; color: var(--text-light);">
-                    <i class="fas fa-history"></i> Últimos registros: ${ultimosRegistros || "Nenhum"}
-                    ${!notasLiberadas ? '<span style="margin-left: 1rem; font-style: italic;"><i class="fas fa-lock"></i> Notas aguardando liberação</span>' : ""}
-                </div>
-            `;
-
-      container.appendChild(card);
-    });
-  });
-}
-
 // ========== FUNÇÕES DE REGISTRO DE AULA ==========
 
-// Abrir registro de aula
 window.abrirRegistroAula = function (eletivaId) {
   eletivaSelecionadaRegistro = eletivaId;
   document.getElementById("modalRegistroAula").classList.add("active");
   carregarAlunosParaChamada(eletivaId);
 };
 
-// Carregar alunos para chamada
 function carregarAlunosParaChamada(eletivaId) {
   const matriculas = state.matriculas.filter((m) => m.eletivaId === eletivaId);
-  const alunos = state.alunos.filter((a) =>
-    matriculas.some((m) => m.alunoId === a.id),
-  );
+  const alunos = state.alunos.filter((a) => matriculas.some((m) => m.alunoId === a.id));
 
   if (alunos.length === 0) {
     alert("Nenhum aluno matriculado nesta eletiva");
@@ -1941,15 +1167,15 @@ function carregarAlunosParaChamada(eletivaId) {
     const div = document.createElement("div");
     div.className = "aluno-chamada-item";
     div.innerHTML = `
-            <label class="toggle-switch">
-                <input type="checkbox" id="aluno_${aluno.id}" value="${aluno.codigoSige}" checked onchange="atualizarResumoChamada()">
-                <span class="toggle-slider"></span>
-            </label>
-            <div class="aluno-info">
-                <strong>${aluno.codigoSige}</strong> - ${aluno.nome}
-                <span class="aluno-turma">${aluno.turmaOrigem}</span>
-            </div>
-        `;
+      <label class="toggle-switch">
+        <input type="checkbox" id="aluno_${aluno.id}" value="${aluno.codigoSige}" checked onchange="atualizarResumoChamada()">
+        <span class="toggle-slider"></span>
+      </label>
+      <div class="aluno-info">
+        <strong>${aluno.codigoSige}</strong> - ${aluno.nome}
+        <span class="aluno-turma">${aluno.turmaOrigem}</span>
+      </div>
+    `;
 
     container.appendChild(div);
   });
@@ -1957,11 +1183,8 @@ function carregarAlunosParaChamada(eletivaId) {
   atualizarResumoChamada();
 }
 
-// Atualizar resumo da chamada
 window.atualizarResumoChamada = function () {
-  const checkboxes = document.querySelectorAll(
-    '#listaAlunosChamada input[type="checkbox"]',
-  );
+  const checkboxes = document.querySelectorAll('#listaAlunosChamada input[type="checkbox"]');
   const presentes = Array.from(checkboxes).filter((cb) => cb.checked).length;
   const ausentes = checkboxes.length - presentes;
 
@@ -1970,27 +1193,20 @@ window.atualizarResumoChamada = function () {
   document.getElementById("totalAlunosCount").textContent = checkboxes.length;
 };
 
-// Marcar todos como presentes
 window.marcarTodosPresentes = function () {
-  document
-    .querySelectorAll('#listaAlunosChamada input[type="checkbox"]')
-    .forEach((cb) => {
-      cb.checked = true;
-    });
+  document.querySelectorAll('#listaAlunosChamada input[type="checkbox"]').forEach((cb) => {
+    cb.checked = true;
+  });
   atualizarResumoChamada();
 };
 
-// Marcar todos como ausentes
 window.marcarTodosAusentes = function () {
-  document
-    .querySelectorAll('#listaAlunosChamada input[type="checkbox"]')
-    .forEach((cb) => {
-      cb.checked = false;
-    });
+  document.querySelectorAll('#listaAlunosChamada input[type="checkbox"]').forEach((cb) => {
+    cb.checked = false;
+  });
   atualizarResumoChamada();
 };
 
-// Salvar registro de aula
 window.salvarRegistroAula = function (event) {
   event.preventDefault();
 
@@ -2012,31 +1228,23 @@ window.salvarRegistroAula = function (event) {
   const presentes = [];
   const ausentes = [];
 
-  document
-    .querySelectorAll('#listaAlunosChamada input[type="checkbox"]')
-    .forEach((cb) => {
-      if (cb.checked) {
-        presentes.push(cb.value);
-      } else {
-        ausentes.push(cb.value);
-      }
-    });
+  document.querySelectorAll('#listaAlunosChamada input[type="checkbox"]').forEach((cb) => {
+    if (cb.checked) {
+      presentes.push(cb.value);
+    } else {
+      ausentes.push(cb.value);
+    }
+  });
 
   const registroExistente = state.registros?.find(
-    (r) =>
-      r.eletivaId === eletivaSelecionadaRegistro &&
-      normalizarDataParaSalvar(r.data) === dataNormalizada,
+    (r) => r.eletivaId === eletivaSelecionadaRegistro && normalizarDataParaSalvar(r.data) === dataNormalizada
   );
 
   if (registroExistente) {
-    if (
-      !confirm("Já existe um registro para esta data. Deseja substituí-lo?")
-    ) {
+    if (!confirm("Já existe um registro para esta data. Deseja substituí-lo?")) {
       return;
     }
-    state.registros = state.registros.filter(
-      (r) => r.id !== registroExistente.id,
-    );
+    state.registros = state.registros.filter((r) => r.id !== registroExistente.id);
   }
 
   const registro = {
@@ -2045,16 +1253,12 @@ window.salvarRegistroAula = function (event) {
     data: dataNormalizada,
     conteudo: conteudo,
     observacoes: "",
-    frequencia: {
-      presentes: presentes,
-      ausentes: ausentes,
-      justificativas: {},
-    },
+    frequencia: { presentes: presentes, ausentes: ausentes, justificativas: {} },
     professorId: professorAtual.id,
     professorNome: professorAtual.nome,
     semestreId: "2026-1",
     createdAt: new Date().toISOString(),
-    _offline: !verificarConexao(), // Marcar como offline se sem internet
+    _offline: !verificarConexao(),
   };
 
   if (!state.registros) state.registros = [];
@@ -2064,12 +1268,7 @@ window.salvarRegistroAula = function (event) {
   if (window.FirebaseSync) {
     window.FirebaseSync.salvarRegistroAulaOffline(registro).then(() => {
       atualizarStatusSincronizacao();
-      showToast(
-        verificarConexao()
-          ? "Registro salvo com sucesso!"
-          : "Registro salvo no dispositivo",
-        "success",
-      );
+      showToast(verificarConexao() ? "Registro salvo com sucesso!" : "Registro salvo no dispositivo", "success");
     });
   } else {
     showToast("Registro salvo com sucesso!", "success");
@@ -2087,7 +1286,6 @@ window.salvarRegistroAula = function (event) {
   }
 };
 
-// Fechar modal de registro
 window.fecharModalRegistro = function () {
   document.getElementById("modalRegistroAula").classList.remove("active");
   eletivaSelecionadaRegistro = null;
@@ -2095,9 +1293,7 @@ window.fecharModalRegistro = function () {
 
 // ========== FUNÇÕES DE NOTAS ==========
 
-// Função para abrir modal de notas
 window.abrirModalNotas = function (eletivaId, semestre = "1/2026") {
-  // Verificar se notas estão liberadas
   if (!verificarNotasLiberadas(eletivaId, semestre)) {
     showToast("⛔ Registro de notas liberado apenas pelo gestor", "warning");
     return;
@@ -2109,10 +1305,7 @@ window.abrirModalNotas = function (eletivaId, semestre = "1/2026") {
     return;
   }
 
-  // Carregar notas existentes
-  const registroExistente = state.notas?.find(
-    (n) => n.eletivaId === eletivaId && n.semestre === semestre,
-  );
+  const registroExistente = state.notas?.find((n) => n.eletivaId === eletivaId && n.semestre === semestre);
 
   registroNotasEmEdicao = {
     id: registroExistente?.id,
@@ -2121,24 +1314,16 @@ window.abrirModalNotas = function (eletivaId, semestre = "1/2026") {
     notas: registroExistente ? [...registroExistente.notas] : [],
   };
 
-  // Preencher título do modal
-  document.getElementById("modalNotasTitle").textContent =
-    `Registro de Notas - ${eletiva.codigo} - ${eletiva.nome}`;
+  document.getElementById("modalNotasTitle").textContent = `Registro de Notas - ${eletiva.codigo} - ${eletiva.nome}`;
   document.getElementById("modalNotasSubtitulo").textContent = `${semestre}`;
 
-  // Carregar alunos
   carregarAlunosParaNotas(eletivaId, semestre);
-
-  // Abrir modal
   document.getElementById("modalRegistroNotas").classList.add("active");
 };
 
-// Carregar alunos para notas
 function carregarAlunosParaNotas(eletivaId, semestre) {
   const matriculas = state.matriculas.filter((m) => m.eletivaId === eletivaId);
-  const alunos = state.alunos
-    .filter((a) => matriculas.some((m) => m.alunoId === a.id))
-    .sort((a, b) => a.nome.localeCompare(b.nome));
+  const alunos = state.alunos.filter((a) => matriculas.some((m) => m.alunoId === a.id)).sort((a, b) => a.nome.localeCompare(b.nome));
 
   if (alunos.length === 0) {
     alert("Nenhum aluno matriculado nesta eletiva");
@@ -2165,14 +1350,14 @@ function carregarAlunosParaNotas(eletivaId, semestre) {
     div.dataset.alunoId = aluno.id;
     div.dataset.notaOriginal = notaAtual;
     div.innerHTML = `
-            <div class="aluno-info">
-                <strong>${aluno.codigoSige}</strong> - ${aluno.nome}
-                <span class="aluno-turma">${aluno.turmaOrigem}</span>
-            </div>
-            <input type="number" class="nota-input ${isAlterado ? "nota-alterada" : ""}" 
-                    id="nota_${aluno.id}" value="${notaAtual.toFixed(1)}" 
-                    min="0" max="10" step="0.1" onchange="marcarNotaAlterada(this)">
-        `;
+      <div class="aluno-info">
+        <strong>${aluno.codigoSige}</strong> - ${aluno.nome}
+        <span class="aluno-turma">${aluno.turmaOrigem}</span>
+      </div>
+      <input type="number" class="nota-input ${isAlterado ? "nota-alterada" : ""}" 
+             id="nota_${aluno.id}" value="${notaAtual.toFixed(1)}" 
+             min="0" max="10" step="0.1" onchange="marcarNotaAlterada(this)">
+    `;
 
     container.appendChild(div);
   });
@@ -2180,11 +1365,8 @@ function carregarAlunosParaNotas(eletivaId, semestre) {
   atualizarResumoNotas();
 }
 
-// Marcar nota como alterada
 window.marcarNotaAlterada = function (input) {
-  const valorOriginal = parseFloat(
-    input.closest(".aluno-nota-item")?.dataset.notaOriginal || 6.0,
-  );
+  const valorOriginal = parseFloat(input.closest(".aluno-nota-item")?.dataset.notaOriginal || 6.0);
   const valorAtual = parseFloat(input.value);
 
   if (Math.abs(valorAtual - valorOriginal) > 0.01) {
@@ -2196,7 +1378,6 @@ window.marcarNotaAlterada = function (input) {
   atualizarResumoNotas();
 };
 
-// Atualizar resumo das notas
 function atualizarResumoNotas() {
   const inputs = document.querySelectorAll("#listaAlunosNotas .nota-input");
   const totalAlunos = inputs.length;
@@ -2211,8 +1392,7 @@ function atualizarResumoNotas() {
     }
   });
 
-  const media =
-    notasValidas > 0 ? (totalNotas / notasValidas).toFixed(1) : "0.0";
+  const media = notasValidas > 0 ? (totalNotas / notasValidas).toFixed(1) : "0.0";
 
   const resumo = document.getElementById("notasResumo");
   if (resumo) {
@@ -2220,7 +1400,6 @@ function atualizarResumoNotas() {
   }
 }
 
-// Salvar notas
 window.salvarNotas = async function () {
   if (!registroNotasEmEdicao) {
     showToast("Erro: dados não identificados", "error");
@@ -2228,9 +1407,7 @@ window.salvarNotas = async function () {
   }
 
   const notas = [];
-  const inputs = document.querySelectorAll(
-    "#listaAlunosNotas .aluno-nota-item",
-  );
+  const inputs = document.querySelectorAll("#listaAlunosNotas .aluno-nota-item");
 
   inputs.forEach((item) => {
     const alunoId = item.dataset.alunoId;
@@ -2257,8 +1434,7 @@ window.salvarNotas = async function () {
   }
 
   const registroNotas = {
-    id:
-      registroNotasEmEdicao.id || Date.now() + Math.floor(Math.random() * 1000),
+    id: registroNotasEmEdicao.id || Date.now() + Math.floor(Math.random() * 1000),
     eletivaId: registroNotasEmEdicao.eletivaId,
     semestre: registroNotasEmEdicao.semestre,
     dataRegistro: formatarDataCorrigida(new Date().toISOString().split("T")[0]),
@@ -2271,11 +1447,7 @@ window.salvarNotas = async function () {
 
   if (!state.notas) state.notas = [];
 
-  const index = state.notas.findIndex(
-    (n) =>
-      n.eletivaId === registroNotas.eletivaId &&
-      n.semestre === registroNotas.semestre,
-  );
+  const index = state.notas.findIndex((n) => n.eletivaId === registroNotas.eletivaId && n.semestre === registroNotas.semestre);
 
   if (index !== -1) {
     state.notas[index] = registroNotas;
@@ -2287,11 +1459,7 @@ window.salvarNotas = async function () {
 
   if (window.FirebaseSync) {
     try {
-      await window.FirebaseSync.salvarDadosFirebase(
-        "notas",
-        registroNotas,
-        registroNotas.id,
-      );
+      await window.FirebaseSync.salvarDadosFirebase("notas", registroNotas, registroNotas.id);
     } catch (e) {
       console.warn("Erro ao salvar no Firebase:", e);
     }
@@ -2299,13 +1467,10 @@ window.salvarNotas = async function () {
 
   showToast("✅ Notas registradas com sucesso!", "success");
   fecharModalNotas();
-
-  // Atualizar ambas as abas
   carregarRegistrosRealizados();
   carregarEletivasProfessor();
 };
 
-// Fechar modal de notas
 window.fecharModalNotas = function () {
   document.getElementById("modalRegistroNotas").classList.remove("active");
   registroNotasEmEdicao = null;
@@ -2313,20 +1478,16 @@ window.fecharModalNotas = function () {
 
 // ========== FUNÇÕES DE REGISTROS REALIZADOS ==========
 
-// Ver registros de uma eletiva específica
 window.verRegistrosEletiva = function (eletivaId) {
   document.getElementById("filtroEletivaRegistros").value = eletivaId;
   mudarTab("registros");
 };
 
-// Carregar select de eletivas para registros
 function carregarSelectEletivasRegistros() {
   const select = document.getElementById("filtroEletivaRegistros");
   if (!select) return;
 
-  const eletivas = state.eletivas.filter(
-    (e) => e.professorId === professorAtual.id,
-  );
+  const eletivas = state.eletivas.filter((e) => e.professorId === professorAtual.id);
 
   select.innerHTML = '<option value="">Todas as eletivas</option>';
   eletivas.forEach((e) => {
@@ -2334,14 +1495,11 @@ function carregarSelectEletivasRegistros() {
   });
 }
 
-// Função principal para carregar registros realizados
 window.carregarRegistrosRealizados = async function () {
   const container = document.getElementById("registrosRealizadosContainer");
   if (!container) return;
 
-  const filtroEletiva = document.getElementById(
-    "filtroEletivaRegistros",
-  )?.value;
+  const filtroEletiva = document.getElementById("filtroEletivaRegistros")?.value;
   const dataInicio = document.getElementById("filtroDataInicio")?.value;
   const dataFim = document.getElementById("filtroDataFim")?.value;
 
@@ -2349,39 +1507,27 @@ window.carregarRegistrosRealizados = async function () {
 
   if (window.FirebaseSync && window.FirebaseSync.carregarRegistrosFirebase) {
     try {
-      registros = await window.FirebaseSync.carregarRegistrosFirebase(
-        filtroEletiva || null,
-        dataInicio || null,
-        dataFim || null,
-      );
+      registros = await window.FirebaseSync.carregarRegistrosFirebase(filtroEletiva || null, dataInicio || null, dataFim || null);
     } catch (e) {
       console.warn("Erro ao carregar do Firebase (usando fallback):", e);
     }
   }
 
   if (!registros || registros.length === 0) {
-    registros = (window.state?.registros || []).filter(
-      (r) => r.professorId === professorAtual.id,
-    );
+    registros = (window.state?.registros || []).filter((r) => r.professorId === professorAtual.id);
   }
 
   if (filtroEletiva) {
-    registros = registros.filter(
-      (r) => r.eletivaId === parseInt(filtroEletiva),
-    );
+    registros = registros.filter((r) => r.eletivaId === parseInt(filtroEletiva));
   }
 
   if (dataInicio) {
     const dataInicioNormalizada = normalizarDataParaSalvar(dataInicio);
-    registros = registros.filter(
-      (r) => normalizarDataParaSalvar(r.data) >= dataInicioNormalizada,
-    );
+    registros = registros.filter((r) => normalizarDataParaSalvar(r.data) >= dataInicioNormalizada);
   }
   if (dataFim) {
     const dataFimNormalizada = normalizarDataParaSalvar(dataFim);
-    registros = registros.filter(
-      (r) => normalizarDataParaSalvar(r.data) <= dataFimNormalizada,
-    );
+    registros = registros.filter((r) => normalizarDataParaSalvar(r.data) <= dataFimNormalizada);
   }
 
   const registrosUnicos = [];
@@ -2391,12 +1537,7 @@ window.carregarRegistrosRealizados = async function () {
     const chave = `${reg.eletivaId}_${normalizarDataParaSalvar(reg.data)}`;
     const existente = mapaRegistros.get(chave);
 
-    if (
-      !existente ||
-      (reg.createdAt &&
-        existente.createdAt &&
-        reg.createdAt > existente.createdAt)
-    ) {
+    if (!existente || (reg.createdAt && existente.createdAt && reg.createdAt > existente.createdAt)) {
       mapaRegistros.set(chave, reg);
     }
   });
@@ -2427,12 +1568,10 @@ window.carregarRegistrosRealizados = async function () {
 
   container.innerHTML = "";
 
-  const eletivasProfessor =
-    state.eletivas?.filter((e) => e.professorId === professorAtual?.id) || [];
+  const eletivasProfessor = state.eletivas?.filter((e) => e.professorId === professorAtual?.id) || [];
 
   if (eletivasProfessor.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhuma eletiva encontrada para este professor</p>';
+    container.innerHTML = '<p class="empty-state">Nenhuma eletiva encontrada para este professor</p>';
     return;
   }
 
@@ -2468,13 +1607,13 @@ window.carregarRegistrosRealizados = async function () {
 
       const header = document.createElement("div");
       header.innerHTML = `
-                <h3 style="display: flex; justify-content: space-between; align-items: center;">
-                    ${eletiva.codigo} - ${eletiva.nome}
-                    <span class="badge" style="background: var(--primary); color: white; padding: 0.2rem 1rem; border-radius: 20px;">
-                        ${registrosEletiva.length + notasEletiva.length} registros
-                    </span>
-                </h3>
-            `;
+        <h3 style="display: flex; justify-content: space-between; align-items: center;">
+          ${eletiva.codigo} - ${eletiva.nome}
+          <span class="badge" style="background: var(--primary); color: white; padding: 0.2rem 1rem; border-radius: 20px;">
+            ${registrosEletiva.length + notasEletiva.length} registros
+          </span>
+        </h3>
+      `;
       card.appendChild(header);
 
       const registrosLista = document.createElement("div");
@@ -2482,52 +1621,42 @@ window.carregarRegistrosRealizados = async function () {
       registrosLista.style.display = "none";
 
       registrosEletiva.forEach((reg) => {
-        const temOffline = reg._offline
-          ? ' <i class="fas fa-mobile-alt" style="color: var(--warning);" title="Registro salvo no dispositivo"></i>'
-          : "";
+        const temOffline = reg._offline ? ' <i class="fas fa-mobile-alt" style="color: var(--warning);" title="Registro salvo no dispositivo"></i>' : "";
         const registroItem = document.createElement("div");
         registroItem.className = "registro-item-card";
 
         const dataFormatada = formatarDataCorrigida(reg.data);
 
         registroItem.innerHTML = `
-                    <div class="registro-header-card">
-                        <span class="registro-data-card">📅 ${dataFormatada} - Frequência ${temOffline}</span>
-                        <div class="registro-actions">
-                            <button class="btn-editar" onclick="event.stopPropagation(); abrirEdicaoRegistro(${reg.id})">
-                                <i class="fas fa-edit"></i> Editar
-                            </button>
-                            <button class="btn-excluir" onclick="event.stopPropagation(); confirmarExclusaoRegistro(${reg.id})">
-                                <i class="fas fa-trash"></i> Excluir
-                            </button>
-                            <button class="btn-imprimir" onclick="event.stopPropagation(); imprimirRegistrosPorData(${eletiva.id}, '${reg.data}')">
-                                <i class="fas fa-print"></i> Imprimir
-                            </button>
-                        </div>
-                    </div>
-                    <div class="registro-conteudo">${reg.conteudo.substring(0, 100)}${reg.conteudo.length > 100 ? "..." : ""}</div>
-                    <div class="registro-frequencia">
-                        <span class="presentes">✅ Presentes: ${reg.frequencia?.presentes?.length || 0}</span>
-                        <span class="ausentes">❌ Ausentes: ${reg.frequencia?.ausentes?.length || 0}</span>
-                    </div>
-                `;
+          <div class="registro-header-card">
+            <span class="registro-data-card">📅 ${dataFormatada} - Frequência ${temOffline}</span>
+            <div class="registro-actions">
+              <button class="btn-editar" onclick="event.stopPropagation(); abrirEdicaoRegistro(${reg.id})">
+                <i class="fas fa-edit"></i> Editar
+              </button>
+              <button class="btn-excluir" onclick="event.stopPropagation(); confirmarExclusaoRegistro(${reg.id})">
+                <i class="fas fa-trash"></i> Excluir
+              </button>
+              <button class="btn-imprimir" onclick="event.stopPropagation(); imprimirRegistrosPorData(${eletiva.id}, '${reg.data}')">
+                <i class="fas fa-print"></i> Imprimir
+              </button>
+            </div>
+          </div>
+          <div class="registro-conteudo">${reg.conteudo.substring(0, 100)}${reg.conteudo.length > 100 ? "..." : ""}</div>
+          <div class="registro-frequencia">
+            <span class="presentes">✅ Presentes: ${reg.frequencia?.presentes?.length || 0}</span>
+            <span class="ausentes">❌ Ausentes: ${reg.frequencia?.ausentes?.length || 0}</span>
+          </div>
+        `;
         registrosLista.appendChild(registroItem);
       });
 
       const semestreAtual = "1/2026";
       const notasLiberadas = verificarNotasLiberadas(eletiva.id, semestreAtual);
-      const notaExistente = notasEletiva.find(
-        (n) => n.semestre === semestreAtual,
-      );
+      const notaExistente = notasEletiva.find((n) => n.semestre === semestreAtual);
 
       if (notaExistente) {
-        const media =
-          notaExistente.notas?.length > 0
-            ? (
-                notaExistente.notas.reduce((acc, n) => acc + n.nota, 0) /
-                notaExistente.notas.length
-              ).toFixed(1)
-            : "0.0";
+        const media = notaExistente.notas?.length > 0 ? (notaExistente.notas.reduce((acc, n) => acc + n.nota, 0) / notaExistente.notas.length).toFixed(1) : "0.0";
 
         const registroItem = document.createElement("div");
         registroItem.className = "registro-item-card";
@@ -2536,19 +1665,19 @@ window.carregarRegistrosRealizados = async function () {
         const textoBotao = notasLiberadas ? "Editar" : "Bloqueado";
 
         registroItem.innerHTML = `
-                    <div class="registro-header-card">
-                        <span class="registro-data-card">📊 ${notaExistente.semestre} - Notas (média: ${media})</span>
-                        <div class="registro-actions">
-                            <button class="btn-editar" onclick="event.stopPropagation(); abrirModalNotas(${eletiva.id}, '${notaExistente.semestre}')">
-                                <i class="fas ${icone}"></i> ${textoBotao}
-                            </button>
-                            <button class="btn-imprimir" onclick="event.stopPropagation(); imprimirPDFNotas(${eletiva.id}, '${notaExistente.semestre}')">
-                                <i class="fas fa-print"></i> Imprimir
-                            </button>
-                        </div>
-                    </div>
-                    <div class="registro-conteudo">Registro de notas do ${notaExistente.semestre}</div>
-                `;
+          <div class="registro-header-card">
+            <span class="registro-data-card">📊 ${notaExistente.semestre} - Notas (média: ${media})</span>
+            <div class="registro-actions">
+              <button class="btn-editar" onclick="event.stopPropagation(); abrirModalNotas(${eletiva.id}, '${notaExistente.semestre}')">
+                <i class="fas ${icone}"></i> ${textoBotao}
+              </button>
+              <button class="btn-imprimir" onclick="event.stopPropagation(); imprimirPDFNotas(${eletiva.id}, '${notaExistente.semestre}')">
+                <i class="fas fa-print"></i> Imprimir
+              </button>
+            </div>
+          </div>
+          <div class="registro-conteudo">Registro de notas do ${notaExistente.semestre}</div>
+        `;
         registrosLista.appendChild(registroItem);
       } else {
         const registroItem = document.createElement("div");
@@ -2559,50 +1688,34 @@ window.carregarRegistrosRealizados = async function () {
         const corBotao = notasLiberadas ? "btn-success" : "btn-editar";
 
         registroItem.innerHTML = `
-                    <div class="registro-header-card">
-                        <span class="registro-data-card">📊 ${semestreAtual} - Notas (não registrado)</span>
-                        <div class="registro-actions">
-                            <button class="${corBotao}" onclick="event.stopPropagation(); abrirModalNotas(${eletiva.id}, '${semestreAtual}')" ${!notasLiberadas ? "disabled" : ""}>
-                                <i class="fas ${icone}"></i> ${textoBotao}
-                            </button>
-                            ${
-                              notasLiberadas
-                                ? `
-                            <button class="btn-imprimir" onclick="event.stopPropagation(); imprimirPDFNotas(${eletiva.id}, '${semestreAtual}')">
-                                <i class="fas fa-print"></i> Prévia
-                            </button>
-                            `
-                                : ""
-                            }
-                        </div>
-                    </div>
-                    <div class="registro-conteudo">${notasLiberadas ? "Clique para registrar as notas do semestre" : "⛔ Função bloqueada pelo gestor"}</div>
-                `;
+          <div class="registro-header-card">
+            <span class="registro-data-card">📊 ${semestreAtual} - Notas (não registrado)</span>
+            <div class="registro-actions">
+              <button class="${corBotao}" onclick="event.stopPropagation(); abrirModalNotas(${eletiva.id}, '${semestreAtual}')" ${!notasLiberadas ? "disabled" : ""}>
+                <i class="fas ${icone}"></i> ${textoBotao}
+              </button>
+              ${notasLiberadas ? `<button class="btn-imprimir" onclick="event.stopPropagation(); imprimirPDFNotas(${eletiva.id}, '${semestreAtual}')"><i class="fas fa-print"></i> Prévia</button>` : ""}
+            </div>
+          </div>
+          <div class="registro-conteudo">${notasLiberadas ? "Clique para registrar as notas do semestre" : "⛔ Função bloqueada pelo gestor"}</div>
+        `;
         registrosLista.appendChild(registroItem);
       }
 
       card.appendChild(registrosLista);
 
       card.addEventListener("click", function (e) {
-        if (
-          e.target.closest(".btn-editar") ||
-          e.target.closest(".btn-excluir") ||
-          e.target.closest(".btn-imprimir") ||
-          e.target.closest(".btn-success")
-        )
-          return;
+        if (e.target.closest(".btn-editar") || e.target.closest(".btn-excluir") || e.target.closest(".btn-imprimir") || e.target.closest(".btn-success")) return;
 
         const lista = this.querySelector(".registros-lista");
         const isExpanded = this.classList.contains("expanded");
 
-        document
-          .querySelectorAll(".eletiva-card.registros-card.expanded")
-          .forEach((c) => {
-            if (c !== this) {
-              c.classList.remove("expanded");
-              c.querySelector(".registros-lista").style.display = "none";
-            }
-          });
+        document.querySelectorAll(".eletiva-card.registros-card.expanded").forEach((c) => {
+          if (c !== this) {
+            c.classList.remove("expanded");
+            c.querySelector(".registros-lista").style.display = "none";
+          }
+        });
 
         if (isExpanded) {
           this.classList.remove("expanded");
@@ -2618,7 +1731,6 @@ window.carregarRegistrosRealizados = async function () {
   });
 };
 
-// Limpar filtros de registros
 window.limparFiltrosRegistros = function () {
   document.getElementById("filtroEletivaRegistros").value = "";
   document.getElementById("filtroDataInicio").value = "";
@@ -2628,7 +1740,6 @@ window.limparFiltrosRegistros = function () {
 
 // ========== FUNÇÕES DE EDIÇÃO DE REGISTRO ==========
 
-// Abrir modal de edição de registro
 window.abrirEdicaoRegistro = async function (registroId) {
   let registro = null;
 
@@ -2648,52 +1759,41 @@ window.abrirEdicaoRegistro = async function (registroId) {
 
   registroEmEdicao = registro;
 
-  document.getElementById("editarDataAula").value = normalizarDataParaSalvar(
-    registro.data,
-  );
+  document.getElementById("editarDataAula").value = normalizarDataParaSalvar(registro.data);
   document.getElementById("editarConteudoAula").value = registro.conteudo;
-  document.getElementById("editarObservacoesAula").value =
-    registro.observacoes || "";
+  document.getElementById("editarObservacoesAula").value = registro.observacoes || "";
 
   carregarAlunosParaEdicao(registro);
 
   document.getElementById("modalEditarRegistro").classList.add("active");
 };
 
-// Carregar alunos para edição
 async function carregarAlunosParaEdicao(registro) {
   const eletivaId = registro.eletivaId;
-
   const matriculas = state.matriculas.filter((m) => m.eletivaId === eletivaId);
-
-  const alunos = state.alunos.filter((a) =>
-    matriculas.some((m) => m.alunoId === a.id),
-  );
+  const alunos = state.alunos.filter((a) => matriculas.some((m) => m.alunoId === a.id));
 
   const container = document.getElementById("editarListaAlunosChamada");
   container.innerHTML = "";
 
   alunos.forEach((aluno) => {
-    const isPresente = registro.frequencia?.presentes?.includes(
-      aluno.codigoSige,
-    );
-    const justificativa =
-      registro.frequencia?.justificativas?.[aluno.codigoSige] || "";
+    const isPresente = registro.frequencia?.presentes?.includes(aluno.codigoSige);
+    const justificativa = registro.frequencia?.justificativas?.[aluno.codigoSige] || "";
 
     const div = document.createElement("div");
     div.className = "aluno-chamada-item";
     div.innerHTML = `
-            <label class="toggle-switch">
-                <input type="checkbox" id="editar_aluno_${aluno.id}" value="${aluno.codigoSige}" ${isPresente ? "checked" : ""} onchange="atualizarResumoChamadaEdicao()">
-                <span class="toggle-slider"></span>
-            </label>
-            <div class="aluno-info">
-                <strong>${aluno.codigoSige}</strong> - ${aluno.nome}
-                <span class="aluno-turma">${aluno.turmaOrigem}</span>
-            </div>
-            <input type="text" class="justificativa-input" placeholder="Justificativa (se ausente)" 
-                    value="${justificativa}" onchange="atualizarResumoChamadaEdicao()" ${isPresente ? "disabled" : ""}>
-        `;
+      <label class="toggle-switch">
+        <input type="checkbox" id="editar_aluno_${aluno.id}" value="${aluno.codigoSige}" ${isPresente ? "checked" : ""} onchange="atualizarResumoChamadaEdicao()">
+        <span class="toggle-slider"></span>
+      </label>
+      <div class="aluno-info">
+        <strong>${aluno.codigoSige}</strong> - ${aluno.nome}
+        <span class="aluno-turma">${aluno.turmaOrigem}</span>
+      </div>
+      <input type="text" class="justificativa-input" placeholder="Justificativa (se ausente)" 
+             value="${justificativa}" onchange="atualizarResumoChamadaEdicao()" ${isPresente ? "disabled" : ""}>
+    `;
 
     const checkbox = div.querySelector('input[type="checkbox"]');
     const justificativaInput = div.querySelector(".justificativa-input");
@@ -2714,43 +1814,32 @@ async function carregarAlunosParaEdicao(registro) {
   atualizarResumoChamadaEdicao();
 }
 
-// Atualizar resumo da chamada em edição
 window.atualizarResumoChamadaEdicao = function () {
-  const checkboxes = document.querySelectorAll(
-    '#editarListaAlunosChamada input[type="checkbox"]',
-  );
+  const checkboxes = document.querySelectorAll('#editarListaAlunosChamada input[type="checkbox"]');
   const presentes = Array.from(checkboxes).filter((cb) => cb.checked).length;
   const ausentes = checkboxes.length - presentes;
 
   document.getElementById("editarPresentesCount").textContent = presentes;
   document.getElementById("editarAusentesCount").textContent = ausentes;
-  document.getElementById("editarTotalAlunosCount").textContent =
-    checkboxes.length;
+  document.getElementById("editarTotalAlunosCount").textContent = checkboxes.length;
 };
 
-// Marcar todos como presentes na edição
 window.marcarTodosPresentesEdicao = function () {
-  document
-    .querySelectorAll('#editarListaAlunosChamada input[type="checkbox"]')
-    .forEach((cb) => {
-      cb.checked = true;
-      const event = new Event("change", { bubbles: true });
-      cb.dispatchEvent(event);
-    });
+  document.querySelectorAll('#editarListaAlunosChamada input[type="checkbox"]').forEach((cb) => {
+    cb.checked = true;
+    const event = new Event("change", { bubbles: true });
+    cb.dispatchEvent(event);
+  });
 };
 
-// Marcar todos como ausentes na edição
 window.marcarTodosAusentesEdicao = function () {
-  document
-    .querySelectorAll('#editarListaAlunosChamada input[type="checkbox"]')
-    .forEach((cb) => {
-      cb.checked = false;
-      const event = new Event("change", { bubbles: true });
-      cb.dispatchEvent(event);
-    });
+  document.querySelectorAll('#editarListaAlunosChamada input[type="checkbox"]').forEach((cb) => {
+    cb.checked = false;
+    const event = new Event("change", { bubbles: true });
+    cb.dispatchEvent(event);
+  });
 };
 
-// Salvar edição do registro
 window.salvarEdicaoRegistro = async function (event) {
   event.preventDefault();
 
@@ -2774,53 +1863,40 @@ window.salvarEdicaoRegistro = async function (event) {
   const ausentes = [];
   const justificativas = {};
 
-  document
-    .querySelectorAll("#editarListaAlunosChamada .aluno-chamada-item")
-    .forEach((item) => {
-      const checkbox = item.querySelector('input[type="checkbox"]');
-      const codigo = checkbox.value;
-      const justificativa = item.querySelector(".justificativa-input").value;
+  document.querySelectorAll("#editarListaAlunosChamada .aluno-chamada-item").forEach((item) => {
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    const codigo = checkbox.value;
+    const justificativa = item.querySelector(".justificativa-input").value;
 
-      if (checkbox.checked) {
-        presentes.push(codigo);
-      } else {
-        ausentes.push(codigo);
-        if (justificativa) {
-          justificativas[codigo] = justificativa;
-        }
+    if (checkbox.checked) {
+      presentes.push(codigo);
+    } else {
+      ausentes.push(codigo);
+      if (justificativa) {
+        justificativas[codigo] = justificativa;
       }
-    });
+    }
+  });
 
   const registroAtualizado = {
     ...registroEmEdicao,
     data: dataNormalizada,
     conteudo: conteudo,
     observacoes: observacoes,
-    frequencia: {
-      presentes: presentes,
-      ausentes: ausentes,
-      justificativas: justificativas,
-    },
+    frequencia: { presentes: presentes, ausentes: ausentes, justificativas: justificativas },
     editadoEm: new Date().toISOString(),
     _offline: !verificarConexao(),
   };
 
   const registroConflitante = state.registros?.find(
-    (r) =>
-      r.id !== registroEmEdicao.id &&
-      r.eletivaId === registroEmEdicao.eletivaId &&
-      normalizarDataParaSalvar(r.data) === dataNormalizada,
+    (r) => r.id !== registroEmEdicao.id && r.eletivaId === registroEmEdicao.eletivaId && normalizarDataParaSalvar(r.data) === dataNormalizada
   );
 
   if (registroConflitante) {
-    if (
-      !confirm("Já existe outro registro para esta data. Deseja substituí-lo?")
-    ) {
+    if (!confirm("Já existe outro registro para esta data. Deseja substituí-lo?")) {
       return;
     }
-    state.registros = state.registros.filter(
-      (r) => r.id !== registroConflitante.id,
-    );
+    state.registros = state.registros.filter((r) => r.id !== registroConflitante.id);
   }
 
   const index = state.registros.findIndex((r) => r.id === registroEmEdicao.id);
@@ -2830,27 +1906,17 @@ window.salvarEdicaoRegistro = async function (event) {
   }
 
   if (window.FirebaseSync) {
-    await window.FirebaseSync.salvarDadosFirebase(
-      "registros",
-      registroAtualizado,
-      registroAtualizado.id,
-    );
+    await window.FirebaseSync.salvarDadosFirebase("registros", registroAtualizado, registroAtualizado.id);
     atualizarStatusSincronizacao();
   }
 
-  showToast(
-    verificarConexao()
-      ? "Registro atualizado com sucesso!"
-      : "Registro atualizado no dispositivo",
-    "success",
-  );
+  showToast(verificarConexao() ? "Registro atualizado com sucesso!" : "Registro atualizado no dispositivo", "success");
 
   fecharModalEditar();
   carregarRegistrosRealizados();
   carregarEletivasProfessor();
 };
 
-// Fechar modal de edição
 window.fecharModalEditar = function () {
   document.getElementById("modalEditarRegistro").classList.remove("active");
   registroEmEdicao = null;
@@ -2858,210 +1924,165 @@ window.fecharModalEditar = function () {
 
 // ========== FUNÇÕES DE EXCLUSÃO DE REGISTRO ==========
 
-// Confirmar exclusão de registro
 window.confirmarExclusaoRegistro = function (registroId) {
-  console.log("🔍 Confirmar exclusão do registro:", registroId);
-
   registroParaExcluir = registroId;
 
-  const modal = document.getElementById("modalConfirmacao");
   const confirmBody = document.getElementById("confirmBody");
   const confirmTitle = document.getElementById("confirmTitle");
   const confirmBtn = document.getElementById("confirmActionBtn");
 
-  if (modal && confirmBody && confirmTitle && confirmBtn) {
+  if (confirmBody && confirmTitle && confirmBtn) {
     confirmTitle.textContent = "Confirmar Exclusão";
-    confirmBody.innerHTML = `
-            <p>Tem certeza que deseja excluir este registro?</p>
-            <p style="color: var(--danger); font-weight: bold; margin-top: 10px;">Esta ação não pode ser desfeita!</p>
-        `;
+    confirmBody.innerHTML = "<p>Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.</p>";
 
-    // Remover listeners anteriores
-    const novoBtn = confirmBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(novoBtn, confirmBtn);
-
-    // Adicionar novo listener
-    novoBtn.onclick = async function () {
-      console.log("✅ Usuário confirmou exclusão");
-      await excluirRegistro(registroId);
+    const originalOnClick = confirmBtn.onclick;
+    confirmBtn.onclick = function () {
+      excluirRegistro(registroId);
       fecharModalConfirmacao();
+      setTimeout(() => {
+        confirmBtn.onclick = originalOnClick;
+      }, 100);
     };
 
-    modal.classList.add("active");
+    document.getElementById("modalConfirmacao").classList.add("active");
   } else {
-    if (confirm("Tem certeza que deseja excluir este registro?")) {
+    if (confirm("Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.")) {
       excluirRegistro(registroId);
     }
   }
 };
-// Fechar modal de confirmação
-window.fecharModalConfirmacao = function () {
-  console.log("❌ Fechando modal de confirmação");
-  document.getElementById("modalConfirmacao").classList.remove("active");
-};
 
-// Função para excluir registro
-// ===========================================
-// FUNÇÃO DE EXCLUSÃO DE REGISTRO - VERSÃO CORRIGIDA
-// ===========================================
-// ===========================================
-// FUNÇÃO DE EXCLUSÃO DE REGISTRO - VERSÃO CORRIGIDA
-// ===========================================
-// ===========================================
-// FUNÇÃO DE EXCLUSÃO - VERSÃO DEFINITIVA
-// ===========================================
-// ===========================================
-// FUNÇÃO DE EXCLUSÃO - VERSÃO COM REMOÇÃO DIRETA
-// ===========================================
 async function excluirRegistro(registroId) {
-  console.log("🗑️ Excluindo registro:", registroId);
   mostrarLoaderExclusao(true);
 
   try {
-    const idString = registroId.toString();
+    const registro = state.registros?.find((r) => r.id === registroId);
 
-    // 1. REMOVER DO STATE
-    const index = state.registros.findIndex(
-      (r) => r.id == idString || r.id == registroId,
-    );
-    if (index !== -1) {
-      state.registros.splice(index, 1);
-      salvarEstado();
-      console.log("✅ Removido do state");
+    if (!registro) {
+      showToast("Registro não encontrado", "error");
+      return;
     }
 
-    // 2. REMOVER DO FIREBASE
-    try {
-      const db = FirebaseConfig.firestore;
-      await db.collection("registros").doc(idString).delete();
-      console.log("✅ Removido do Firebase");
-    } catch (e) {
-      console.warn("⚠️ Erro no Firebase:", e);
-    }
+    state.registros = state.registros.filter((r) => r.id !== registroId);
+    salvarEstado();
 
-    // 3. 🚨 REMOVER O ELEMENTO DA TELA DIRETAMENTE 🚨
-    console.log("🔍 Procurando elemento na tela...");
-
-    // Encontrar o card específico pelo ID
-    const elementos = document.querySelectorAll(".registro-item-card");
-    let elementoRemovido = false;
-
-    elementos.forEach((el) => {
-      // Procurar pelo ID no HTML
-      if (
-        el.innerHTML.includes(`excluirRegistro(${registroId})`) ||
-        el.innerHTML.includes(`excluirRegistro(${idString})`)
-      ) {
-        el.remove();
-        elementoRemovido = true;
-        console.log("✅ Elemento removido da tela");
-      }
-    });
-
-    // Se não encontrou pelo método acima, tentar abordagem mais agressiva
-    if (!elementoRemovido) {
-      console.log("⚠️ Não encontrou pelo ID, removendo todos e recriando...");
-
-      // Pegar o container
-      const container = document.getElementById("registrosRealizadosContainer");
-      if (container) {
-        // Salvar o HTML atual para debug
-        const htmlAntes = container.innerHTML.length;
-
-        // FORÇAR RECRIAÇÃO COMPLETA
-        container.innerHTML =
-          '<div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Atualizando...</div>';
-
-        // Pequeno delay
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // Recarregar os registros
-        await carregarRegistrosRealizados();
-
-        const htmlDepois = container.innerHTML.length;
-        console.log(`📊 HTML antes: ${htmlAntes}, depois: ${htmlDepois}`);
+    if (window.FirebaseSync) {
+      try {
+        await window.FirebaseSync.salvarDadosFirebase("registros", null, registroId);
+      } catch (e) {
+        console.warn("Erro ao remover do Firebase:", e);
       }
     }
 
-    // 4. ATUALIZAR CONTADORES
-    document
-      .querySelectorAll(".eletiva-card.registros-card")
-      .forEach((card) => {
-        const eletivaId = card.dataset.eletivaId;
-        if (eletivaId) {
-          const count = state.registros.filter(
-            (r) => r.eletivaId == eletivaId,
-          ).length;
-          const badge = card.querySelector(".badge");
-          if (badge) {
-            badge.textContent = `${count} registros`;
-          }
-        }
-      });
+    await carregarRegistrosRealizados();
+    carregarEletivasProfessor();
 
-    showToast("✅ Registro excluído com sucesso!", "success");
+    showToast("Registro excluído com sucesso!", "success");
   } catch (error) {
-    console.error("❌ Erro:", error);
-    showToast("Erro ao excluir registro", "error");
+    console.error("❌ Erro ao excluir registro:", error);
+    showToast("Erro ao excluir registro: " + error.message, "error");
   } finally {
     mostrarLoaderExclusao(false);
     registroParaExcluir = null;
   }
 }
 
-// Garantir disponibilidade global
-window.excluirRegistro = excluirRegistro;
-// Garantir que a função está disponível globalmente
-window.excluirRegistro = excluirRegistro;
 // ========== FUNÇÕES DIVERSAS ==========
 
-// Fazer logout
 window.fazerLogout = function () {
   localStorage.removeItem("professor_atual");
   window.location.href = "index.html";
 };
 
-// Fechar modal de detalhes
 window.fecharModal = function () {
   document.getElementById("modalDetalhes").classList.remove("active");
 };
 
-// Fechar modal de confirmação
 window.fecharModalConfirmacao = function () {
   document.getElementById("modalConfirmacao").classList.remove("active");
 };
-// Função auxiliar para forçar recarregamento da interface
-function forcarRecarregamentoRegistros() {
-  console.log("🔄 Forçando recarregamento da interface...");
 
-  const container = document.getElementById("registrosRealizadosContainer");
-  if (container) {
-    // Limpar completamente
-    container.innerHTML = "";
+// ========== FUNÇÃO PARA RECARREGAR ELETIVAS MANUALMENTE ==========
 
-    // Recarregar
-    carregarRegistrosRealizados();
+window.recarregarEletivas = async function() {
+  console.log("🔄 Recarregando eletivas do Firebase...");
+  mostrarLoaderPDF(true);
+  
+  try {
+    await carregarEletivasProfessor();
+    showToast("✅ Lista de eletivas atualizada!", "success");
+  } catch (error) {
+    console.error("❌ Erro ao recarregar:", error);
+    showToast("Erro ao recarregar dados", "error");
+  } finally {
+    mostrarLoaderPDF(false);
+  }
+};
+
+// Ouvir evento de atualização global
+window.addEventListener('dadosAtualizados', function(event) {
+  console.log("📡 Professor recebeu evento de atualização");
+  if (document.visibilityState === 'visible') {
     carregarEletivasProfessor();
   }
-}
+});
 
-// Função para forçar limpeza da tela
-function limparTelaRegistros() {
-  console.log("🧹 Forçando limpeza da tela...");
+// Ouvir mudanças no localStorage
+window.addEventListener('storage', function(event) {
+  if (event.key === CONFIG.storageKeys.eletivas) {
+    console.log("📦 Mudança detectada nas eletivas");
+    carregarEletivasProfessor();
+  }
+});
 
-  // Remover todos os elementos de registro
-  document.querySelectorAll(".registro-item-card").forEach((el) => el.remove());
+// ========== INICIALIZAÇÃO ==========
 
-  // Resetar contadores
-  document.querySelectorAll(".eletiva-card.registros-card").forEach((card) => {
-    const badge = card.querySelector(".badge");
-    if (badge) {
-      badge.textContent = "0 registros";
+document.addEventListener("DOMContentLoaded", async function () {
+  console.log("👨‍🏫 Inicializando página do professor...");
+
+  carregarTheme();
+
+  const profStorage = localStorage.getItem("professor_atual");
+  if (!profStorage) {
+    window.location.href = "selecionar-professor.html";
+    return;
+  }
+
+  professorAtual = JSON.parse(profStorage);
+  console.log("👤 Professor:", professorAtual.nome);
+
+  // 🔥 INICIALIZAR FIREBASE
+  if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
+    console.log("🔥 Inicializando Firebase...");
+    window.FirebaseConfig.initFirebase();
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  if (typeof carregarEstado === "function") {
+    carregarEstado();
+    
+    if (!state.notas) {
+      state.notas = [];
     }
-  });
-}
+  }
 
-window.limparTelaRegistros = limparTelaRegistros;
-// Garantir que as funções estão disponíveis globalmente
-window.excluirRegistro = excluirRegistro;
-window.confirmarExclusaoRegistro = confirmarExclusaoRegistro;
+  document.getElementById("userName").textContent = professorAtual.nome;
+  document.getElementById("userRole").textContent = "Professor";
+  document.getElementById("professorInfoHeader").innerHTML = `<span>${professorAtual.nome}</span>`;
+
+  setInterval(atualizarStatusSincronizacao, 5000);
+  window.addEventListener("online", atualizarStatusSincronizacao);
+  window.addEventListener("offline", atualizarStatusSincronizacao);
+
+  setTimeout(atualizarStatusSincronizacao, 1000);
+
+  // 🔥 CARREGAR ELETIVAS DO FIREBASE
+  await carregarEletivasProfessor();
+  
+  carregarSelectEletivasRegistros();
+
+  const hoje = new Date().toISOString().split("T")[0];
+  if (document.getElementById("dataAula")) {
+    document.getElementById("dataAula").value = hoje;
+  }
+});
