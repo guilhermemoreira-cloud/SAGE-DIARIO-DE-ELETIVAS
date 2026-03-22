@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SAGE 2026 — Inicializar Firebase</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        background: #f0f4f0;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        padding: 2rem 1rem;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 2rem;
+        max-width: 700px;
+        width: 100%;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      }
+      h1 { color: #1a4a1a; font-size: 1.5rem; margin-bottom: 0.3rem; }
+      .sub { color: #555; margin-bottom: 1.5rem; font-size: 0.95rem; }
+      .warning {
+        background: #fff8e1;
+        border-left: 4px solid #f59e0b;
+        padding: 0.8rem 1rem;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+        color: #7a5200;
+      }
+      .btn {
+        background: #2d6a2d;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 0.9rem 2rem;
+        font-size: 1rem;
+        cursor: pointer;
+        width: 100%;
+        margin-bottom: 1.5rem;
+        transition: background 0.2s;
+      }
+      .btn:hover:not(:disabled) { background: #235023; }
+      .btn:disabled { background: #999; cursor: not-allowed; }
+      #log {
+        background: #111;
+        color: #80ff80;
+        border-radius: 8px;
+        padding: 1rem;
+        font-family: monospace;
+        font-size: 0.82rem;
+        min-height: 200px;
+        max-height: 500px;
+        overflow-y: auto;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        display: none;
+      }
+      #log.visible { display: block; }
+      .progress-bar-wrap {
+        background: #eee;
+        border-radius: 4px;
+        margin-bottom: 1.5rem;
+        height: 12px;
+        overflow: hidden;
+        display: none;
+      }
+      .progress-bar-wrap.visible { display: block; }
+      .progress-bar {
+        background: #2d6a2d;
+        height: 100%;
+        width: 0;
+        transition: width 0.3s;
+      }
+      .status {
+        font-size: 0.95rem;
+        color: #333;
+        margin-bottom: 1rem;
+        display: none;
+      }
+      .status.visible { display: block; }
+      .done { color: #2d6a2d; font-weight: bold; font-size: 1.1rem; }
+      .error { color: #c00; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>🔥 Inicializar Firebase — SAGE 2026</h1>
+      <p class="sub">Envia os dados iniciais (professores, alunos, eletivas fixas e matrículas) para o Firestore.</p>
+
+      <div class="warning">
+        ⚠️ <strong>Atenção:</strong> Execute esta página apenas uma vez. Ela vai sobrescrever os dados existentes no Firebase com os dados da planilha oficial (<code>dados-planilha.json</code>).
+      </div>
+
+      <div id="statusMsg" class="status"></div>
+      <div class="progress-bar-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+
+      <button class="btn" id="btnSeed" onclick="iniciarSeed()">
+        ▶ Enviar dados para o Firebase
+      </button>
+
+      <div id="log"></div>
+    </div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- App dependencies -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/init-data.js"></script>
+    <script src="js/sincronizacao.js"></script>
+
+    <script>
+      const logEl = document.getElementById('log');
+      const progressBar = document.getElementById('progressBar');
+      const progressWrap = document.getElementById('progressWrap');
+      const statusMsg = document.getElementById('statusMsg');
+      const btn = document.getElementById('btnSeed');
+
+      function log(msg, tipo) {
+        logEl.classList.add('visible');
+        const cor = tipo === 'erro' ? '#ff6060' : tipo === 'ok' ? '#80ff80' : tipo === 'info' ? '#80d0ff' : '#ccc';
+        logEl.innerHTML += `<span style="color:${cor}">${msg}</span>\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function setStatus(msg, tipo) {
+        statusMsg.classList.add('visible');
+        statusMsg.innerHTML = `<span class="${tipo || ''}">${msg}</span>`;
+      }
+
+      function setProgress(pct) {
+        progressWrap.classList.add('visible');
+        progressBar.style.width = pct + '%';
+      }
+
+      async function escreverColecaoFirebase(db, colecao, itens) {
+        let ok = 0, erros = 0;
+        const total = itens.length;
+        for (let i = 0; i < itens.length; i++) {
+          const item = itens[i];
+          const id = String(item.id);
+          try {
+            await db.collection(colecao).doc(id).set(item);
+            ok++;
+          } catch (e) {
+            erros++;
+            log(`  ❌ Erro ao salvar ${colecao}/${id}: ${e.message}`, 'erro');
+          }
+        }
+        return { ok, erros, total };
+      }
+
+      async function iniciarSeed() {
+        btn.disabled = true;
+        log('🚀 Iniciando seed do Firebase...', 'info');
+        setProgress(2);
+
+        // 1. Inicializar Firebase
+        log('🔥 Inicializando Firebase...', 'info');
+        try {
+          if (!window.FirebaseConfig.isInitialized) {
+            window.FirebaseConfig.initFirebase();
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        } catch(e) {
+          log('❌ Erro ao inicializar Firebase: ' + e.message, 'erro');
+          setStatus('❌ Erro ao conectar ao Firebase.', 'error');
+          btn.disabled = false;
+          return;
+        }
+
+        const db = window.FirebaseConfig.firestore;
+        if (!db) {
+          log('❌ Firestore não disponível. Verifique firebase-config.js', 'erro');
+          setStatus('❌ Firestore não disponível.', 'error');
+          btn.disabled = false;
+          return;
+        }
+        log('✅ Firebase conectado!', 'ok');
+        setProgress(10);
+
+        // 2. Carregar e processar dados da planilha
+        log('📂 Carregando dados de dados-planilha.json...', 'info');
+        let dados;
+        try {
+          const resp = await fetch('data/dados-planilha.json');
+          if (!resp.ok) throw new Error('HTTP ' + resp.status);
+          const json = await resp.json();
+          dados = json.dados;
+          log(`✅ Dados carregados: ${json.estatisticas.alunos} alunos, ${json.estatisticas.professores} professores, ${json.estatisticas.eletivasFixas} eletivas fixas`, 'ok');
+        } catch(e) {
+          log('❌ Erro ao carregar JSON: ' + e.message, 'erro');
+          setStatus('❌ Erro ao carregar dados da planilha.', 'error');
+          btn.disabled = false;
+          return;
+        }
+        setProgress(20);
+
+        // 3. Processar no state usando a função existente do sistema
+        log('⚙️ Processando e convertendo dados...', 'info');
+        if (typeof state === 'undefined') { window.state = {}; }
+        state.matriculas = [];
+        state.notas = [];
+
+        if (typeof window.carregarDadosDaPlanilha === 'function') {
+          // Usa a função existente que já sabe converter os dados
+          try {
+            await window.carregarDadosDaPlanilha();
+            await new Promise(r => setTimeout(r, 500));
+          } catch(e) {
+            log('⚠️ Aviso ao usar carregarDadosDaPlanilha: ' + e.message + ' — processando manualmente...', 'info');
+            processarManualmente(dados);
+          }
+        } else {
+          processarManualmente(dados);
+        }
+
+        const profs = state.professores || [];
+        const alunos = state.alunos || [];
+        const eletivas = state.eletivas || [];
+        const matriculas = state.matriculas || [];
+
+        log(`📊 Resultado do processamento:`, 'info');
+        log(`   Professores: ${profs.length}`, 'ok');
+        log(`   Alunos: ${alunos.length}`, 'ok');
+        log(`   Eletivas: ${eletivas.length}`, 'ok');
+        log(`   Matrículas: ${matriculas.length}`, 'ok');
+        setProgress(35);
+
+        // 4. Enviar professores
+        log(`\n📤 Enviando ${profs.length} professores para Firebase...`, 'info');
+        const rProfs = await escreverColecaoFirebase(db, 'professores', profs);
+        log(`   ✅ ${rProfs.ok} professores salvos${rProfs.erros > 0 ? `, ❌ ${rProfs.erros} erros` : ''}`, rProfs.erros > 0 ? 'erro' : 'ok');
+        setProgress(50);
+
+        // 5. Enviar alunos
+        log(`\n📤 Enviando ${alunos.length} alunos para Firebase...`, 'info');
+        const rAlunos = await escreverColecaoFirebase(db, 'alunos', alunos);
+        log(`   ✅ ${rAlunos.ok} alunos salvos${rAlunos.erros > 0 ? `, ❌ ${rAlunos.erros} erros` : ''}`, rAlunos.erros > 0 ? 'erro' : 'ok');
+        setProgress(65);
+
+        // 6. Enviar eletivas
+        log(`\n📤 Enviando ${eletivas.length} eletivas para Firebase...`, 'info');
+        const rEletivas = await escreverColecaoFirebase(db, 'eletivas', eletivas);
+        log(`   ✅ ${rEletivas.ok} eletivas salvas${rEletivas.erros > 0 ? `, ❌ ${rEletivas.erros} erros` : ''}`, rEletivas.erros > 0 ? 'erro' : 'ok');
+        setProgress(80);
+
+        // 7. Enviar matrículas
+        log(`\n📤 Enviando ${matriculas.length} matrículas para Firebase...`, 'info');
+        const rMats = await escreverColecaoFirebase(db, 'matriculas', matriculas);
+        log(`   ✅ ${rMats.ok} matrículas salvas${rMats.erros > 0 ? `, ❌ ${rMats.erros} erros` : ''}`, rMats.erros > 0 ? 'erro' : 'ok');
+        setProgress(100);
+
+        // 8. Resumo final
+        const totalErros = rProfs.erros + rAlunos.erros + rEletivas.erros + rMats.erros;
+        log('\n\n' + '='.repeat(50), 'info');
+        if (totalErros === 0) {
+          log('🎉 SEED CONCLUÍDO COM SUCESSO!', 'ok');
+          log(`   ${profs.length} professores`, 'ok');
+          log(`   ${alunos.length} alunos`, 'ok');
+          log(`   ${eletivas.length} eletivas fixas`, 'ok');
+          log(`   ${matriculas.length} matrículas automáticas`, 'ok');
+          setStatus('🎉 Dados enviados com sucesso! O Firebase está pronto.', 'done');
+        } else {
+          log(`⚠️ Seed concluído com ${totalErros} erro(s). Verifique os detalhes acima.`, 'erro');
+          setStatus(`⚠️ Concluído com ${totalErros} erro(s).`, 'error');
+        }
+        btn.textContent = '✅ Seed concluído';
+      }
+
+      // Fallback: processar os dados manualmente se carregarDadosDaPlanilha falhar
+      function processarManualmente(dados) {
+        log('⚙️ Processando manualmente...', 'info');
+
+        function normalizarTurma(t) {
+          if (!t) return '';
+          return t.replace('ª', 'ª').trim();
+        }
+
+        function getSerieFromTurma(t) {
+          if (!t) return '1ª';
+          if (t.includes('1') || t.includes('1ª')) return '1ª';
+          if (t.includes('2') || t.includes('2ª')) return '2ª';
+          if (t.includes('3') || t.includes('3ª')) return '3ª';
+          return '1ª';
+        }
+
+        // Professores
+        state.professores = (dados.professores || []).map((p, i) => ({
+          id: i + 1,
+          nome: p.nome || '',
+          email: p.email || '',
+          cpf: p.cpf ? String(p.cpf).replace(/\D/g, '') : '',
+          perfil: p.perfil || 'PROFESSOR',
+        }));
+
+        // Alunos
+        state.alunos = (dados.alunos || [])
+          .filter(a => a.nome && a.sige)
+          .map((a, i) => ({
+            id: i + 1,
+            nome: a.nome || '',
+            codigoSige: String(a.sige || ''),
+            turmaOrigem: normalizarTurma(a.turma),
+            serie: getSerieFromTurma(a.turma),
+          }));
+
+        // Eletivas fixas
+        const tempoMap = {
+          T1: { diaSemana: 'Segunda-feira', seriesPermitidas: ['1ª','2ª','3ª'] },
+          T2: { diaSemana: 'Terça-feira', seriesPermitidas: ['1ª','2ª','3ª'] },
+          T3: { diaSemana: 'Quarta-feira', seriesPermitidas: ['1ª','2ª','3ª'] },
+          T4: { diaSemana: 'Quinta-feira', seriesPermitidas: ['1ª','2ª','3ª'] },
+          T5: { diaSemana: 'Sexta-feira', seriesPermitidas: ['1ª','2ª','3ª'] },
+        };
+
+        state.eletivas = (dados.eletivasFixas || []).map((f, i) => {
+          const prof = state.professores.find(p => p.nome === f.professor);
+          const tempo = f.tempo || 'T1';
+          const horario = tempoMap[tempo] || { diaSemana: '?', seriesPermitidas: ['1ª','2ª','3ª'] };
+          const turmaN = normalizarTurma(f.turma || f.local || '');
+          return {
+            id: i + 1000,
+            codigo: f.codigo || '',
+            nome: f.nome || '',
+            tipo: 'FIXA',
+            professorId: prof?.id || 1,
+            professorNome: prof?.nome || f.professor || '',
+            horario: { diaSemana: horario.diaSemana, codigoTempo: tempo },
+            local: turmaN || f.local || 'A DEFINIR',
+            vagas: 40,
+            seriesPermitidas: horario.seriesPermitidas,
+            turmaOrigem: turmaN,
+            semestreId: '2026-1',
+          };
+        });
+
+        // Matrículas automáticas
+        state.matriculas = [];
+        let matId = 1;
+        state.eletivas.forEach(eletiva => {
+          if (eletiva.tipo === 'FIXA' && eletiva.turmaOrigem) {
+            state.alunos
+              .filter(a => a.turmaOrigem === eletiva.turmaOrigem)
+              .forEach(aluno => {
+                state.matriculas.push({
+                  id: matId++,
+                  eletivaId: eletiva.id,
+                  alunoId: aluno.id,
+                  tipoMatricula: 'automática',
+                  dataMatricula: new Date().toISOString().split('T')[0],
+                  semestreId: '2026-1',
+                });
+              });
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
