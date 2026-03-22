@@ -9,6 +9,7 @@ let state = {
   registros: [],
   semestres: [],
   remocoes: [],
+  notas: [],
   ultimaSincronizacao: null,
   semestreAtivo: null,
   nextId: {
@@ -18,6 +19,14 @@ let state = {
     matricula: 1,
     registro: 1,
   },
+  _versao: {
+    alunos: null,
+    professores: null,
+    eletivas: null,
+    matriculas: null,
+    registros: null,
+    notas: null,
+  }
 };
 
 function carregarEstado() {
@@ -41,15 +50,36 @@ function carregarEstado() {
     state.ultimaSincronizacao = localStorage.getItem(
       CONFIG.storageKeys.ultimaSincronizacao,
     );
+    
+    // Carregar notas
+    state.notas = JSON.parse(localStorage.getItem("sage_notas_2026")) || [];
+    
+    // Carregar liberação de notas
+    state.liberacaoNotas = JSON.parse(localStorage.getItem("sage_liberacao_notas")) || null;
+    
+    // Carregar configuração de tempos
+    state.configTempos = JSON.parse(localStorage.getItem("sage_config_tempos")) || null;
 
-    const nextId = JSON.parse(localStorage.getItem("sage_nextId_2026")) || {
-      aluno: state.alunos.length + 1,
-      professor: state.professores.length + 1,
-      eletiva: state.eletivas.length + 1,
-      matricula: state.matriculas.length + 1,
-      registro: state.registros.length + 1,
+    // Carregar nextId (compatibilidade com novo formato)
+    const nextIdSaved = JSON.parse(localStorage.getItem("sage_nextId_2026")) || {};
+    state.nextId = {
+      aluno: nextIdSaved.aluno || state.alunos.length + 1,
+      professor: nextIdSaved.professor || state.professores.length + 1,
+      eletiva: nextIdSaved.eletiva || state.eletivas.length + 1,
+      matricula: nextIdSaved.matricula || state.matriculas.length + 1,
+      registro: nextIdSaved.registro || state.registros.length + 1,
     };
-    state.nextId = nextId;
+    
+    // Carregar versões
+    const versaoSalva = JSON.parse(localStorage.getItem("sage_versoes") || "{}");
+    state._versao = {
+      alunos: versaoSalva.alunos || null,
+      professores: versaoSalva.professores || null,
+      eletivas: versaoSalva.eletivas || null,
+      matriculas: versaoSalva.matriculas || null,
+      registros: versaoSalva.registros || null,
+      notas: versaoSalva.notas || null,
+    };
 
     if (state.semestres.length === 0) {
       state.semestres = [
@@ -77,8 +107,21 @@ function carregarEstado() {
       `✅ Estado carregado: ${state.professores.length} professores, ${state.alunos.length} alunos`,
     );
     console.log(
-      `   Eletivas: ${state.eletivas.length}, Matrículas: ${state.matriculas.length}`,
+      `   Eletivas: ${state.eletivas.length}, Matrículas: ${state.matriculas.length}, Notas: ${state.notas.length}`,
     );
+    
+    // Executar migração de IDs em background
+    setTimeout(() => {
+      if (window.migrarTodosIds) {
+        window.migrarTodosIds().then(() => {
+          salvarEstado();
+          if (window.verificarIntegridadeReferencias) {
+            window.verificarIntegridadeReferencias();
+          }
+        });
+      }
+    }, 1000);
+    
   } catch (e) {
     console.error("❌ Erro ao carregar estado:", e);
   }
@@ -116,7 +159,11 @@ function salvarEstado() {
       CONFIG.storageKeys.remocoes,
       JSON.stringify(state.remocoes),
     );
+    localStorage.setItem("sage_notas_2026", JSON.stringify(state.notas || []));
+    localStorage.setItem("sage_liberacao_notas", JSON.stringify(state.liberacaoNotas || null));
+    localStorage.setItem("sage_config_tempos", JSON.stringify(state.configTempos || null));
     localStorage.setItem("sage_nextId_2026", JSON.stringify(state.nextId));
+    localStorage.setItem("sage_versoes", JSON.stringify(state._versao));
 
     console.log("💾 Estado salvo no localStorage");
   } catch (e) {
@@ -124,11 +171,38 @@ function salvarEstado() {
   }
 }
 
+// MODIFICADO: Gerar UUID em vez de número sequencial
 function getNextId(tipo) {
-  const id = state.nextId[tipo];
+  // Gerar UUID para novos objetos
+  const novoId = window.gerarUUID ? window.gerarUUID() : `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Manter contagem para referência
+  if (!state.nextId) state.nextId = {};
+  if (!state.nextId[tipo]) state.nextId[tipo] = 1;
   state.nextId[tipo] += 1;
+  
   salvarEstado();
-  return id;
+  return novoId;
+}
+
+function criarObjetoComUuid(tipo, dados) {
+  const id = window.gerarUUID ? window.gerarUUID() : getNextId(tipo);
+  return {
+    id: id,
+    ...dados,
+    _criadoEm: new Date().toISOString(),
+    _tipo: tipo,
+  };
+}
+
+function atualizarVersao(colecao, timestamp) {
+  if (!state._versao) state._versao = {};
+  state._versao[colecao] = timestamp;
+  localStorage.setItem("sage_versoes", JSON.stringify(state._versao));
+}
+
+function obterVersao(colecao) {
+  return state._versao?.[colecao] || null;
 }
 
 function atualizarIndicadorSemestre() {
@@ -151,5 +225,8 @@ window.state = state;
 window.carregarEstado = carregarEstado;
 window.salvarEstado = salvarEstado;
 window.getNextId = getNextId;
+window.criarObjetoComUuid = criarObjetoComUuid;
+window.atualizarVersao = atualizarVersao;
+window.obterVersao = obterVersao;
 window.atualizarIndicadorSemestre = atualizarIndicadorSemestre;
 window.getEstatisticas = getEstatisticas;
