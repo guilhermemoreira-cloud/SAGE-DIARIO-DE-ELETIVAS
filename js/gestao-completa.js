@@ -1,4 +1,4 @@
-// js/gestao-completa.js - Lógica da página de gestão completa (VERSÃO CORRIGIDA)
+// js/gestao-completa.js - Lógica da página de gestão completa (VERSÃO COMPLETA CORRIGIDA)
 console.log("📋 gestao-completa.js carregado");
 
 let professorEmEdicao = null;
@@ -364,7 +364,7 @@ window.salvarProfessor = async function () {
         showToast("Professor atualizado com sucesso!", "success");
       }
     } else {
-      const novoId = state.professores.length + 1;
+      const novoId = (state.professores?.map(p => p.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
       const novoProfessor = {
         id: novoId,
         nome: nome,
@@ -935,7 +935,7 @@ window.salvarEletiva = async function () {
         showToast("Eletiva atualizada com sucesso!", "success");
       }
     } else {
-      const novoId = state.eletivas.length + 1;
+      const novoId = (state.eletivas?.map(e => e.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
       const novaEletiva = {
         id: novoId,
         codigo: codigo,
@@ -1624,7 +1624,7 @@ function atualizarTabelaEstudantes() {
   document.getElementById("btnPaginaProxima").disabled = paginaAtualEstudantes >= totalPaginas;
 
   if (totalEstudantes === 0) {
-    tbody.innerHTML = '}<td colspan="5" class="empty-state">Nenhum estudante encontrado</td>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum estudante encontrado</td></tr>';
     return;
   }
 
@@ -1646,21 +1646,21 @@ function atualizarTabelaEstudantes() {
 
     const row = document.createElement("tr");
     row.innerHTML = `
-       Whether<strong>${escapeHtml(estudante.nome)}</strong>},
-       Whether${escapeHtml(estudante.turmaOrigem)}},
-       Whether${escapeHtml(estudante.codigoSige)}},
-       Whether${eletivasHTML}},
-       Whether
-        <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante('${estudante.id}')" title="Editar">
+      <td><strong>${escapeHtml(estudante.nome)}</strong></td>
+      <td>${escapeHtml(estudante.turmaOrigem)}</td>
+      <td>${escapeHtml(estudante.codigoSige)}</td>
+      <td>${eletivasHTML}</td>
+      <td>
+        <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante(${estudante.id})" title="Editar">
           <i class="fas fa-edit"></i>
         </button>
-        <button class="btn-secondary btn-small" onclick="abrirModalTrocarEletivaEstudante('${estudante.id}')" title="Trocar eletiva">
+        <button class="btn-secondary btn-small" onclick="abrirModalTrocarEletivaEstudante(${estudante.id})" title="Trocar eletiva">
           <i class="fas fa-exchange-alt"></i>
         </button>
-        <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante('${estudante.id}')" title="Remover">
+        <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante(${estudante.id})" title="Remover">
           <i class="fas fa-trash"></i>
         </button>
-       </td>
+      </td>
     `;
     tbody.appendChild(row);
   });
@@ -1832,7 +1832,7 @@ window.salvarEstudante = async function () {
       
       for (const eletivaId of idsParaAdicionar) {
         const novaMatricula = {
-          id: state.matriculas.length + 1,
+          id: (state.matriculas?.map(m => m.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
           eletivaId: eletivaId,
           alunoId: estudanteEmEdicao.id,
           tipoMatricula: "manual",
@@ -1857,7 +1857,7 @@ window.salvarEstudante = async function () {
         return;
       }
       
-      const novoId = state.alunos.length + 1;
+      const novoId = (state.alunos?.map(a => a.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
       const novoEstudante = {
         id: novoId,
         nome: nome,
@@ -1875,7 +1875,7 @@ window.salvarEstudante = async function () {
       
       for (const eletivaId of eletivasSelecionadas) {
         const novaMatricula = {
-          id: state.matriculas.length + 1,
+          id: (state.matriculas?.map(m => m.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
           eletivaId: eletivaId,
           alunoId: novoId,
           tipoMatricula: "manual",
@@ -2001,7 +2001,7 @@ window.confirmarTrocaEletivaEstudante = async function () {
 
   try {
     const novaMatricula = {
-      id: state.matriculas.length + 1,
+      id: (state.matriculas?.map(m => m.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
       eletivaId: parseInt(eletivaDestinoId),
       alunoId: estudanteParaTroca.id,
       tipoMatricula: "troca",
