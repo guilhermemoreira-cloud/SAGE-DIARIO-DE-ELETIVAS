@@ -1,4 +1,4 @@
-// js/gestor.js - Lógica do gestor (VERSÃO CORRIGIDA COM FIREBASE)
+// js/gestor.js - Lógica do gestor (VERSÃO CORRIGIDA COMPLETA)
 console.log("👔 gestor.js carregado");
 
 let gestorAtual = null;
@@ -44,64 +44,14 @@ const nomesDias = {
   domingo: "DOMINGO",
 };
 
-document.addEventListener("DOMContentLoaded", async function () {
-  console.log("👔 Inicializando página do gestor...");
-
-  carregarTheme();
-
-  const gestorStorage = localStorage.getItem("gestor_atual");
-  if (!gestorStorage) {
-    window.location.href = "selecionar-gestor.html";
-    return;
+// Função auxiliar para normalizar IDs
+function normalizarIdParaComparacao(id) {
+  if (id === undefined || id === null) return null;
+  if (typeof id === 'string' && /^\d+$/.test(id)) {
+    return parseInt(id, 10);
   }
-
-  gestorAtual = JSON.parse(gestorStorage);
-  console.log("👤 Gestor:", gestorAtual.nome, "Perfil:", gestorAtual.perfil);
-
-  // 🔥 INICIALIZAR FIREBASE PRIMEIRO
-  console.log("🔥 Inicializando Firebase...");
-  if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
-    const initResult = window.FirebaseConfig.initFirebase();
-    console.log("🔥 Firebase inicializado:", initResult);
-  } else {
-    console.warn("⚠️ FirebaseConfig.initFirebase não disponível");
-  }
-
-  // Aguardar um pouco para garantir que o Firestore está pronto
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  if (typeof carregarEstado === "function") {
-    carregarEstado();
-    todasEletivas = state.eletivas || [];
-    console.log("📚 Eletivas carregadas:", todasEletivas.length);
-    console.log("📋 Registros no state inicial:", state.registros?.length || 0);
-  }
-
-  document.getElementById("userName").textContent = gestorAtual.nome;
-
-  const roleMap = {
-    GESTOR: "Administrador",
-    SECRETARIA: "Secretaria",
-    GESTOR_PROFESSOR: "Gestor/Professor",
-  };
-  document.getElementById("userRole").textContent =
-    roleMap[gestorAtual.perfil] || "Gestor";
-
-  // 🔥 CARREGAR REGISTROS DO FIREBASE ANTES DE CARREGAR OS CARDS
-  console.log("📡 Carregando registros do Firebase...");
-  await carregarRegistrosDoFirebase();
-  
-  console.log("✅ Estado após carregar Firebase:", {
-    registros: state.registros?.length || 0,
-    eletivas: state.eletivas?.length || 0,
-    alunos: state.alunos?.length || 0
-  });
-
-  // Carregar dados iniciais
-  carregarEstatisticas();
-  inicializarFiltrosRegistros();
-  carregarCardsRegistros();
-});
+  return id;
+}
 
 // ========== FUNÇÕES DE UTILIDADE ==========
 
@@ -155,78 +105,6 @@ window.mudarTabGestor = function (tab) {
   }
 };
 
-// 🔥 FUNÇÃO CORRIGIDA: Carregar registros do Firebase
-async function carregarRegistrosDoFirebase() {
-  console.log("🔥 Carregando registros do Firebase...");
-  
-  // Verificar se FirebaseSync está disponível
-  if (!window.FirebaseSync) {
-    console.warn("⚠️ FirebaseSync não disponível");
-    return false;
-  }
-  
-  if (!window.FirebaseSync.carregarRegistrosFirebase) {
-    console.warn("⚠️ FirebaseSync.carregarRegistrosFirebase não disponível");
-    return false;
-  }
-
-  // 🔥 GARANTIR QUE FIREBASE ESTÁ INICIALIZADO
-  if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
-    console.log("🔄 Inicializando Firebase (carregarRegistrosDoFirebase)...");
-    const initResult = window.FirebaseConfig.initFirebase();
-    console.log("🔥 Resultado da inicialização:", initResult);
-    
-    // Aguardar um pouco para garantir
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }
-
-  try {
-    console.log("📡 Chamando FirebaseSync.carregarRegistrosFirebase()...");
-    const registrosFirebase = await window.FirebaseSync.carregarRegistrosFirebase();
-    console.log(`📥 Quantidade: ${registrosFirebase?.length || 0} registros`);
-    
-    if (registrosFirebase && registrosFirebase.length > 0) {
-      // Inicializar state.registros se não existir
-      if (!state.registros) state.registros = [];
-      
-      // Mostrar os primeiros registros para debug
-      console.log("📋 Primeiro registro do Firebase:", registrosFirebase[0]);
-      
-      // Mesclar dados do Firebase com state local
-      registrosFirebase.forEach(regFirebase => {
-        const indexLocal = state.registros.findIndex(r => r.id == regFirebase.id);
-        if (indexLocal !== -1) {
-          // Atualizar registro existente
-          state.registros[indexLocal] = regFirebase;
-          console.log(`🔄 Atualizado registro local ID: ${regFirebase.id}`);
-        } else {
-          // Adicionar novo registro
-          state.registros.push(regFirebase);
-          console.log(`➕ Adicionado novo registro ID: ${regFirebase.id}`);
-        }
-      });
-      
-      // Salvar no localStorage para cache
-      if (typeof salvarEstado === "function") {
-        salvarEstado();
-        console.log("💾 Estado salvo no localStorage");
-      }
-      
-      console.log(`✅ Sincronizados ${registrosFirebase.length} registros com state`);
-      console.log(`📊 Total no state: ${state.registros.length} registros`);
-      return true;
-    } else {
-      console.log("⚠️ Nenhum registro retornado do Firebase");
-      console.log("📋 Registros locais existentes:", state.registros?.length || 0);
-      return false;
-    }
-  } catch (error) {
-    console.error("❌ Erro ao carregar registros do Firebase:", error);
-    console.error("Detalhes do erro:", error.message);
-    return false;
-  }
-}
-
 // Fechar modal de confirmação
 window.fecharModalConfirmacao = function () {
   document.getElementById("modalConfirmacao").classList.remove("active");
@@ -246,16 +124,13 @@ function getTempoFromHorario(horario) {
   if (horario.codigoTempo) {
     return horario.codigoTempo;
   }
-  if (horario.diaSemana && horario.codigoTempo) {
-    return horario.codigoTempo;
-  }
   return null;
 }
 
 // Calcular total de ausências de uma eletiva
 function calcularAusenciasEletiva(eletivaId) {
   const registros =
-    state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
+    state.registros?.filter((r) => normalizarIdParaComparacao(r.eletivaId) === normalizarIdParaComparacao(eletivaId)) || [];
   let total = 0;
 
   registros.forEach((reg) => {
@@ -270,7 +145,7 @@ function calcularAusenciasEletiva(eletivaId) {
 // Calcular média de notas de uma eletiva
 function calcularMediaEletiva(eletivaId) {
   const notasRegistro = state.notas?.find(
-    (n) => n.eletivaId === eletivaId && n.semestre === "1/2026",
+    (n) => normalizarIdParaComparacao(n.eletivaId) === normalizarIdParaComparacao(eletivaId) && n.semestre === "1/2026",
   );
 
   if (!notasRegistro?.notas || notasRegistro.notas.length === 0) {
@@ -404,7 +279,7 @@ function carregarCardsEletivas() {
     const termo = termoBusca.toLowerCase();
     eletivasFiltradas = eletivasFiltradas.filter((e) => {
       const professor =
-        state.professores?.find((p) => p.id === e.professorId)?.nome || "";
+        state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(e.professorId))?.nome || "";
       return (
         e.nome?.toLowerCase().includes(termo) ||
         e.codigo?.toLowerCase().includes(termo) ||
@@ -423,12 +298,12 @@ function carregarCardsEletivas() {
 
   eletivasFiltradas.forEach((eletiva) => {
     const professor =
-      state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+      state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(eletiva.professorId))?.nome ||
       "Não atribuído";
     const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
 
     const matriculas =
-      state.matriculas?.filter((m) => m.eletivaId === eletiva.id) || [];
+      state.matriculas?.filter((m) => normalizarIdParaComparacao(m.eletivaId) === normalizarIdParaComparacao(eletiva.id)) || [];
     const totalAlunos = matriculas.length;
     const totalAusencias = calcularAusenciasEletiva(eletiva.id);
     const media = calcularMediaEletiva(eletiva.id);
@@ -474,22 +349,22 @@ window.verDetalhesEletiva = function (eletivaId) {
 
   setTimeout(() => {
     try {
-      const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+      const eletiva = state.eletivas?.find((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
       if (!eletiva) {
         mostrarLoaderGestor(false);
         return;
       }
 
       const professor =
-        state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+        state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(eletiva.professorId))?.nome ||
         "Não atribuído";
       const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
 
       const matriculas =
-        state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+        state.matriculas?.filter((m) => normalizarIdParaComparacao(m.eletivaId) === normalizarIdParaComparacao(eletivaId)) || [];
       const alunos =
         state.alunos
-          ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
+          ?.filter((a) => matriculas.some((m) => normalizarIdParaComparacao(m.alunoId) === normalizarIdParaComparacao(a.id)))
           .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
       const totalAlunos = alunos.length;
@@ -498,7 +373,7 @@ window.verDetalhesEletiva = function (eletivaId) {
       const mediaDisplay = media !== null ? media.toFixed(1) : "N/A";
 
       const registros =
-        state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
+        state.registros?.filter((r) => normalizarIdParaComparacao(r.eletivaId) === normalizarIdParaComparacao(eletivaId)) || [];
       const ausenciasPorAluno = {};
 
       registros.forEach((reg) => {
@@ -514,7 +389,7 @@ window.verDetalhesEletiva = function (eletivaId) {
       });
 
       const notasRegistro = state.notas?.find(
-        (n) => n.eletivaId === eletivaId && n.semestre === "1/2026",
+        (n) => normalizarIdParaComparacao(n.eletivaId) === normalizarIdParaComparacao(eletivaId) && n.semestre === "1/2026",
       );
       const notasPorAluno = {};
       if (notasRegistro?.notas) {
@@ -681,7 +556,7 @@ function filtrarEletivasRegistros() {
 
   if (filtroTipoRegistros === "professor" && filtroProfessorRegistros) {
     eletivas = eletivas.filter(
-      (e) => e.professorId === parseInt(filtroProfessorRegistros),
+      (e) => normalizarIdParaComparacao(e.professorId) === normalizarIdParaComparacao(filtroProfessorRegistros),
     );
   }
 
@@ -694,7 +569,7 @@ function filtrarEletivasRegistros() {
   if (buscaRegistros) {
     eletivas = eletivas.filter((e) => {
       const professor =
-        state.professores?.find((p) => p.id === e.professorId)?.nome || "";
+        state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(e.professorId))?.nome || "";
       return (
         e.nome?.toLowerCase().includes(buscaRegistros) ||
         e.codigo?.toLowerCase().includes(buscaRegistros) ||
@@ -706,13 +581,116 @@ function filtrarEletivasRegistros() {
   return eletivas;
 }
 
-// Carregar cards da aba registros
+// ========== FUNÇÃO CORRIGIDA: Carregar registros do Firebase ==========
+async function carregarRegistrosDoFirebase() {
+  console.log("🔥 Carregando registros do Firebase...");
+  
+  // Verificar se FirebaseSync está disponível
+  if (!window.FirebaseSync) {
+    console.warn("⚠️ FirebaseSync não disponível");
+    return false;
+  }
+  
+  if (!window.FirebaseSync.carregarRegistrosFirebase) {
+    console.warn("⚠️ FirebaseSync.carregarRegistrosFirebase não disponível");
+    return false;
+  }
+
+  // 🔥 GARANTIR QUE FIREBASE ESTÁ INICIALIZADO
+  if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
+    console.log("🔄 Inicializando Firebase (carregarRegistrosDoFirebase)...");
+    const initResult = window.FirebaseConfig.initFirebase();
+    console.log("🔥 Resultado da inicialização:", initResult);
+    
+    // Aguardar um pouco para garantir
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  try {
+    console.log("📡 Chamando FirebaseSync.carregarRegistrosFirebase()...");
+    const registrosFirebase = await window.FirebaseSync.carregarRegistrosFirebase();
+    console.log(`📥 Quantidade: ${registrosFirebase?.length || 0} registros`);
+    
+    if (registrosFirebase && registrosFirebase.length > 0) {
+      // Inicializar state.registros se não existir
+      if (!state.registros) state.registros = [];
+      
+      // Mostrar os primeiros registros para debug
+      console.log("📋 Primeiro registro do Firebase:", registrosFirebase[0]);
+      
+      // Mesclar dados do Firebase com state local
+      registrosFirebase.forEach(regFirebase => {
+        const indexLocal = state.registros.findIndex(r => r.id == regFirebase.id);
+        if (indexLocal !== -1) {
+          // Atualizar registro existente
+          state.registros[indexLocal] = regFirebase;
+          console.log(`🔄 Atualizado registro local ID: ${regFirebase.id}`);
+        } else {
+          // Adicionar novo registro
+          state.registros.push(regFirebase);
+          console.log(`➕ Adicionado novo registro ID: ${regFirebase.id}`);
+        }
+      });
+      
+      // Salvar no localStorage para cache
+      if (typeof salvarEstado === "function") {
+        salvarEstado();
+        console.log("💾 Estado salvo no localStorage");
+      }
+      
+      console.log(`✅ Sincronizados ${registrosFirebase.length} registros com state`);
+      console.log(`📊 Total no state: ${state.registros.length} registros`);
+      return true;
+    } else {
+      console.log("⚠️ Nenhum registro retornado do Firebase");
+      console.log("📋 Registros locais existentes:", state.registros?.length || 0);
+      return false;
+    }
+  } catch (error) {
+    console.error("❌ Erro ao carregar registros do Firebase:", error);
+    console.error("Detalhes do erro:", error.message);
+    return false;
+  }
+}
+
+// ========== FUNÇÃO CORRIGIDA: Carregar cards da aba registros ==========
 async function carregarCardsRegistros() {
   const container = document.getElementById("registrosCardsGrid");
   if (!container) return;
 
   // 🔥 Carregar registros do Firebase antes de exibir
   await carregarRegistrosDoFirebase();
+  
+  // 🔥 CARREGAR ELETIVAS DO FIREBASE SE NÃO TIVER
+  if (state.eletivas?.length === 0 && window.FirebaseSync) {
+    console.log("⚠️ Nenhuma eletiva encontrada, tentando carregar do Firebase...");
+    try {
+      const eletivasFirebase = await window.FirebaseSync.carregarDadosFirebase("eletivas");
+      if (eletivasFirebase && eletivasFirebase.length > 0) {
+        state.eletivas = eletivasFirebase;
+        todasEletivas = state.eletivas;
+        console.log(`✅ Carregadas ${eletivasFirebase.length} eletivas do Firebase`);
+        if (typeof salvarEstado === "function") salvarEstado();
+      }
+    } catch (e) {
+      console.warn("Erro ao carregar eletivas:", e);
+    }
+  }
+  
+  // 🔥 CARREGAR PROFESSORES DO FIREBASE SE NÃO TIVER
+  if (state.professores?.length === 0 && window.FirebaseSync) {
+    console.log("⚠️ Nenhum professor encontrado, tentando carregar do Firebase...");
+    try {
+      const professoresFirebase = await window.FirebaseSync.carregarDadosFirebase("professores");
+      if (professoresFirebase && professoresFirebase.length > 0) {
+        state.professores = professoresFirebase;
+        console.log(`✅ Carregados ${professoresFirebase.length} professores do Firebase`);
+        if (typeof salvarEstado === "function") salvarEstado();
+      }
+    } catch (e) {
+      console.warn("Erro ao carregar professores:", e);
+    }
+  }
 
   const eletivas = filtrarEletivasRegistros();
 
@@ -733,16 +711,16 @@ async function carregarCardsRegistros() {
 
   eletivas.forEach((eletiva) => {
     const professor =
-      state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+      state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(eletiva.professorId))?.nome ||
       "Não atribuído";
     const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
 
     const registros =
       state.registros
-        ?.filter((r) => r.eletivaId === eletiva.id)
+        ?.filter((r) => normalizarIdParaComparacao(r.eletivaId) === normalizarIdParaComparacao(eletiva.id))
         .sort((a, b) => b.data.localeCompare(a.data)) || [];
 
-    const notas = state.notas?.filter((n) => n.eletivaId === eletiva.id) || [];
+    const notas = state.notas?.filter((n) => normalizarIdParaComparacao(n.eletivaId) === normalizarIdParaComparacao(eletiva.id)) || [];
 
     let mediaDisplay = "N/A";
     if (notas.length > 0) {
@@ -814,13 +792,13 @@ async function carregarCardsRegistros() {
 
 // Abrir modal de opções de impressão
 window.abrirModalOpcoesImpressao = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  const eletiva = state.eletivas?.find((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
   if (!eletiva) return;
 
   eletivaSelecionadaParaImpressao = eletiva;
 
   const professor =
-    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+    state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(eletiva.professorId))?.nome ||
     "Não atribuído";
 
   document.getElementById("modalImpressaoTitulo").textContent =
@@ -885,21 +863,21 @@ window.selecionarOpcaoImpressao = function (opcao) {
 window.imprimirListaBrancoGestor = async function (eletivaId) {
   console.log("🖨️ Chamando imprimirListaBrancoGestor para eletiva:", eletivaId);
 
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  const eletiva = state.eletivas?.find((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
   if (!eletiva) {
     showToast("Eletiva não encontrada", "error");
     return;
   }
 
   const professor =
-    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+    state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(eletiva.professorId))?.nome ||
     "Não atribuído";
 
   const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+    state.matriculas?.filter((m) => normalizarIdParaComparacao(m.eletivaId) === normalizarIdParaComparacao(eletivaId)) || [];
   const alunos =
     state.alunos
-      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
+      ?.filter((a) => matriculas.some((m) => normalizarIdParaComparacao(m.alunoId) === normalizarIdParaComparacao(a.id)))
       .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
   if (alunos.length === 0) {
@@ -1146,14 +1124,14 @@ async function gerarPDFListaBrancoGestor(eletiva, alunos, professorNome) {
 window.abrirSelecaoData = function (eletivaId) {
   console.log("📅 Abrindo seleção de data para eletiva:", eletivaId);
 
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  const eletiva = state.eletivas?.find((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
   if (!eletiva) return;
 
   eletivaSelecionadaParaData = eletiva;
 
   const registros =
     state.registros
-      ?.filter((r) => r.eletivaId === eletivaId)
+      ?.filter((r) => normalizarIdParaComparacao(r.eletivaId) === normalizarIdParaComparacao(eletivaId))
       .sort((a, b) => b.data.localeCompare(a.data)) || [];
 
   if (registros.length === 0) {
@@ -1225,14 +1203,14 @@ window.imprimirRegistroPorDataGestor = async function (eletivaId, data) {
     data,
   );
 
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  const eletiva = state.eletivas?.find((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
   if (!eletiva) {
     showToast("Eletiva não encontrada", "error");
     return;
   }
 
   const registro = state.registros?.find(
-    (r) => r.eletivaId === eletivaId && r.data === data,
+    (r) => normalizarIdParaComparacao(r.eletivaId) === normalizarIdParaComparacao(eletivaId) && r.data === data,
   );
   if (!registro) {
     showToast("Registro não encontrado", "error");
@@ -1240,14 +1218,14 @@ window.imprimirRegistroPorDataGestor = async function (eletivaId, data) {
   }
 
   const professor =
-    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+    state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(eletiva.professorId))?.nome ||
     "Não atribuído";
 
   const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+    state.matriculas?.filter((m) => normalizarIdParaComparacao(m.eletivaId) === normalizarIdParaComparacao(eletivaId)) || [];
   const alunos =
     state.alunos
-      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
+      ?.filter((a) => matriculas.some((m) => normalizarIdParaComparacao(m.alunoId) === normalizarIdParaComparacao(a.id)))
       .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
   mostrarLoaderGestor(true);
@@ -1514,13 +1492,13 @@ async function gerarPDFRegistroDataGestor(
 window.imprimirBoletimGestor = async function (eletivaId) {
   console.log("🖨️ Chamando imprimirBoletimGestor para eletiva:", eletivaId);
 
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+  const eletiva = state.eletivas?.find((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
   if (!eletiva) {
     showToast("Eletiva não encontrada", "error");
     return;
   }
 
-  const notas = state.notas?.filter((n) => n.eletivaId === eletivaId) || [];
+  const notas = state.notas?.filter((n) => normalizarIdParaComparacao(n.eletivaId) === normalizarIdParaComparacao(eletivaId)) || [];
 
   if (notas.length === 0) {
     showToast("Não há notas registradas para esta eletiva", "warning");
@@ -1528,14 +1506,14 @@ window.imprimirBoletimGestor = async function (eletivaId) {
   }
 
   const professor =
-    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
+    state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(eletiva.professorId))?.nome ||
     "Não atribuído";
 
   const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+    state.matriculas?.filter((m) => normalizarIdParaComparacao(m.eletivaId) === normalizarIdParaComparacao(eletivaId)) || [];
   const alunos =
     state.alunos
-      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
+      ?.filter((a) => matriculas.some((m) => normalizarIdParaComparacao(m.alunoId) === normalizarIdParaComparacao(a.id)))
       .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
   const ultimoSemestre = notas.sort((a, b) =>
@@ -1949,3 +1927,94 @@ window.abrirModalRestaurarBackup = function () {
 window.abrirModalConflitos = function () {
   window.location.href = "gestao-completa.html#dados";
 };
+
+// ========== EVENT LISTENER PRINCIPAL ==========
+document.addEventListener("DOMContentLoaded", async function () {
+  console.log("👔 Inicializando página do gestor...");
+
+  carregarTheme();
+
+  const gestorStorage = localStorage.getItem("gestor_atual");
+  if (!gestorStorage) {
+    window.location.href = "selecionar-gestor.html";
+    return;
+  }
+
+  gestorAtual = JSON.parse(gestorStorage);
+  console.log("👤 Gestor:", gestorAtual.nome, "Perfil:", gestorAtual.perfil);
+
+  // 🔥 INICIALIZAR FIREBASE PRIMEIRO
+  console.log("🔥 Inicializando Firebase...");
+  if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
+    const initResult = window.FirebaseConfig.initFirebase();
+    console.log("🔥 Firebase inicializado:", initResult);
+  } else {
+    console.warn("⚠️ FirebaseConfig.initFirebase não disponível");
+  }
+
+  // Aguardar um pouco para garantir que o Firestore está pronto
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // 🔥 CARREGAR TODAS AS COLEÇÕES DO FIREBASE
+  console.log("🔥 Carregando coleções do Firebase para o gestor...");
+  
+  if (window.FirebaseSync && typeof window.FirebaseSync.carregarColecoesGestor === "function") {
+    const carregou = await window.FirebaseSync.carregarColecoesGestor();
+    console.log("✅ Dados carregados do Firebase:", carregou);
+    console.log("📊 Estado após carregar:", {
+      eletivas: state.eletivas?.length || 0,
+      alunos: state.alunos?.length || 0,
+      professores: state.professores?.length || 0,
+      registros: state.registros?.length || 0
+    });
+  } else {
+    console.warn("⚠️ FirebaseSync.carregarColecoesGestor não disponível, usando fallback");
+    if (typeof carregarEstado === "function") {
+      carregarEstado();
+    }
+  }
+
+  // Carregar registros do Firebase especificamente
+  await carregarRegistrosDoFirebase();
+  
+  todasEletivas = state.eletivas || [];
+  console.log("📚 Eletivas carregadas:", todasEletivas.length);
+  console.log("📋 Registros no state:", state.registros?.length || 0);
+  
+  // Se ainda não há eletivas, tentar carregar especificamente
+  if (state.eletivas?.length === 0 && window.FirebaseSync) {
+    console.log("⚠️ Nenhuma eletiva encontrada, tentando carregar especificamente...");
+    try {
+      const eletivasFirebase = await window.FirebaseSync.carregarDadosFirebase("eletivas");
+      if (eletivasFirebase && eletivasFirebase.length > 0) {
+        state.eletivas = eletivasFirebase;
+        console.log(`✅ Carregadas ${eletivasFirebase.length} eletivas do Firebase`);
+        todasEletivas = state.eletivas;
+        if (typeof salvarEstado === "function") salvarEstado();
+      }
+    } catch (e) {
+      console.warn("Erro ao carregar eletivas:", e);
+    }
+  }
+
+  document.getElementById("userName").textContent = gestorAtual.nome;
+
+  const roleMap = {
+    GESTOR: "Administrador",
+    SECRETARIA: "Secretaria",
+    GESTOR_PROFESSOR: "Gestor/Professor",
+  };
+  document.getElementById("userRole").textContent =
+    roleMap[gestorAtual.perfil] || "Gestor";
+
+  console.log("✅ Estado após carregar Firebase:", {
+    registros: state.registros?.length || 0,
+    eletivas: state.eletivas?.length || 0,
+    alunos: state.alunos?.length || 0
+  });
+
+  // Carregar dados iniciais
+  carregarEstatisticas();
+  inicializarFiltrosRegistros();
+  carregarCardsRegistros();
+});
