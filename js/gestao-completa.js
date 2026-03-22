@@ -14,6 +14,7 @@ let locais = [];
 let filtroTempoEstudante = "TODOS";
 let estudantesFiltrados = [];
 let paginaAtualEstudantes = 1;
+let paginaAntesEdicao = 1;
 const ITENS_POR_PAGINA = 20;
 let estudanteEmEdicao = null;
 let estudanteParaTroca = null;
@@ -88,11 +89,47 @@ function escapeHtml(str) {
 // ========== FUNÇÃO AUXILIAR PARA NORMALIZAR IDs ==========
 function normalizarIdParaComparacao(id) {
   if (id === undefined || id === null) return null;
-  // Se for string numérica, converte para número para comparação
   if (typeof id === 'string' && /^\d+$/.test(id)) {
     return parseInt(id, 10);
   }
   return id;
+}
+
+// ========== FUNÇÃO PARA OBTER TEMPO DE UMA ELETIVA ==========
+function getTempoDaEletiva(eletivaId) {
+  const eletiva = state.eletivas?.find(e => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
+  if (eletiva && eletiva.horario) {
+    return eletiva.horario.codigoTempo;
+  }
+  return null;
+}
+
+// ========== FUNÇÃO PARA OBTER ELETIVAS DO MESMO TEMPO ==========
+function getEletivasDoMesmoTempo(eletivaId, estudanteId = null) {
+  const eletivaAlvo = state.eletivas?.find(e => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
+  if (!eletivaAlvo || !eletivaAlvo.horario) return [];
+  
+  const tempoAlvo = eletivaAlvo.horario.codigoTempo;
+  
+  if (!estudanteId) {
+    return state.eletivas?.filter(e => 
+      e.horario && e.horario.codigoTempo === tempoAlvo && 
+      normalizarIdParaComparacao(e.id) !== normalizarIdParaComparacao(eletivaId)
+    ) || [];
+  }
+  
+  const matriculasEstudante = state.matriculas?.filter(m => 
+    normalizarIdParaComparacao(m.alunoId) === normalizarIdParaComparacao(estudanteId)
+  ) || [];
+  
+  const eletivasEstudante = matriculasEstudante.map(m => 
+    state.eletivas?.find(e => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(m.eletivaId))
+  ).filter(e => e && e.horario);
+  
+  return eletivasEstudante.filter(e => 
+    e.horario && e.horario.codigoTempo === tempoAlvo && 
+    normalizarIdParaComparacao(e.id) !== normalizarIdParaComparacao(eletivaId)
+  );
 }
 
 // ========== INICIALIZAÇÃO ==========
@@ -111,7 +148,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     await carregarEstado();
   }
 
-  // Garantir que arrays existem
   if (!state.alunos) state.alunos = [];
   if (!state.professores) state.professores = [];
   if (!state.eletivas) state.eletivas = [];
@@ -121,7 +157,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   console.log("📊 Estado inicializado, aguardando Firebase...");
 
-  // 🔥 Sincronização com Firebase
   if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
     try {
       console.log("🔥 Aguardando inicialização do Firebase...");
@@ -159,7 +194,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
-  // Carregar dados iniciais
   carregarProfessores();
   carregarLocais();
   carregarSelectsEletivas();
@@ -869,7 +903,6 @@ window.selecionarTodasTurmas = function (selecionar) {
   });
 };
 
-// ========== FUNÇÃO CORRIGIDA - PERMITIR CÓDIGOS DUPLICADOS ==========
 window.salvarEletiva = async function () {
   const nome = document.getElementById("eletivaNome")?.value.trim();
   const codigo = document.getElementById("eletivaCodigo")?.value.trim().toUpperCase();
@@ -910,16 +943,13 @@ window.salvarEletiva = async function () {
     return;
   }
 
-  // VERIFICAR APENAS SE O MESMO PROFESSOR JÁ TEM UMA ELETIVA COM O MESMO CÓDIGO NO MESMO HORÁRIO
-  // Isso evita conflitos, mas permite que diferentes professores usem o mesmo código
   const professor = state.professores?.find((p) => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(professorId));
   const horarioCompleto = `${horarioInicio}-${horarioFim}`;
   const codigoTempo = mapaTempoEletiva[horarioCompleto] || "T1";
 
-  // Verificar conflito: mesmo professor, mesmo código, mesmo horário
   const conflitoExistente = state.eletivas?.some(e => {
     if (eletivaEmEdicao && normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaEmEdicao.id)) {
-      return false; // Ignorar a própria eletiva em edição
+      return false;
     }
     return normalizarIdParaComparacao(e.professorId) === normalizarIdParaComparacao(professorId) &&
            e.codigo === codigo &&
@@ -1002,6 +1032,7 @@ window.salvarEletiva = async function () {
     mostrarLoader(false);
   }
 };
+
 // ========== FUNÇÃO PARA EDITAR CATEGORIA DA ELETIVA ==========
 window.abrirModalEditarCategoria = function (eletivaId) {
   const eletiva = state.eletivas?.find((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaId));
@@ -1224,7 +1255,6 @@ async function removerEletiva(eletivaId) {
   try {
     const idNormalizado = normalizarIdParaComparacao(eletivaId);
     
-    // Atualizar estado local
     state.eletivas = state.eletivas.filter(e => normalizarIdParaComparacao(e.id) !== idNormalizado);
     state.matriculas = state.matriculas.filter(m => normalizarIdParaComparacao(m.eletivaId) !== idNormalizado);
     state.registros = state.registros.filter(r => normalizarIdParaComparacao(r.eletivaId) !== idNormalizado);
@@ -1232,7 +1262,6 @@ async function removerEletiva(eletivaId) {
     
     salvarEstado();
     
-    // Tentar remover do Firebase
     if (window.FirebaseSync) {
       try {
         await window.FirebaseSync.deletarDadosFirebase("eletivas", eletivaId);
@@ -1639,7 +1668,6 @@ window.filtrarEstudantes = function () {
   atualizarTabelaEstudantes();
 };
 
-// ========== FUNÇÃO CORRIGIDA ==========
 function atualizarTabelaEstudantes() {
   const tbody = document.getElementById("tabelaEstudantesBody");
   if (!tbody) return;
@@ -1653,7 +1681,7 @@ function atualizarTabelaEstudantes() {
   document.getElementById("btnPaginaProxima").disabled = paginaAtualEstudantes >= totalPaginas;
 
   if (totalEstudantes === 0) {
-    tbody.innerHTML = 'eba<td colspan="5" class="empty-state">Nenhum estudante encontrado</td> </tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum estudante encontrado</td></tr>';
     return;
   }
 
@@ -1673,12 +1701,11 @@ function atualizarTabelaEstudantes() {
       eletivasHTML = '<span style="color: var(--text-light);">Nenhuma</span>';
     }
 
-    // IMPORTANTE: Converter o ID para string para garantir que seja passado corretamente
     const estudanteIdStr = String(estudante.id);
     
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td><strong>${escapeHtml(estudante.nome)}</strong>  </td>
+      <td><strong>${escapeHtml(estudante.nome)}</strong></td>
       <td>${escapeHtml(estudante.turmaOrigem)}</td>
       <td>${escapeHtml(estudante.codigoSige)}</td>
       <td>${eletivasHTML}</td>
@@ -1692,7 +1719,7 @@ function atualizarTabelaEstudantes() {
         <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante('${estudanteIdStr}')" title="Remover">
           <i class="fas fa-trash"></i>
         </button>
-       </td>
+      </td>
     `;
     tbody.appendChild(row);
   });
@@ -1717,10 +1744,8 @@ function carregarEletivasCheckbox(estudanteId = null) {
 
   console.log("📋 Carregando eletivas checkbox para estudante ID:", estudanteId, "tipo:", typeof estudanteId);
   
-  // Normalizar ID para busca
   const idNormalizado = estudanteId !== null ? normalizarIdParaComparacao(estudanteId) : null;
   
-  // Buscar matrículas com ID normalizado
   const matriculasAtuais = idNormalizado !== null 
     ? (state.matriculas || []).filter(m => {
         const alunoId = normalizarIdParaComparacao(m.alunoId);
@@ -1734,7 +1759,7 @@ function carregarEletivasCheckbox(estudanteId = null) {
 
   const eletivasPorTempo = {};
   eletivas.forEach(e => {
-    const tempo = getTempoFromHorario(e.horario) || "OUTROS";
+    const tempo = getTempoDaEletiva(e.id) || "OUTROS";
     if (!eletivasPorTempo[tempo]) eletivasPorTempo[tempo] = [];
     eletivasPorTempo[tempo].push(e);
   });
@@ -1759,12 +1784,12 @@ function carregarEletivasCheckbox(estudanteId = null) {
     eletivasDoTempo.forEach(e => {
       const professor = state.professores?.find(p => normalizarIdParaComparacao(p.id) === normalizarIdParaComparacao(e.professorId))?.nome || "Não atribuído";
       const matriculados = state.matriculas?.filter(m => normalizarIdParaComparacao(m.eletivaId) === normalizarIdParaComparacao(e.id)).length || 0;
-      // Verificar se a eletiva está na lista de matrículas atuais
       const checked = matriculasAtuais.some(mid => normalizarIdParaComparacao(mid) === normalizarIdParaComparacao(e.id)) ? "checked" : "";
       
       html += `
         <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border-bottom: 1px solid var(--bg-light);">
-          <input type="checkbox" class="eletiva-checkbox" value="${e.id}" ${checked}>
+          <input type="checkbox" class="eletiva-checkbox" value="${e.id}" ${checked} 
+                 onchange="gerenciarTrocaEletivaMesmoTempo(this, ${estudanteId || 'null'})">
           <div style="flex: 1;">
             <strong>${e.nome}</strong> (${e.codigo}) - ${professor} - ${matriculados} alunos
           </div>
@@ -1780,6 +1805,30 @@ function carregarEletivasCheckbox(estudanteId = null) {
   container.innerHTML = html;
 }
 
+// ========== FUNÇÃO CORRIGIDA: Gerenciar troca de eletiva no mesmo tempo ==========
+window.gerenciarTrocaEletivaMesmoTempo = function(checkbox, estudanteId) {
+  if (!checkbox.checked) return;
+  
+  const eletivaId = parseInt(checkbox.value, 10);
+  const tempoEletiva = getTempoDaEletiva(eletivaId);
+  
+  if (!tempoEletiva) return;
+  
+  // Buscar todas as checkboxes do mesmo tempo
+  const container = document.getElementById("eletivasCheckboxContainer");
+  const checkboxesMesmoTempo = container.querySelectorAll(`.eletiva-checkbox`);
+  
+  checkboxesMesmoTempo.forEach(cb => {
+    const cbEletivaId = parseInt(cb.value, 10);
+    const cbTempo = getTempoDaEletiva(cbEletivaId);
+    
+    if (cbTempo === tempoEletiva && cb !== checkbox && cb.checked) {
+      cb.checked = false;
+      console.log(`🔄 Desmarcado automaticamente: eletiva ${cbEletivaId} (mesmo tempo ${tempoEletiva})`);
+    }
+  });
+};
+
 window.abrirModalAdicionarEstudante = function () {
   estudanteEmEdicao = null;
   document.getElementById("modalEstudanteTitulo").textContent = "➕ ADICIONAR ESTUDANTE";
@@ -1794,24 +1843,21 @@ window.abrirModalAdicionarEstudante = function () {
   document.getElementById("modalEstudante").classList.add("active");
 };
 
-// ========== FUNÇÃO CORRIGIDA ==========
 window.abrirModalEditarEstudante = function (estudanteId) {
   console.log("✏️ abrirModalEditarEstudante chamada com ID:", estudanteId);
-  console.log("✏️ Tipo do ID:", typeof estudanteId);
   
-  // Converter para string para garantir consistência
+  // Guardar a página atual antes de editar
+  paginaAntesEdicao = paginaAtualEstudantes;
+  console.log("📄 Página atual salva:", paginaAntesEdicao);
+  
   const idString = String(estudanteId);
-  console.log("✏️ ID convertido para string:", idString);
   
-  // Buscar o estudante - comparar tanto com string quanto com número
   const estudante = state.alunos?.find((a) => {
-    const alunoIdStr = String(a.id);
-    console.log(`   Comparando: "${alunoIdStr}" === "${idString}" ? ${alunoIdStr === idString}`);
-    return alunoIdStr === idString;
+    return String(a.id) === idString;
   });
   
   if (!estudante) {
-    console.error("❌ Estudante não encontrado. state.alunos:", state.alunos?.map(a => ({ id: a.id, tipo: typeof a.id, nome: a.nome })));
+    console.error("❌ Estudante não encontrado");
     showToast("Estudante não encontrado. Recarregando lista...", "warning");
     filtrarEstudantes();
     return;
@@ -1871,7 +1917,6 @@ window.salvarEstudante = async function () {
         throw new Error("Estudante não encontrado");
       }
       
-      // Atualizar dados básicos
       state.alunos[index] = {
         ...state.alunos[index],
         nome: nome,
@@ -1882,12 +1927,10 @@ window.salvarEstudante = async function () {
         await window.FirebaseSync.salvarDadosFirebase("alunos", state.alunos[index], state.alunos[index].id);
       }
       
-      // Processar alterações nas matrículas
       const idAlunoNormalizado = normalizarIdParaComparacao(estudanteEmEdicao.id);
       const matriculasAtuais = state.matriculas.filter(m => normalizarIdParaComparacao(m.alunoId) === idAlunoNormalizado);
       const eletivasAtuais = matriculasAtuais.map(m => normalizarIdParaComparacao(m.eletivaId));
       
-      // IDs selecionados já são números
       const idsParaAdicionar = eletivasSelecionadas.filter(id => !eletivasAtuais.includes(id));
       const idsParaRemover = eletivasAtuais.filter(id => !eletivasSelecionadas.includes(id));
       
@@ -1896,7 +1939,6 @@ window.salvarEstudante = async function () {
       console.log("Para remover:", idsParaRemover);
       console.log("Para adicionar:", idsParaAdicionar);
       
-      // Remover matrículas
       state.matriculas = state.matriculas.filter(m => {
         const alunoId = normalizarIdParaComparacao(m.alunoId);
         const eletivaId = normalizarIdParaComparacao(m.eletivaId);
@@ -1907,7 +1949,6 @@ window.salvarEstudante = async function () {
         return !deveRemover;
       });
       
-      // Adicionar novas matrículas
       for (const eletivaId of idsParaAdicionar) {
         const novaMatricula = {
           id: window.gerarUUID ? window.gerarUUID() : (state.matriculas?.map(m => m.id) || []).reduce((max, id) => {
@@ -1932,7 +1973,6 @@ window.salvarEstudante = async function () {
       showToast("Estudante atualizado com sucesso!", "success");
       
     } else {
-      // Adicionar novo estudante
       if (state.alunos?.some(a => a.codigoSige === sige)) {
         showToast(`Já existe um estudante com o SIGE ${sige}`, "error");
         mostrarLoader(false);
@@ -1984,6 +2024,12 @@ window.salvarEstudante = async function () {
     }
     
     fecharModalEstudante();
+    
+    // 🔥 RESTAURAR A PÁGINA QUE O USUÁRIO ESTAVA ANTES DA EDIÇÃO
+    if (paginaAntesEdicao > 1) {
+      paginaAtualEstudantes = paginaAntesEdicao;
+      console.log("📄 Restaurando página:", paginaAtualEstudantes);
+    }
     filtrarEstudantes();
     
   } catch (error) {
@@ -1994,11 +2040,9 @@ window.salvarEstudante = async function () {
   }
 };
 
-// ========== FUNÇÕES DE TROCA DE ELETIVA DO ESTUDANTE ==========
-// ========== FUNÇÃO CORRIGIDA ==========
+// ========== FUNÇÕES DE TROCA DE ELETIVA DO ESTUDANTE (BOTÃO TROCAR ELETIVA) ==========
 window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
   console.log("🔄 abrirModalTrocarEletivaEstudante chamada com ID:", estudanteId);
-  console.log("🔄 Tipo do ID:", typeof estudanteId);
   
   const idString = String(estudanteId);
   
@@ -2007,7 +2051,7 @@ window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
   });
   
   if (!estudante) {
-    console.error("❌ Estudante não encontrado para troca. IDs disponíveis:", state.alunos?.map(a => ({ id: a.id, tipo: typeof a.id })));
+    console.error("❌ Estudante não encontrado para troca");
     showToast("Estudante não encontrado. Recarregando lista...", "warning");
     filtrarEstudantes();
     return;
@@ -2045,7 +2089,7 @@ function carregarEletivasDisponiveisTroca(estudanteId = null) {
 
   const eletivasPorTempo = {};
   eletivas.forEach((e) => {
-    const tempo = getTempoFromHorario(e.horario) || "OUTROS";
+    const tempo = getTempoDaEletiva(e.id) || "OUTROS";
     if (!eletivasPorTempo[tempo]) eletivasPorTempo[tempo] = [];
     eletivasPorTempo[tempo].push(e);
   });
@@ -2086,6 +2130,7 @@ window.fecharModalTrocarEletivaEstudante = function () {
   estudanteParaTroca = null;
 };
 
+// ========== FUNÇÃO CORRIGIDA: Confirmar troca de eletiva com substituição automática ==========
 window.confirmarTrocaEletivaEstudante = async function () {
   if (!estudanteParaTroca) return;
 
@@ -2098,9 +2143,38 @@ window.confirmarTrocaEletivaEstudante = async function () {
   const eletivaDestino = state.eletivas?.find((e) => normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(eletivaDestinoId));
   if (!eletivaDestino) return;
 
+  const tempoDestino = getTempoDaEletiva(eletivaDestino.id);
+  console.log("🎯 Tempo da eletiva de destino:", tempoDestino);
+
   mostrarLoader(true);
 
   try {
+    // 🔥 REMOVER O ESTUDANTE DE TODAS AS ELETIVAS DO MESMO TEMPO
+    if (tempoDestino) {
+      const matriculasEstudante = state.matriculas.filter(m => 
+        normalizarIdParaComparacao(m.alunoId) === normalizarIdParaComparacao(estudanteParaTroca.id)
+      );
+      
+      for (const mat of matriculasEstudante) {
+        const eletivaMatriculada = state.eletivas?.find(e => 
+          normalizarIdParaComparacao(e.id) === normalizarIdParaComparacao(mat.eletivaId)
+        );
+        
+        if (eletivaMatriculada && getTempoDaEletiva(eletivaMatriculada.id) === tempoDestino) {
+          console.log(`🗑️ Removendo estudante da eletiva ${eletivaMatriculada.nome} (mesmo tempo ${tempoDestino})`);
+          
+          state.matriculas = state.matriculas.filter(m => 
+            !(normalizarIdParaComparacao(m.alunoId) === normalizarIdParaComparacao(estudanteParaTroca.id) && 
+              normalizarIdParaComparacao(m.eletivaId) === normalizarIdParaComparacao(eletivaMatriculada.id))
+          );
+          
+          if (window.FirebaseSync) {
+            await window.FirebaseSync.deletarDadosFirebase("matriculas", mat.id);
+          }
+        }
+      }
+    }
+
     const novaMatricula = {
       id: window.gerarUUID ? window.gerarUUID() : (state.matriculas?.map(m => m.id) || []).reduce((max, id) => {
         const num = normalizarIdParaComparacao(id);
@@ -2136,10 +2210,9 @@ window.confirmarTrocaEletivaEstudante = async function () {
 
 // ========== FUNÇÕES DE REMOÇÃO DE ESTUDANTE ==========
 window.confirmarRemoverEstudante = function (estudanteId) {
-  console.log("⚠️ Confirmando remoção do estudante ID:", estudanteId, "tipo:", typeof estudanteId);
+  console.log("⚠️ Confirmando remoção do estudante ID:", estudanteId);
   
   const idNormalizado = normalizarIdParaComparacao(estudanteId);
-  console.log("ID normalizado:", idNormalizado);
   
   const estudante = state.alunos?.find((a) => normalizarIdParaComparacao(a.id) === idNormalizado);
   if (!estudante) {
@@ -2185,7 +2258,6 @@ async function removerEstudante(estudanteId) {
   try {
     const idNormalizado = normalizarIdParaComparacao(estudanteId);
     
-    // Remover matrículas
     const matriculasParaRemover = state.matriculas.filter(m => normalizarIdParaComparacao(m.alunoId) === idNormalizado);
     console.log(`Removendo ${matriculasParaRemover.length} matrículas`);
     
@@ -2339,7 +2411,6 @@ function carregarAbaDados() {
 function atualizarStatusDados() {
   const metadata = state.metadata || {};
   const estatisticas = state.estatisticas || {};
-  const dados = state.dados || {};
   const conflitos = state.conflitos || { pendentes: [] };
 
   document.getElementById("ultimaImportacao").textContent = metadata.ultimaImportacao
@@ -2373,9 +2444,9 @@ function carregarTabelaTempos() {
     const tempoConfig = config[tempo] || { diaSemana: "?", series: [] };
 
     row.innerHTML = `
-       <td><strong>${tempo}</strong></td>
-       <td>${tempoConfig.diaSemana || "?"}</td>
-       <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
+      <tr><strong>${tempo}</strong>49<
+      <td>${tempoConfig.diaSemana || "?"}49<
+      <td>${tempoConfig.series?.join(", ") || "Todas"}49<
     `;
 
     tbody.appendChild(row);
