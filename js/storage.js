@@ -7,10 +7,13 @@ let state = {
   eletivas: [],
   matriculas: [],
   registros: [],
+  notas: [],
   semestres: [],
   remocoes: [],
   ultimaSincronizacao: null,
   semestreAtivo: null,
+  configTempos: null,
+  liberacaoNotas: null,
   nextId: {
     aluno: 1,
     professor: 1,
@@ -24,23 +27,18 @@ function carregarEstado() {
   console.log("📊 Carregando estado do localStorage...");
 
   try {
-    state.professores =
-      JSON.parse(localStorage.getItem(CONFIG.storageKeys.professores)) || [];
-    state.alunos =
-      JSON.parse(localStorage.getItem(CONFIG.storageKeys.alunos)) || [];
-    state.eletivas =
-      JSON.parse(localStorage.getItem(CONFIG.storageKeys.eletivas)) || [];
-    state.matriculas =
-      JSON.parse(localStorage.getItem(CONFIG.storageKeys.matriculas)) || [];
-    state.registros =
-      JSON.parse(localStorage.getItem(CONFIG.storageKeys.registros)) || [];
-    state.semestres =
-      JSON.parse(localStorage.getItem(CONFIG.storageKeys.semestres)) || [];
-    state.remocoes =
-      JSON.parse(localStorage.getItem(CONFIG.storageKeys.remocoes)) || [];
-    state.ultimaSincronizacao = localStorage.getItem(
-      CONFIG.storageKeys.ultimaSincronizacao,
-    );
+    state.professores = JSON.parse(localStorage.getItem(CONFIG.storageKeys.professores)) || [];
+    state.alunos = JSON.parse(localStorage.getItem(CONFIG.storageKeys.alunos)) || [];
+    state.eletivas = JSON.parse(localStorage.getItem(CONFIG.storageKeys.eletivas)) || [];
+    state.matriculas = JSON.parse(localStorage.getItem(CONFIG.storageKeys.matriculas)) || [];
+    state.registros = JSON.parse(localStorage.getItem(CONFIG.storageKeys.registros)) || [];
+    state.notas = JSON.parse(localStorage.getItem("sage_notas_2026")) || [];
+    state.semestres = JSON.parse(localStorage.getItem(CONFIG.storageKeys.semestres)) || [];
+    state.remocoes = JSON.parse(localStorage.getItem(CONFIG.storageKeys.remocoes)) || [];
+    state.ultimaSincronizacao = localStorage.getItem(CONFIG.storageKeys.ultimaSincronizacao);
+    
+    state.configTempos = JSON.parse(localStorage.getItem("sage_config_tempos")) || null;
+    state.liberacaoNotas = JSON.parse(localStorage.getItem("sage_liberacao_notas")) || null;
 
     const nextId = JSON.parse(localStorage.getItem("sage_nextId_2026")) || {
       aluno: state.alunos.length + 1,
@@ -53,32 +51,16 @@ function carregarEstado() {
 
     if (state.semestres.length === 0) {
       state.semestres = [
-        {
-          id: "2026-1",
-          nome: "1º Semestre 2026",
-          ano: 2026,
-          periodo: 1,
-          ativo: true,
-        },
-        {
-          id: "2026-2",
-          nome: "2º Semestre 2026",
-          ano: 2026,
-          periodo: 2,
-          ativo: false,
-        },
+        { id: "2026-1", nome: "1º Semestre 2026", ano: 2026, periodo: 1, ativo: true },
+        { id: "2026-2", nome: "2º Semestre 2026", ano: 2026, periodo: 2, ativo: false },
       ];
     }
 
-    state.semestreAtivo =
-      state.semestres.find((s) => s.ativo) || state.semestres[0];
+    state.semestreAtivo = state.semestres.find((s) => s.ativo) || state.semestres[0];
 
-    console.log(
-      `✅ Estado carregado: ${state.professores.length} professores, ${state.alunos.length} alunos`,
-    );
-    console.log(
-      `   Eletivas: ${state.eletivas.length}, Matrículas: ${state.matriculas.length}`,
-    );
+    console.log(`✅ Estado carregado: ${state.professores.length} professores, ${state.alunos.length} alunos`);
+    console.log(`   Eletivas: ${state.eletivas.length}, Matrículas: ${state.matriculas.length}`);
+    console.log(`   Registros: ${state.registros.length}, Notas: ${state.notas.length}`);
   } catch (e) {
     console.error("❌ Erro ao carregar estado:", e);
   }
@@ -88,37 +70,29 @@ function carregarEstado() {
 
 function salvarEstado() {
   try {
-    localStorage.setItem(
-      CONFIG.storageKeys.professores,
-      JSON.stringify(state.professores),
-    );
-    localStorage.setItem(
-      CONFIG.storageKeys.alunos,
-      JSON.stringify(state.alunos),
-    );
-    localStorage.setItem(
-      CONFIG.storageKeys.eletivas,
-      JSON.stringify(state.eletivas),
-    );
-    localStorage.setItem(
-      CONFIG.storageKeys.matriculas,
-      JSON.stringify(state.matriculas),
-    );
-    localStorage.setItem(
-      CONFIG.storageKeys.registros,
-      JSON.stringify(state.registros),
-    );
-    localStorage.setItem(
-      CONFIG.storageKeys.semestres,
-      JSON.stringify(state.semestres),
-    );
-    localStorage.setItem(
-      CONFIG.storageKeys.remocoes,
-      JSON.stringify(state.remocoes),
-    );
+    localStorage.setItem(CONFIG.storageKeys.professores, JSON.stringify(state.professores));
+    localStorage.setItem(CONFIG.storageKeys.alunos, JSON.stringify(state.alunos));
+    localStorage.setItem(CONFIG.storageKeys.eletivas, JSON.stringify(state.eletivas));
+    localStorage.setItem(CONFIG.storageKeys.matriculas, JSON.stringify(state.matriculas));
+    localStorage.setItem(CONFIG.storageKeys.registros, JSON.stringify(state.registros));
+    localStorage.setItem("sage_notas_2026", JSON.stringify(state.notas || []));
+    localStorage.setItem(CONFIG.storageKeys.semestres, JSON.stringify(state.semestres));
+    localStorage.setItem(CONFIG.storageKeys.remocoes, JSON.stringify(state.remocoes));
     localStorage.setItem("sage_nextId_2026", JSON.stringify(state.nextId));
+    
+    if (state.configTempos) {
+      localStorage.setItem("sage_config_tempos", JSON.stringify(state.configTempos));
+    }
+    if (state.liberacaoNotas) {
+      localStorage.setItem("sage_liberacao_notas", JSON.stringify(state.liberacaoNotas));
+    }
 
     console.log("💾 Estado salvo no localStorage");
+    
+    window.dispatchEvent(new CustomEvent('sageStateUpdated', { 
+      detail: { timestamp: new Date().toISOString(), type: 'state_saved' } 
+    }));
+    
   } catch (e) {
     console.error("❌ Erro ao salvar estado:", e);
   }
@@ -147,9 +121,99 @@ function getEstatisticas() {
   };
 }
 
+// ========== FUNÇÃO GLOBAL PARA FORCAR RECARREGAMENTO DE DADOS ==========
+
+window.forcarRecarregamentoGlobal = async function(origem = "manual") {
+    console.log(`🔄 Forçando recarregamento global de dados (origem: ${origem})...`);
+    
+    if (typeof carregarEstado === "function") {
+        carregarEstado();
+        console.log("✅ Estado recarregado do localStorage");
+    }
+    
+    if (window.FirebaseSync && window.FirebaseSync.carregarDadosFirebase) {
+        try {
+            if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
+                console.log("🔄 Inicializando Firebase...");
+                window.FirebaseConfig.initFirebase();
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            const eletivasFirebase = await window.FirebaseSync.carregarDadosFirebase("eletivas");
+            if (eletivasFirebase && eletivasFirebase.length > 0) {
+                eletivasFirebase.forEach(e => {
+                    const index = state.eletivas.findIndex(local => local.id === e.id);
+                    if (index !== -1) {
+                        state.eletivas[index] = e;
+                    } else {
+                        state.eletivas.push(e);
+                    }
+                });
+                localStorage.setItem(CONFIG.storageKeys.eletivas, JSON.stringify(state.eletivas));
+                console.log(`✅ Sincronizadas ${eletivasFirebase.length} eletivas do Firebase`);
+            }
+            
+            const registrosFirebase = await window.FirebaseSync.carregarDadosFirebase("registros");
+            if (registrosFirebase && registrosFirebase.length > 0) {
+                registrosFirebase.forEach(r => {
+                    const index = state.registros.findIndex(local => local.id === r.id);
+                    if (index !== -1) {
+                        state.registros[index] = r;
+                    } else {
+                        state.registros.push(r);
+                    }
+                });
+                localStorage.setItem(CONFIG.storageKeys.registros, JSON.stringify(state.registros));
+                console.log(`✅ Sincronizados ${registrosFirebase.length} registros do Firebase`);
+            }
+            
+            const matriculasFirebase = await window.FirebaseSync.carregarDadosFirebase("matriculas");
+            if (matriculasFirebase && matriculasFirebase.length > 0) {
+                matriculasFirebase.forEach(m => {
+                    const index = state.matriculas.findIndex(local => local.id === m.id);
+                    if (index !== -1) {
+                        state.matriculas[index] = m;
+                    } else {
+                        state.matriculas.push(m);
+                    }
+                });
+                localStorage.setItem(CONFIG.storageKeys.matriculas, JSON.stringify(state.matriculas));
+                console.log(`✅ Sincronizadas ${matriculasFirebase.length} matrículas do Firebase`);
+            }
+            
+            const notasFirebase = await window.FirebaseSync.carregarDadosFirebase("notas");
+            if (notasFirebase && notasFirebase.length > 0) {
+                state.notas = notasFirebase;
+                localStorage.setItem("sage_notas_2026", JSON.stringify(notasFirebase));
+                console.log(`✅ Sincronizadas ${notasFirebase.length} notas do Firebase`);
+            }
+            
+        } catch (error) {
+            console.error("❌ Erro ao carregar do Firebase:", error);
+        }
+    }
+    
+    window.dispatchEvent(new CustomEvent('dadosAtualizados', { 
+        detail: { timestamp: new Date().toISOString(), origem: origem } 
+    }));
+    
+    console.log("✅ Recarregamento global concluído. Total de eletivas:", state.eletivas.length);
+    return true;
+};
+
+window.addEventListener('storage', function(event) {
+    if (event.key && event.key.includes('sage_')) {
+        console.log("📦 Mudança detectada no localStorage:", event.key);
+        if (typeof window.forcarRecarregamentoGlobal === 'function') {
+            window.forcarRecarregamentoGlobal('storage_event');
+        }
+    }
+});
+
 window.state = state;
 window.carregarEstado = carregarEstado;
 window.salvarEstado = salvarEstado;
 window.getNextId = getNextId;
 window.atualizarIndicadorSemestre = atualizarIndicadorSemestre;
 window.getEstatisticas = getEstatisticas;
+window.forcarRecarregamentoGlobal = forcarRecarregamentoGlobal;
