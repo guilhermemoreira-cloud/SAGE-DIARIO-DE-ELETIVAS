@@ -1628,6 +1628,7 @@ window.filtrarEstudantes = function () {
   atualizarTabelaEstudantes();
 };
 
+// ========== FUNÇÃO CORRIGIDA ==========
 function atualizarTabelaEstudantes() {
   const tbody = document.getElementById("tabelaEstudantesBody");
   if (!tbody) return;
@@ -1641,7 +1642,7 @@ function atualizarTabelaEstudantes() {
   document.getElementById("btnPaginaProxima").disabled = paginaAtualEstudantes >= totalPaginas;
 
   if (totalEstudantes === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum estudante encontrado</td></tr>';
+    tbody.innerHTML = 'eba<td colspan="5" class="empty-state">Nenhum estudante encontrado</td> </tr>';
     return;
   }
 
@@ -1661,23 +1662,26 @@ function atualizarTabelaEstudantes() {
       eletivasHTML = '<span style="color: var(--text-light);">Nenhuma</span>';
     }
 
+    // IMPORTANTE: Converter o ID para string para garantir que seja passado corretamente
+    const estudanteIdStr = String(estudante.id);
+    
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td><strong>${escapeHtml(estudante.nome)}</strong></td>
+      <td><strong>${escapeHtml(estudante.nome)}</strong>  </td>
       <td>${escapeHtml(estudante.turmaOrigem)}</td>
       <td>${escapeHtml(estudante.codigoSige)}</td>
       <td>${eletivasHTML}</td>
-      <td>
-        <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante('${estudante.id}')" title="Editar">
+      <td style="white-space: nowrap;">
+        <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante('${estudanteIdStr}')" title="Editar" style="margin-right: 5px;">
           <i class="fas fa-edit"></i>
         </button>
-        <button class="btn-secondary btn-small" onclick="abrirModalTrocarEletivaEstudante('${estudante.id}')" title="Trocar eletiva">
+        <button class="btn-secondary btn-small" onclick="abrirModalTrocarEletivaEstudante('${estudanteIdStr}')" title="Trocar eletiva" style="margin-right: 5px;">
           <i class="fas fa-exchange-alt"></i>
         </button>
-        <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante('${estudante.id}')" title="Remover">
+        <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante('${estudanteIdStr}')" title="Remover">
           <i class="fas fa-trash"></i>
         </button>
-      </td>
+       </td>
     `;
     tbody.appendChild(row);
   });
@@ -1779,26 +1783,30 @@ window.abrirModalAdicionarEstudante = function () {
   document.getElementById("modalEstudante").classList.add("active");
 };
 
+// ========== FUNÇÃO CORRIGIDA ==========
 window.abrirModalEditarEstudante = function (estudanteId) {
-  console.log("✏️ Abrindo modal para editar estudante ID:", estudanteId, "tipo:", typeof estudanteId);
+  console.log("✏️ abrirModalEditarEstudante chamada com ID:", estudanteId);
+  console.log("✏️ Tipo do ID:", typeof estudanteId);
   
-  // Normalizar o ID para comparação
-  const idNormalizado = normalizarIdParaComparacao(estudanteId);
-  console.log("ID normalizado:", idNormalizado, "tipo:", typeof idNormalizado);
+  // Converter para string para garantir consistência
+  const idString = String(estudanteId);
+  console.log("✏️ ID convertido para string:", idString);
   
-  // Buscar o estudante usando comparação flexível
+  // Buscar o estudante - comparar tanto com string quanto com número
   const estudante = state.alunos?.find((a) => {
-    const alunoId = normalizarIdParaComparacao(a.id);
-    return alunoId === idNormalizado;
+    const alunoIdStr = String(a.id);
+    console.log(`   Comparando: "${alunoIdStr}" === "${idString}" ? ${alunoIdStr === idString}`);
+    return alunoIdStr === idString;
   });
   
   if (!estudante) {
-    console.error("❌ Estudante não encontrado. Buscando por:", idNormalizado);
-    console.log("IDs disponíveis:", state.alunos?.map(a => ({ id: a.id, tipo: typeof a.id, normalizado: normalizarIdParaComparacao(a.id) })));
+    console.error("❌ Estudante não encontrado. state.alunos:", state.alunos?.map(a => ({ id: a.id, tipo: typeof a.id, nome: a.nome })));
     showToast("Estudante não encontrado. Recarregando lista...", "warning");
     filtrarEstudantes();
     return;
   }
+
+  console.log("✅ Estudante encontrado:", estudante.nome);
 
   estudanteEmEdicao = estudante;
   document.getElementById("modalEstudanteTitulo").textContent = "✏️ EDITAR ESTUDANTE";
@@ -1976,25 +1984,25 @@ window.salvarEstudante = async function () {
 };
 
 // ========== FUNÇÕES DE TROCA DE ELETIVA DO ESTUDANTE ==========
+// ========== FUNÇÃO CORRIGIDA ==========
 window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
-  console.log("🔄 Abrindo modal para trocar eletiva do estudante ID:", estudanteId, "tipo:", typeof estudanteId);
+  console.log("🔄 abrirModalTrocarEletivaEstudante chamada com ID:", estudanteId);
+  console.log("🔄 Tipo do ID:", typeof estudanteId);
   
-  // Normalizar o ID para comparação
-  const idNormalizado = normalizarIdParaComparacao(estudanteId);
-  console.log("ID normalizado:", idNormalizado, "tipo:", typeof idNormalizado);
+  const idString = String(estudanteId);
   
-  // Buscar o estudante usando comparação flexível
   const estudante = state.alunos?.find((a) => {
-    const alunoId = normalizarIdParaComparacao(a.id);
-    return alunoId === idNormalizado;
+    return String(a.id) === idString;
   });
   
   if (!estudante) {
-    console.error("❌ Estudante não encontrado para troca. Buscando por:", idNormalizado);
+    console.error("❌ Estudante não encontrado para troca. IDs disponíveis:", state.alunos?.map(a => ({ id: a.id, tipo: typeof a.id })));
     showToast("Estudante não encontrado. Recarregando lista...", "warning");
     filtrarEstudantes();
     return;
   }
+
+  console.log("✅ Estudante encontrado para troca:", estudante.nome);
 
   estudanteParaTroca = estudante;
 
@@ -2354,9 +2362,9 @@ function carregarTabelaTempos() {
     const tempoConfig = config[tempo] || { diaSemana: "?", series: [] };
 
     row.innerHTML = `
-      <td><strong>${tempo}</strong></td>
-      <td>${tempoConfig.diaSemana || "?"}</td>
-      <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
+       <td><strong>${tempo}</strong></td>
+       <td>${tempoConfig.diaSemana || "?"}</td>
+       <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
     `;
 
     tbody.appendChild(row);
