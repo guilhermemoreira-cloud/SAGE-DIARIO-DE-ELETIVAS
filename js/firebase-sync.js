@@ -15,9 +15,7 @@ function initSyncQueue() {
     const savedQueue = localStorage.getItem(SYNC_QUEUE_KEY);
     if (savedQueue) {
       pendingQueue = JSON.parse(savedQueue);
-      console.log(
-        `📦 Fila de sincronização carregada: ${pendingQueue.length} operações pendentes`,
-      );
+      console.log(`📦 Fila de sincronização carregada: ${pendingQueue.length} operações pendentes`);
     }
   } catch (e) {
     console.warn("Erro ao carregar fila de sincronização:", e);
@@ -26,7 +24,6 @@ function initSyncQueue() {
 
   lastSyncTime = localStorage.getItem("sage_last_sync");
 
-  // Processar fila pendente após inicialização
   setTimeout(() => {
     processarFilaPendente();
   }, 2000);
@@ -44,7 +41,7 @@ function salvarFilaPendente() {
 function adicionarOperacaoFila(tipo, colecao, dados, documentoId = null) {
   const operacao = {
     id: gerarUUID(),
-    tipo: tipo, // 'salvar' ou 'deletar'
+    tipo: tipo,
     colecao: colecao,
     documentoId: documentoId,
     dados: dados,
@@ -55,11 +52,8 @@ function adicionarOperacaoFila(tipo, colecao, dados, documentoId = null) {
   pendingQueue.push(operacao);
   salvarFilaPendente();
 
-  console.log(
-    `📝 Operação adicionada à fila: ${tipo} - ${colecao} (${pendingQueue.length} pendentes)`,
-  );
+  console.log(`📝 Operação adicionada à fila: ${tipo} - ${colecao} (${pendingQueue.length} pendentes)`);
 
-  // Tentar processar imediatamente se estiver online
   if (navigator.onLine && !syncInProgress) {
     setTimeout(processarFilaPendente, 100);
   }
@@ -80,13 +74,11 @@ function getPendingCount() {
 async function processarFilaPendente() {
   if (syncInProgress || pendingQueue.length === 0) return;
 
-  // Verificar se FirebaseConfig está disponível
   if (!window.FirebaseConfig) {
     console.warn("⚠️ FirebaseConfig não disponível");
     return;
   }
 
-  // Garantir que Firebase está inicializado
   if (!window.FirebaseConfig.isInitialized) {
     const initResult = window.FirebaseConfig.initFirebase();
     if (!initResult) {
@@ -117,17 +109,15 @@ async function processarFilaPendente() {
       }
 
       const collectionRef = db.collection(op.colecao);
-
-      // Usar o documentoId se fornecido, caso contrário criar um novo ID
       let docRef;
+
       if (op.documentoId) {
         docRef = collectionRef.doc(op.documentoId.toString());
       } else {
-        docRef = collectionRef.doc(); // Firebase gera ID automático
+        docRef = collectionRef.doc();
       }
 
       if (op.tipo === "salvar" && op.dados) {
-        // Garantir que o documento tenha um ID
         const dadosParaSalvar = {
           ...op.dados,
           id: op.documentoId || docRef.id,
@@ -136,14 +126,10 @@ async function processarFilaPendente() {
         };
 
         await docRef.set(dadosParaSalvar, { merge: true });
-        console.log(
-          `✅ Operação concluída: ${op.tipo} - ${op.colecao} (ID: ${docRef.id})`,
-        );
+        console.log(`✅ Operação concluída: ${op.tipo} - ${op.colecao} (ID: ${docRef.id})`);
       } else if (op.tipo === "deletar") {
         await docRef.delete();
-        console.log(
-          `✅ Operação concluída: ${op.tipo} - ${op.colecao} (ID: ${op.documentoId})`,
-        );
+        console.log(`✅ Operação concluída: ${op.tipo} - ${op.colecao} (ID: ${op.documentoId})`);
       } else {
         console.warn(`⚠️ Operação ignorada: tipo inválido ou dados ausentes`);
       }
@@ -153,10 +139,7 @@ async function processarFilaPendente() {
       if (op.tentativas < MAX_RETRY_ATTEMPTS) {
         novasPendentes.push(op);
       } else {
-        console.error(
-          `❌ Operação descartada após ${MAX_RETRY_ATTEMPTS} tentativas:`,
-          op,
-        );
+        console.error(`❌ Operação descartada após ${MAX_RETRY_ATTEMPTS} tentativas:`, op);
         if (typeof window.showToast === "function") {
           window.showToast("Falha na sincronização de alguns dados", "error");
         }
@@ -185,22 +168,16 @@ async function processarFilaPendente() {
 
 // ========== FUNÇÕES DE SALVAMENTO ==========
 async function salvarDadosFirebase(colecao, dados, documentoId = null) {
-  // Se estiver offline, adicionar à fila
   if (!navigator.onLine) {
     adicionarOperacaoFila("salvar", colecao, dados, documentoId);
     atualizarStatusSincronizacaoGlobal();
-    return {
-      offline: true,
-      queueId: pendingQueue[pendingQueue.length - 1]?.id,
-    };
+    return { offline: true, queueId: pendingQueue[pendingQueue.length - 1]?.id };
   }
 
-  // Se estiver online, tentar salvar imediatamente
   try {
     if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
       const initResult = window.FirebaseConfig?.initFirebase();
       if (!initResult) {
-        // Se não conseguir inicializar, adicionar à fila
         adicionarOperacaoFila("salvar", colecao, dados, documentoId);
         return { offline: true };
       }
@@ -217,8 +194,7 @@ async function salvarDadosFirebase(colecao, dados, documentoId = null) {
     if (documentoId) {
       docRef = collectionRef.doc(documentoId.toString());
     } else {
-      docRef = collectionRef.doc(); // Firebase gera ID automático
-      // Se não tinha ID, atualizar o ID gerado nos dados
+      docRef = collectionRef.doc();
       dados.id = docRef.id;
     }
 
@@ -235,8 +211,6 @@ async function salvarDadosFirebase(colecao, dados, documentoId = null) {
     return { success: true, id: docRef.id };
   } catch (error) {
     console.error(`❌ Erro ao salvar no Firebase: ${colecao}`, error);
-
-    // Em caso de erro, adicionar à fila para tentar depois
     adicionarOperacaoFila("salvar", colecao, dados, documentoId);
     return { offline: true, error: error.message };
   }
@@ -250,7 +224,6 @@ async function deletarDadosFirebase(colecao, documentoId) {
 
   console.log(`🗑️ Tentando deletar ${colecao}/${documentoId}`);
 
-  // Se estiver offline, adicionar à fila
   if (!navigator.onLine) {
     console.log("📡 Offline - adicionando à fila");
     adicionarOperacaoFila("deletar", colecao, null, documentoId);
@@ -259,7 +232,6 @@ async function deletarDadosFirebase(colecao, documentoId) {
   }
 
   try {
-    // Garantir que Firebase está inicializado
     if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
       const initResult = window.FirebaseConfig?.initFirebase();
       if (!initResult) {
@@ -274,26 +246,19 @@ async function deletarDadosFirebase(colecao, documentoId) {
       throw new Error("Firestore não disponível");
     }
 
-    // IMPORTANTE: Converter para string para garantir
     const docRef = db.collection(colecao).doc(documentoId.toString());
 
-    // Verificar se o documento existe
     const doc = await docRef.get();
     if (!doc.exists) {
       console.log(`ℹ️ Documento ${documentoId} não existe no Firebase`);
       return { success: true, notFound: true };
     }
 
-    // EXCLUIR O DOCUMENTO
     await docRef.delete();
     console.log(`✅ Documento DELETADO do Firebase: ${colecao}/${documentoId}`);
 
-    // Também remover da fila se estiver lá
     const indexNaFila = pendingQueue.findIndex(
-      (op) =>
-        op.documentoId === documentoId &&
-        op.colecao === colecao &&
-        op.tipo === "deletar",
+      (op) => op.documentoId === documentoId && op.colecao === colecao && op.tipo === "deletar"
     );
     if (indexNaFila !== -1) {
       pendingQueue.splice(indexNaFila, 1);
@@ -303,23 +268,19 @@ async function deletarDadosFirebase(colecao, documentoId) {
 
     return { success: true };
   } catch (error) {
-    console.error(
-      `❌ Erro ao deletar no Firebase: ${colecao}/${documentoId}`,
-      error,
-    );
+    console.error(`❌ Erro ao deletar no Firebase: ${colecao}/${documentoId}`, error);
 
-    // Em caso de erro de permissão, mostrar mensagem clara
     if (error.code === "permission-denied") {
       console.error("🚫 Erro de permissão! Verifique as regras do Firestore");
       showToast("Erro de permissão ao excluir do Firebase", "error");
       return { success: false, error: "permission-denied" };
     }
 
-    // Adicionar à fila para tentar depois
     adicionarOperacaoFila("deletar", colecao, null, documentoId);
     return { offline: true, error: error.message, success: false };
   }
 }
+
 // ========== FUNÇÕES DE CARREGAMENTO ==========
 async function carregarDadosFirebase(colecao, filtros = {}) {
   try {
@@ -338,7 +299,6 @@ async function carregarDadosFirebase(colecao, filtros = {}) {
 
     let query = db.collection(colecao);
 
-    // Aplicar filtros (ex: { campo: valor })
     Object.entries(filtros).forEach(([campo, valor]) => {
       if (valor !== undefined && valor !== null) {
         query = query.where(campo, "==", valor);
@@ -363,11 +323,7 @@ async function carregarDadosFirebase(colecao, filtros = {}) {
   }
 }
 
-async function carregarRegistrosFirebase(
-  eletivaId = null,
-  dataInicio = null,
-  dataFim = null,
-) {
+async function carregarRegistrosFirebase(eletivaId = null, dataInicio = null, dataFim = null) {
   try {
     const filtros = {};
     if (eletivaId) {
@@ -376,7 +332,6 @@ async function carregarRegistrosFirebase(
 
     let registros = await carregarDadosFirebase("registros", filtros);
 
-    // Filtrar por data (cliente-side para simplicidade)
     if (dataInicio) {
       const inicio = normalizarDataParaComparacao(dataInicio);
       registros = registros.filter((r) => {
@@ -417,17 +372,13 @@ async function carregarNotasFirebase(eletivaId = null, semestre = null) {
   }
 }
 
-// ========== FUNÇÕES ESPECÍFICAS PARA REGISTRO DE AULA (OFFLINE) ==========
 async function salvarRegistroAulaOffline(registro) {
-  // Salvar no state já é feito pelo professor.js
-  // Esta função adiciona à fila do Firebase
   return await salvarDadosFirebase("registros", registro, registro.id);
 }
 
 // ========== FUNÇÕES AUXILIARES ==========
 function normalizarDataParaComparacao(dataString) {
   if (!dataString) return "";
-  // Garantir formato YYYY-MM-DD para comparação
   if (dataString.includes("/")) {
     const [dia, mes, ano] = dataString.split("/");
     return `${ano}-${mes}-${dia}`;
@@ -462,24 +413,16 @@ window.addEventListener("offline", () => {
 
 // ========== EXPORTAÇÃO ==========
 window.FirebaseSync = {
-  // Fila
   processarFilaPendente,
   getPendingCount,
-
-  // Salvamento
   salvarDadosFirebase,
   deletarDadosFirebase,
   salvarRegistroAulaOffline,
-
-  // Carregamento
   carregarDadosFirebase,
   carregarRegistrosFirebase,
   carregarNotasFirebase,
-
-  // Utilitários
   adicionarOperacaoFila,
   removerOperacaoFila,
 };
 
-// Inicializar
 initSyncQueue();
