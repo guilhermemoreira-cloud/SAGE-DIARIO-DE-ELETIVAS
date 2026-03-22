@@ -141,43 +141,30 @@ window.forcarRecarregamentoGlobal = async function(origem = "manual") {
             
             const eletivasFirebase = await window.FirebaseSync.carregarDadosFirebase("eletivas");
             if (eletivasFirebase && eletivasFirebase.length > 0) {
+                const eletivasUnicas = [];
+                const idsVistos = new Set();
                 eletivasFirebase.forEach(e => {
-                    const index = state.eletivas.findIndex(local => local.id === e.id);
-                    if (index !== -1) {
-                        state.eletivas[index] = e;
-                    } else {
-                        state.eletivas.push(e);
+                    if (!idsVistos.has(e.id)) {
+                        idsVistos.add(e.id);
+                        eletivasUnicas.push(e);
                     }
                 });
-                localStorage.setItem(CONFIG.storageKeys.eletivas, JSON.stringify(state.eletivas));
-                console.log(`✅ Sincronizadas ${eletivasFirebase.length} eletivas do Firebase`);
+                state.eletivas = eletivasUnicas;
+                localStorage.setItem(CONFIG.storageKeys.eletivas, JSON.stringify(eletivasUnicas));
+                console.log(`✅ Sincronizadas ${eletivasUnicas.length} eletivas do Firebase`);
             }
             
             const registrosFirebase = await window.FirebaseSync.carregarDadosFirebase("registros");
             if (registrosFirebase && registrosFirebase.length > 0) {
-                registrosFirebase.forEach(r => {
-                    const index = state.registros.findIndex(local => local.id === r.id);
-                    if (index !== -1) {
-                        state.registros[index] = r;
-                    } else {
-                        state.registros.push(r);
-                    }
-                });
-                localStorage.setItem(CONFIG.storageKeys.registros, JSON.stringify(state.registros));
+                state.registros = registrosFirebase;
+                localStorage.setItem(CONFIG.storageKeys.registros, JSON.stringify(registrosFirebase));
                 console.log(`✅ Sincronizados ${registrosFirebase.length} registros do Firebase`);
             }
             
             const matriculasFirebase = await window.FirebaseSync.carregarDadosFirebase("matriculas");
             if (matriculasFirebase && matriculasFirebase.length > 0) {
-                matriculasFirebase.forEach(m => {
-                    const index = state.matriculas.findIndex(local => local.id === m.id);
-                    if (index !== -1) {
-                        state.matriculas[index] = m;
-                    } else {
-                        state.matriculas.push(m);
-                    }
-                });
-                localStorage.setItem(CONFIG.storageKeys.matriculas, JSON.stringify(state.matriculas));
+                state.matriculas = matriculasFirebase;
+                localStorage.setItem(CONFIG.storageKeys.matriculas, JSON.stringify(matriculasFirebase));
                 console.log(`✅ Sincronizadas ${matriculasFirebase.length} matrículas do Firebase`);
             }
             
