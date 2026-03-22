@@ -53,3 +53,11 @@ A static web application for managing elective courses ("eletivas") at EEMTI Fil
 - Falls back to `localStorage` when offline
 - Google Sheets integration via Apps Script for importing student/teacher data
 - Portuguese (Brazilian) UI language
+
+## Firebase Sync Architecture (updated)
+- `firebase-sync.js` exports two new functions:
+  - `carregarColecoesGestor()`: One-time async load of eletivas/alunos/matriculas/notas/liberacao_notas from Firestore, merging into state by ID
+  - `escutarColecoesGestor(callback)`: Sets up real-time `onSnapshot` listeners on those collections; calls `callback(colecao)` on changes
+- `professor.js` calls `carregarColecoesGestor()` on startup (1.5s delay to let Firebase init) and activates `escutarColecoesGestor()` for live updates; refreshes UI on every change
+- `gestao-completa.js` also calls `carregarColecoesGestor()` on startup to get latest state
+- Bug fixes: old student matriculas are now properly deleted from Firebase when editing a student; `removerEstudante` uses `deletarDadosFirebase` instead of saving null

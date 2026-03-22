@@ -475,6 +475,33 @@ document.addEventListener("DOMContentLoaded", function () {
   carregarEletivasProfessor();
   carregarSelectEletivasRegistros();
 
+  // Sincronizar dados do gestor a partir do Firebase
+  if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === 'function') {
+    window.FirebaseConfig.initFirebase();
+  }
+  setTimeout(function () {
+    if (window.FirebaseSync && typeof window.FirebaseSync.carregarColecoesGestor === 'function') {
+      window.FirebaseSync.carregarColecoesGestor().then(function (carregou) {
+        if (carregou) {
+          console.log('✅ Dados do gestor carregados do Firebase - atualizando interface...');
+          carregarEletivasProfessor();
+          carregarSelectEletivasRegistros();
+        }
+      }).catch(function (err) {
+        console.warn('⚠️ Erro na sincronização inicial:', err);
+      });
+
+      // Ativar listener em tempo real para receber mudanças do gestor automaticamente
+      if (typeof window.FirebaseSync.escutarColecoesGestor === 'function') {
+        window.FirebaseSync.escutarColecoesGestor(function (colecao) {
+          console.log('🔄 Atualização do gestor recebida:', colecao, '- Atualizando interface...');
+          carregarEletivasProfessor();
+          carregarSelectEletivasRegistros();
+        });
+      }
+    }
+  }, 1500);
+
   const hoje = new Date().toISOString().split("T")[0];
   if (document.getElementById("dataAula")) {
     document.getElementById("dataAula").value = hoje;

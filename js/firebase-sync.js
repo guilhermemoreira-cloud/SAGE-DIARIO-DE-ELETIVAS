@@ -460,6 +460,193 @@ window.addEventListener("offline", () => {
   atualizarStatusSincronizacaoGlobal();
 });
 
+
+// ========== SINCRONIZACAO DE COLECOES DO GESTOR ==========
+
+async function carregarColecoesGestor() {
+  console.log('🔄 Sincronizando coleções do gestor a partir do Firebase...');
+
+  if (!window.FirebaseConfig) {
+    console.warn('⚠️ FirebaseConfig não disponível');
+    return false;
+  }
+
+  if (!window.FirebaseConfig.isInitialized) {
+    const initResult = window.FirebaseConfig.initFirebase();
+    if (!initResult) {
+      console.warn('⚠️ Firebase não pôde ser inicializado para sincronização');
+      return false;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  const db = window.FirebaseConfig.firestore;
+  if (!db) return false;
+
+  let algumDadoCarregado = false;
+
+  function isDocValido(data) {
+    if (!data) return false;
+    return !!(data.nome || data.alunoId || data.eletivaId || data.codigo || data.codigoSige || data.professorId);
+  }
+
+  async function mesclarColecao(colecao, chaveState, chaveStorage) {
+    try {
+      const snap = await db.collection(colecao).get();
+      if (snap.empty) return;
+      const docsFirebase = [];
+      snap.forEach((doc) => {
+        const data = doc.data();
+        if (isDocValido(data)) {
+          docsFirebase.push({ ...data, id: data.id || doc.id });
+        }
+      });
+      if (docsFirebase.length === 0) return;
+      if (!state[chaveState]) state[chaveState] = [];
+      docsFirebase.forEach((docFb) => {
+        const idx = state[chaveState].findIndex((item) => String(item.id) === String(docFb.id));
+        if (idx !== -1) {
+          state[chaveState][idx] = docFb;
+        } else {
+          state[chaveState].push(docFb);
+        }
+      });
+      if (chaveStorage && typeof CONFIG !== 'undefined' && CONFIG.storageKeys[chaveStorage]) {
+        localStorage.setItem(CONFIG.storageKeys[chaveStorage], JSON.stringify(state[chaveState]));
+      }
+      console.log('✅ ' + docsFirebase.length + ' registros de ' + colecao + ' sincronizados');
+      algumDadoCarregado = true;
+    } catch (err) {
+      console.warn('⚠️ Erro ao carregar ' + colecao + ':', err.message);
+    }
+  }
+
+  await mesclarColecao('eletivas', 'eletivas', 'eletivas');
+  await mesclarColecao('alunos', 'alunos', 'alunos');
+  await mesclarColecao('matriculas', 'matriculas', 'matriculas');
+
+  try {
+    const snapNotas = await db.collection('notas').get();
+    if (!snapNotas.empty) {
+      if (!state.notas) state.notas = [];
+      snapNotas.forEach((doc) => {
+        const data = doc.data();
+        if (data) {
+          const idx = state.notas.findIndex((n) => String(n.id) === String(doc.id));
+          if (idx !== -1) {
+            state.notas[idx] = { ...data, id: doc.id };
+          } else {
+            state.notas.push({ ...data, id: doc.id });
+          }
+          algumDadoCarregado = true;
+        }
+      });
+      console.log('✅ Notas sincronizadas do Firebase');
+    }
+  } catch (err) {
+    console.warn('⚠️ Erro ao carregar notas:', err.message);
+  }
+
+  try {
+    const snapLib = await db.collection('liberacao_notas').get();
+    if (!snapLib.empty) {
+      let liberacao = null;
+      snapLib.forEach((doc) => { liberacao = { id: doc.id, ...doc.data() }; });
+      if (liberacao) {
+        state.liberacaoNotas = liberacao;
+        localStorage.setItem('sage_liberacao_notas', JSON.stringify(liberacao));
+        console.log('✅ Liberação de notas sincronizada do Firebase');
+        algumDadoCarregado = true;
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Erro ao carregar liberacao_notas:', err.message);
+  }
+
+  if (algumDadoCarregado && typeof window.salvarEstado === 'function') {
+    window.salvarEstado();
+  }
+
+  console.log('✅ Sincronização com Firebase concluída');
+  return algumDadoCarregado;
+}
+
+function escutarColecoesGestor(onAtualizado) {
+  if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
+    console.warn('⚠️ Firebase não disponível para listener em tempo real');
+    return null;
+  }
+  const db = window.FirebaseConfig.firestore;
+  if (!db) return null;
+
+  const unsubscribers = [];
+  const storageKeyMap = { eletivas: 'eletivas', alunos: 'alunos', matriculas: 'matriculas' };
+
+  function isDocValido(data) {
+    if (!data) return false;
+    return !!(data.nome || data.alunoId || data.eletivaId || data.codigo || data.codigoSige || data.professorId);
+  }
+
+  ['eletivas', 'alunos', 'matriculas'].forEach((colecao) => {
+    let primeiraExecucao = true;
+    try {
+      const unsub = db.collection(colecao).onSnapshot((snap) => {
+        if (primeiraExecucao) { primeiraExecucao = false; return; }
+        if (!state[colecao]) state[colecao] = [];
+        let mudou = false;
+        snap.docChanges().forEach((change) => {
+          const data = { ...change.doc.data(), id: change.doc.id };
+          if (change.type === 'added' || change.type === 'modified') {
+            if (isDocValido(data)) {
+              const idx = state[colecao].findIndex((item) => String(item.id) === String(data.id));
+              if (idx !== -1) { state[colecao][idx] = data; } else { state[colecao].push(data); }
+              mudou = true;
+            }
+          } else if (change.type === 'removed') {
+            state[colecao] = state[colecao].filter((item) => String(item.id) !== String(data.id));
+            mudou = true;
+          }
+        });
+        if (mudou) {
+          const chaveStorage = storageKeyMap[colecao];
+          if (chaveStorage && typeof CONFIG !== 'undefined' && CONFIG.storageKeys[chaveStorage]) {
+            localStorage.setItem(CONFIG.storageKeys[chaveStorage], JSON.stringify(state[colecao]));
+          }
+          if (typeof window.salvarEstado === 'function') window.salvarEstado();
+          console.log('🔄 Atualização em tempo real: ' + colecao);
+          if (typeof onAtualizado === 'function') onAtualizado(colecao);
+        }
+      }, (err) => { console.warn('⚠️ Erro no listener de ' + colecao + ':', err.message); });
+      unsubscribers.push(unsub);
+    } catch (err) {
+      console.warn('⚠️ Erro ao configurar listener de ' + colecao + ':', err.message);
+    }
+  });
+
+  try {
+    let primeiraLiber = true;
+    const unsubLib = db.collection('liberacao_notas').onSnapshot((snap) => {
+      if (primeiraLiber) { primeiraLiber = false; return; }
+      if (snap.empty) return;
+      let liberacao = null;
+      snap.forEach((doc) => { liberacao = { id: doc.id, ...doc.data() }; });
+      if (liberacao) {
+        state.liberacaoNotas = liberacao;
+        localStorage.setItem('sage_liberacao_notas', JSON.stringify(liberacao));
+        console.log('🔄 Liberação de notas atualizada em tempo real');
+        if (typeof onAtualizado === 'function') onAtualizado('liberacao_notas');
+      }
+    }, (err) => { console.warn('⚠️ Erro no listener de liberacao_notas:', err.message); });
+    unsubscribers.push(unsubLib);
+  } catch (err) {
+    console.warn('⚠️ Erro ao configurar listener de liberacao_notas:', err.message);
+  }
+
+  console.log('👂 Listeners em tempo real ativos');
+  return () => unsubscribers.forEach((fn) => fn());
+}
+
+
 // ========== EXPORTAÇÃO ==========
 window.FirebaseSync = {
   // Fila
@@ -475,6 +662,10 @@ window.FirebaseSync = {
   carregarDadosFirebase,
   carregarRegistrosFirebase,
   carregarNotasFirebase,
+
+  // Sincronizacao completa (gestor -> professor)
+  carregarColecoesGestor,
+  escutarColecoesGestor,
 
   // Utilitários
   adicionarOperacaoFila,

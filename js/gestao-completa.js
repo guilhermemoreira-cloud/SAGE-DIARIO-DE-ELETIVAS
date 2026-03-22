@@ -78,6 +78,26 @@ document.addEventListener("DOMContentLoaded", function () {
     carregarEstado();
   }
 
+  // Inicializar Firebase e sincronizar dados mais recentes
+  if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
+    window.FirebaseConfig.initFirebase();
+  }
+  setTimeout(function () {
+    if (window.FirebaseSync && typeof window.FirebaseSync.carregarColecoesGestor === "function") {
+      window.FirebaseSync.carregarColecoesGestor().then(function (carregou) {
+        if (carregou) {
+          console.log("✅ Dados do Firebase carregados - atualizando gestão...");
+          carregarProfessores();
+          carregarEletivas();
+          filtrarEstudantes();
+          carregarAbaDados();
+        }
+      }).catch(function (err) {
+        console.warn("⚠️ Erro na sincronização inicial:", err);
+      });
+    }
+  }, 1500);
+
   // Carregar dados iniciais
   carregarProfessores();
 
@@ -2283,7 +2303,19 @@ window.salvarEstudante = async function () {
           );
         }
 
-        // Remover matrículas antigas
+        // Remover matrículas antigas (local e Firebase)
+        const matriculasAntigas = state.matriculas.filter(
+          (m) => m.alunoId === estudanteEmEdicao.id,
+        );
+        if (window.FirebaseSync && matriculasAntigas.length > 0) {
+          for (const mat of matriculasAntigas) {
+            try {
+              await window.FirebaseSync.deletarDadosFirebase("matriculas", mat.id);
+            } catch (e) {
+              console.warn("⚠️ Erro ao deletar matrícula antiga do Firebase:", e);
+            }
+          }
+        }
         state.matriculas = state.matriculas.filter(
           (m) => m.alunoId !== estudanteEmEdicao.id,
         );
@@ -2592,12 +2624,26 @@ async function removerEstudante(estudanteId) {
     salvarEstado();
 
     if (window.FirebaseSync) {
-      // Marcar para deleção no Firebase
-      await window.FirebaseSync.salvarDadosFirebase(
-        "alunos",
-        null,
-        estudanteId,
-      );
+      // Deletar estudante do Firebase
+      try {
+        await window.FirebaseSync.deletarDadosFirebase("alunos", estudanteId);
+      } catch (e) {
+        console.warn("⚠️ Erro ao deletar aluno do Firebase:", e);
+      }
+      // Deletar matrículas do Firebase (by alunoId query)
+      try {
+        if (window.FirebaseConfig && window.FirebaseConfig.firestore) {
+          const snapMats = await window.FirebaseConfig.firestore
+            .collection("matriculas")
+            .where("alunoId", "==", estudanteId)
+            .get();
+          for (const doc of snapMats.docs) {
+            await window.FirebaseSync.deletarDadosFirebase("matriculas", doc.id);
+          }
+        }
+      } catch (e) {
+        console.warn("⚠️ Erro ao deletar matrículas do Firebase:", e);
+      }
     }
 
     showToast("Estudante removido com sucesso!", "success");
