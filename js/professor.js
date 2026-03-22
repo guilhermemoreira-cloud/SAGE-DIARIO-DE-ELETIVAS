@@ -506,7 +506,7 @@ function montarHTMLListaBranco(dados) {
       <td style="padding: 4px; border: 1px solid #000; text-align: center;">${aluno.sige}</td>
       <td style="padding: 4px; border: 1px solid #000; text-align: center;">_________</td>
       <td style="padding: 4px; border: 1px solid #000; text-align: center;">___</td>
-     </tr>
+    </tr>
   `).join("");
 
   return `
