@@ -1,4 +1,4 @@
-// js/firebase-sync.js - Sistema completo de sincronização com Firebase
+// js/firebase-sync.js - Versão CORRIGIDA (SUBSTITUI em vez de ADICIONAR)
 console.log("🔄 firebase-sync.js carregado");
 
 // ========== VARIÁVEIS GLOBAIS ==========
@@ -15,9 +15,7 @@ function initSyncQueue() {
     const savedQueue = localStorage.getItem(SYNC_QUEUE_KEY);
     if (savedQueue) {
       pendingQueue = JSON.parse(savedQueue);
-      console.log(
-        `📦 Fila de sincronização carregada: ${pendingQueue.length} operações pendentes`,
-      );
+      console.log(`📦 Fila de sincronização carregada: ${pendingQueue.length} operações pendentes`);
     }
   } catch (e) {
     console.warn("Erro ao carregar fila de sincronização:", e);
@@ -26,13 +24,11 @@ function initSyncQueue() {
 
   lastSyncTime = localStorage.getItem("sage_last_sync");
   
-  // Processar fila pendente após inicialização
   setTimeout(() => {
     processarFilaPendente();
   }, 2000);
 }
 
-// ========== GERENCIAMENTO DA FILA ==========
 function salvarFilaPendente() {
   try {
     localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(pendingQueue));
@@ -44,7 +40,7 @@ function salvarFilaPendente() {
 function adicionarOperacaoFila(tipo, colecao, dados, documentoId = null) {
   const operacao = {
     id: window.gerarUUID ? window.gerarUUID() : Date.now().toString(),
-    tipo: tipo, // 'salvar' ou 'deletar'
+    tipo: tipo,
     colecao: colecao,
     documentoId: documentoId,
     dados: dados,
@@ -55,13 +51,9 @@ function adicionarOperacaoFila(tipo, colecao, dados, documentoId = null) {
   pendingQueue.push(operacao);
   salvarFilaPendente();
 
-  console.log(
-    `📝 Operação adicionada à fila: ${tipo} - ${colecao} (${pendingQueue.length} pendentes)`,
-  );
-  
+  console.log(`📝 Operação adicionada à fila: ${tipo} - ${colecao} (${pendingQueue.length} pendentes)`);
   window.logSistema?.("INFO", "Sync", `Operação adicionada à fila: ${tipo} - ${colecao}`);
 
-  // Tentar processar imediatamente se estiver online
   if (navigator.onLine && !syncInProgress) {
     setTimeout(processarFilaPendente, 100);
   }
@@ -78,17 +70,14 @@ function getPendingCount() {
   return pendingQueue.length;
 }
 
-// ========== FUNÇÕES DE SINCRONIZAÇÃO PRINCIPAIS ==========
 async function processarFilaPendente() {
   if (syncInProgress || pendingQueue.length === 0) return;
 
-  // Verificar se FirebaseConfig está disponível
   if (!window.FirebaseConfig) {
     console.warn("⚠️ FirebaseConfig não disponível");
     return;
   }
 
-  // Garantir que Firebase está inicializado
   if (!window.FirebaseConfig.isInitialized) {
     try {
       await window.FirebaseConfig.aguardarInicializacaoFirebase(5000);
@@ -137,18 +126,11 @@ async function processarFilaPendente() {
           _syncTimestamp: new Date().toISOString(),
           _syncVersion: "2026.1",
         };
-
         await docRef.set(dadosParaSalvar, { merge: true });
-        console.log(
-          `✅ Operação concluída: ${op.tipo} - ${op.colecao} (ID: ${docRef.id})`,
-        );
+        console.log(`✅ Operação concluída: ${op.tipo} - ${op.colecao} (ID: ${docRef.id})`);
       } else if (op.tipo === "deletar") {
         await docRef.delete();
-        console.log(
-          `✅ Operação concluída: ${op.tipo} - ${op.colecao} (ID: ${op.documentoId})`,
-        );
-      } else {
-        console.warn(`⚠️ Operação ignorada: tipo inválido ou dados ausentes`);
+        console.log(`✅ Operação concluída: ${op.tipo} - ${op.colecao} (ID: ${op.documentoId})`);
       }
     } catch (error) {
       console.warn(`⚠️ Falha na operação (tentativa ${op.tentativas}):`, error);
@@ -156,10 +138,7 @@ async function processarFilaPendente() {
       if (op.tentativas < MAX_RETRY_ATTEMPTS) {
         novasPendentes.push(op);
       } else {
-        console.error(
-          `❌ Operação descartada após ${MAX_RETRY_ATTEMPTS} tentativas:`,
-          op,
-        );
+        console.error(`❌ Operação descartada após ${MAX_RETRY_ATTEMPTS} tentativas:`, op);
         window.showToast?.("Falha na sincronização de alguns dados", "error");
         window.logSistema?.("ERROR", "Sync", `Operação descartada: ${op.colecao}`, error);
       }
@@ -179,24 +158,17 @@ async function processarFilaPendente() {
     console.log("✅ Todas as operações sincronizadas!");
     lastSyncTime = new Date().toISOString();
     localStorage.setItem("sage_last_sync", lastSyncTime);
-    
     window.showToast?.("Todos os dados sincronizados com a nuvem!", "success");
   }
 }
 
-// ========== FUNÇÕES DE SALVAMENTO ==========
 async function salvarDadosFirebase(colecao, dados, documentoId = null) {
-  // Se estiver offline, adicionar à fila
   if (!navigator.onLine) {
     adicionarOperacaoFila("salvar", colecao, dados, documentoId);
     window.atualizarStatusSincronizacaoGlobal?.();
-    return {
-      offline: true,
-      queueId: pendingQueue[pendingQueue.length - 1]?.id,
-    };
+    return { offline: true, queueId: pendingQueue[pendingQueue.length - 1]?.id };
   }
 
-  // Se estiver online, tentar salvar imediatamente
   try {
     if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
       await window.FirebaseConfig?.aguardarInicializacaoFirebase(5000);
@@ -229,7 +201,6 @@ async function salvarDadosFirebase(colecao, dados, documentoId = null) {
     await docRef.set(dadosComMeta, { merge: true });
     console.log(`✅ Dados salvos no Firebase: ${colecao} (ID: ${docRef.id})`);
     
-    // Atualizar versão no state
     if (window.atualizarVersao) {
       window.atualizarVersao(colecao, dadosComMeta._syncTimestamp);
     }
@@ -238,8 +209,6 @@ async function salvarDadosFirebase(colecao, dados, documentoId = null) {
   } catch (error) {
     console.error(`❌ Erro ao salvar no Firebase: ${colecao}`, error);
     window.logSistema?.("ERROR", "Sync", `Erro ao salvar ${colecao}`, error);
-
-    // Em caso de erro, adicionar à fila para tentar depois
     adicionarOperacaoFila("salvar", colecao, dados, documentoId);
     return { offline: true, error: error.message };
   }
@@ -253,7 +222,6 @@ async function deletarDadosFirebase(colecao, documentoId) {
 
   console.log(`🗑️ Tentando deletar ${colecao}/${documentoId}`);
 
-  // Se estiver offline, adicionar à fila
   if (!navigator.onLine) {
     console.log("📡 Offline - adicionando à fila");
     adicionarOperacaoFila("deletar", colecao, null, documentoId);
@@ -273,7 +241,6 @@ async function deletarDadosFirebase(colecao, documentoId) {
 
     const docRef = db.collection(colecao).doc(String(documentoId));
 
-    // Verificar se o documento existe
     const doc = await docRef.get();
     if (!doc.exists) {
       console.log(`ℹ️ Documento ${documentoId} não existe no Firebase`);
@@ -283,12 +250,8 @@ async function deletarDadosFirebase(colecao, documentoId) {
     await docRef.delete();
     console.log(`✅ Documento DELETADO do Firebase: ${colecao}/${documentoId}`);
 
-    // Remover da fila se estiver lá
     const indexNaFila = pendingQueue.findIndex(
-      (op) =>
-        String(op.documentoId) === String(documentoId) &&
-        op.colecao === colecao &&
-        op.tipo === "deletar",
+      (op) => String(op.documentoId) === String(documentoId) && op.colecao === colecao && op.tipo === "deletar"
     );
     if (indexNaFila !== -1) {
       pendingQueue.splice(indexNaFila, 1);
@@ -298,26 +261,20 @@ async function deletarDadosFirebase(colecao, documentoId) {
 
     return { success: true };
   } catch (error) {
-    console.error(
-      `❌ Erro ao deletar no Firebase: ${colecao}/${documentoId}`,
-      error,
-    );
+    console.error(`❌ Erro ao deletar no Firebase: ${colecao}/${documentoId}`, error);
     window.logSistema?.("ERROR", "Sync", `Erro ao deletar ${colecao}/${documentoId}`, error);
 
-    // Em caso de erro de permissão, mostrar mensagem clara
     if (error.code === "permission-denied") {
       console.error("🚫 Erro de permissão! Verifique as regras do Firestore");
       window.showToast?.("Erro de permissão ao excluir do Firebase", "error");
       return { success: false, error: "permission-denied" };
     }
 
-    // Adicionar à fila para tentar depois
     adicionarOperacaoFila("deletar", colecao, null, documentoId);
     return { offline: true, error: error.message, success: false };
   }
 }
 
-// ========== FUNÇÕES DE CARREGAMENTO ==========
 async function carregarDadosFirebase(colecao, filtros = {}) {
   try {
     if (!window.FirebaseConfig || !window.FirebaseConfig.isInitialized) {
@@ -331,7 +288,6 @@ async function carregarDadosFirebase(colecao, filtros = {}) {
 
     let query = db.collection(colecao);
 
-    // Aplicar filtros (ex: { campo: valor })
     Object.entries(filtros).forEach(([campo, valor]) => {
       if (valor !== undefined && valor !== null) {
         query = query.where(campo, "==", valor);
@@ -343,7 +299,6 @@ async function carregarDadosFirebase(colecao, filtros = {}) {
 
     snapshot.forEach((doc) => {
       const data = doc.data();
-      // Garantir ID consistente
       if (data && window.garantirIdConsistente) {
         window.garantirIdConsistente(data, colecao);
       }
@@ -361,11 +316,7 @@ async function carregarDadosFirebase(colecao, filtros = {}) {
   }
 }
 
-async function carregarRegistrosFirebase(
-  eletivaId = null,
-  dataInicio = null,
-  dataFim = null,
-) {
+async function carregarRegistrosFirebase(eletivaId = null, dataInicio = null, dataFim = null) {
   try {
     const filtros = {};
     if (eletivaId) {
@@ -374,7 +325,6 @@ async function carregarRegistrosFirebase(
 
     let registros = await carregarDadosFirebase("registros", filtros);
 
-    // Filtrar por data (cliente-side para simplicidade)
     if (dataInicio) {
       const inicio = normalizarDataParaComparacao(dataInicio);
       registros = registros.filter((r) => {
@@ -407,7 +357,6 @@ async function carregarNotasFirebase(eletivaId = null, semestre = null) {
     if (semestre) {
       filtros.semestre = semestre;
     }
-
     return await carregarDadosFirebase("notas", filtros);
   } catch (error) {
     console.error("❌ Erro ao carregar notas do Firebase:", error);
@@ -415,12 +364,10 @@ async function carregarNotasFirebase(eletivaId = null, semestre = null) {
   }
 }
 
-// ========== FUNÇÕES ESPECÍFICAS PARA REGISTRO DE AULA (OFFLINE) ==========
 async function salvarRegistroAulaOffline(registro) {
   return await salvarDadosFirebase("registros", registro, registro.id);
 }
 
-// ========== FUNÇÕES AUXILIARES ==========
 function normalizarDataParaComparacao(dataString) {
   if (!dataString) return "";
   if (dataString.includes("/")) {
@@ -430,7 +377,7 @@ function normalizarDataParaComparacao(dataString) {
   return dataString;
 }
 
-// ========== SINCRONIZACAO DE COLECOES DO GESTOR ==========
+// ========== FUNÇÃO CORRIGIDA: SUBSTITUI dados em vez de ADICIONAR ==========
 async function carregarColecoesGestor() {
   console.log('🔄 Sincronizando coleções do gestor a partir do Firebase...');
 
@@ -457,18 +404,16 @@ async function carregarColecoesGestor() {
     if (!data) return false;
     const temDados = !!(data.nome || data.alunoId || data.eletivaId || data.codigo || data.codigoSige || data.professorId);
     if (!temDados) return false;
-    
-    // Verificar formato do ID
     if (data.id && window.garantirIdConsistente) {
       window.garantirIdConsistente(data);
     }
     return true;
   }
 
-  async function mesclarColecao(colecao, chaveState, chaveStorage) {
+  // CORREÇÃO: Substituir completamente os arrays em vez de fazer merge
+  async function carregarColecao(colecao, chaveState, chaveStorage) {
     try {
       const snap = await db.collection(colecao).get();
-      if (snap.empty) return;
       const docsFirebase = [];
       snap.forEach((doc) => {
         const data = doc.data();
@@ -476,55 +421,55 @@ async function carregarColecoesGestor() {
           docsFirebase.push({ ...data, id: data.id || doc.id });
         }
       });
-      if (docsFirebase.length === 0) return;
-      if (!state[chaveState]) state[chaveState] = [];
-      docsFirebase.forEach((docFb) => {
-        const idx = state[chaveState].findIndex((item) => String(item.id) === String(docFb.id));
-        if (idx !== -1) {
-          state[chaveState][idx] = docFb;
-        } else {
-          state[chaveState].push(docFb);
-        }
-      });
-      if (chaveStorage && typeof CONFIG !== 'undefined' && CONFIG.storageKeys[chaveStorage]) {
+      
+      console.log(`📥 Carregando ${docsFirebase.length} registros de ${colecao} (substituindo os ${state[chaveState]?.length || 0} existentes)`);
+      
+      // SUBSTITUIR completamente o array
+      state[chaveState] = docsFirebase;
+      
+      // Salvar no localStorage para cache offline
+      if (chaveStorage && typeof CONFIG !== 'undefined' && CONFIG.storageKeys && CONFIG.storageKeys[chaveStorage]) {
         localStorage.setItem(CONFIG.storageKeys[chaveStorage], JSON.stringify(state[chaveState]));
       }
-      console.log('✅ ' + docsFirebase.length + ' registros de ' + colecao + ' sincronizados');
-      algumDadoCarregado = true;
+      
+      console.log(`✅ ${docsFirebase.length} registros de ${colecao} carregados (substituídos)`);
+      return docsFirebase.length > 0;
     } catch (err) {
       console.warn('⚠️ Erro ao carregar ' + colecao + ':', err.message);
       window.logSistema?.("WARN", "Sync", `Erro ao carregar ${colecao}`, err);
+      return false;
     }
   }
 
-  await mesclarColecao('eletivas', 'eletivas', 'eletivas');
-  await mesclarColecao('alunos', 'alunos', 'alunos');
-  await mesclarColecao('matriculas', 'matriculas', 'matriculas');
+  // Carregar cada coleção - SUBSTITUINDO completamente
+  const eletivasCarregadas = await carregarColecao('eletivas', 'eletivas', 'eletivas');
+  const alunosCarregados = await carregarColecao('alunos', 'alunos', 'alunos');
+  const matriculasCarregadas = await carregarColecao('matriculas', 'matriculas', 'matriculas');
+  
+  algumDadoCarregado = eletivasCarregadas || alunosCarregados || matriculasCarregadas;
 
+  // Notas
   try {
     const snapNotas = await db.collection('notas').get();
     if (!snapNotas.empty) {
-      if (!state.notas) state.notas = [];
+      const notasFirebase = [];
       snapNotas.forEach((doc) => {
         const data = doc.data();
         if (data) {
           if (window.garantirIdConsistente) window.garantirIdConsistente(data, "notas");
-          const idx = state.notas.findIndex((n) => String(n.id) === String(doc.id));
-          if (idx !== -1) {
-            state.notas[idx] = { ...data, id: doc.id };
-          } else {
-            state.notas.push({ ...data, id: doc.id });
-          }
-          algumDadoCarregado = true;
+          notasFirebase.push({ ...data, id: doc.id });
         }
       });
+      state.notas = notasFirebase;
       localStorage.setItem("sage_notas_2026", JSON.stringify(state.notas));
-      console.log('✅ Notas sincronizadas do Firebase');
+      console.log(`✅ ${notasFirebase.length} notas sincronizadas do Firebase (substituídas)`);
+      algumDadoCarregado = true;
     }
   } catch (err) {
     console.warn('⚠️ Erro ao carregar notas:', err.message);
   }
 
+  // Liberação de notas
   try {
     const snapLib = await db.collection('liberacao_notas').get();
     if (!snapLib.empty) {
@@ -541,11 +486,57 @@ async function carregarColecoesGestor() {
     console.warn('⚠️ Erro ao carregar liberacao_notas:', err.message);
   }
 
+  // Professores
+  try {
+    const snapProf = await db.collection('professores').get();
+    if (!snapProf.empty) {
+      const professoresFirebase = [];
+      snapProf.forEach((doc) => {
+        const data = doc.data();
+        if (data) {
+          if (window.garantirIdConsistente) window.garantirIdConsistente(data, "professores");
+          professoresFirebase.push({ ...data, id: doc.id });
+        }
+      });
+      state.professores = professoresFirebase;
+      if (typeof CONFIG !== 'undefined' && CONFIG.storageKeys && CONFIG.storageKeys.professores) {
+        localStorage.setItem(CONFIG.storageKeys.professores, JSON.stringify(state.professores));
+      }
+      console.log(`✅ ${professoresFirebase.length} professores sincronizados do Firebase (substituídos)`);
+      algumDadoCarregado = true;
+    }
+  } catch (err) {
+    console.warn('⚠️ Erro ao carregar professores:', err.message);
+  }
+
+  // Configuração de tempos
+  try {
+    const snapConfig = await db.collection('config_tempos').get();
+    if (!snapConfig.empty) {
+      let config = null;
+      snapConfig.forEach((doc) => { config = { id: doc.id, ...doc.data() }; });
+      if (config) {
+        state.configTempos = config;
+        localStorage.setItem('sage_config_tempos', JSON.stringify(config));
+        console.log('✅ Configuração de tempos sincronizada do Firebase');
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ Erro ao carregar config_tempos:', err.message);
+  }
+
   if (algumDadoCarregado && typeof window.salvarEstado === 'function') {
     window.salvarEstado();
   }
 
   console.log('✅ Sincronização com Firebase concluída');
+  console.log('📊 Estado atual:', {
+    eletivas: state.eletivas?.length || 0,
+    alunos: state.alunos?.length || 0,
+    professores: state.professores?.length || 0,
+    matriculas: state.matriculas?.length || 0
+  });
+  
   return algumDadoCarregado;
 }
 
@@ -559,7 +550,7 @@ function escutarColecoesGestor(onAtualizado) {
   if (!db) return null;
 
   const unsubscribers = [];
-  const storageKeyMap = { eletivas: 'eletivas', alunos: 'alunos', matriculas: 'matriculas' };
+  const storageKeyMap = { eletivas: 'eletivas', alunos: 'alunos', matriculas: 'matriculas', professores: 'professores' };
   let ultimosTimestamps = {};
 
   function isDocValido(data) {
@@ -570,7 +561,7 @@ function escutarColecoesGestor(onAtualizado) {
     return true;
   }
 
-  function criarListener(colecao, storageKey = colecao) {
+  function criarListener(colecao, chaveState) {
     let primeiraExecucao = true;
     
     try {
@@ -579,38 +570,37 @@ function escutarColecoesGestor(onAtualizado) {
           primeiraExecucao = false; 
           return; 
         }
-        if (!state[colecao]) state[colecao] = [];
+        
         let mudou = false;
         
         snap.docChanges().forEach((change) => {
           const data = { ...change.doc.data(), id: change.doc.id };
           const novoTimestamp = data._syncTimestamp || data._lastSync || data.dataCriacao || new Date().toISOString();
           
-          // Versionamento: só atualizar se o dado for mais recente
           const ultimoTimestamp = ultimosTimestamps[`${colecao}_${data.id}`];
           if (ultimoTimestamp && novoTimestamp <= ultimoTimestamp) return;
           ultimosTimestamps[`${colecao}_${data.id}`] = novoTimestamp;
           
           if (change.type === 'added' || change.type === 'modified') {
             if (isDocValido(data)) {
-              const idx = state[colecao].findIndex((item) => String(item.id) === String(data.id));
+              const idx = state[chaveState].findIndex((item) => String(item.id) === String(data.id));
               if (idx !== -1) {
-                state[colecao][idx] = data;
+                state[chaveState][idx] = data;
               } else {
-                state[colecao].push(data);
+                state[chaveState].push(data);
               }
               mudou = true;
             }
           } else if (change.type === 'removed') {
-            state[colecao] = state[colecao].filter((item) => String(item.id) !== String(data.id));
+            state[chaveState] = state[chaveState].filter((item) => String(item.id) !== String(data.id));
             mudou = true;
           }
         });
         
         if (mudou) {
-          const chaveStorage = storageKeyMap[colecao] || storageKey;
+          const chaveStorage = storageKeyMap[colecao];
           if (chaveStorage && typeof CONFIG !== 'undefined' && CONFIG.storageKeys && CONFIG.storageKeys[chaveStorage]) {
-            localStorage.setItem(CONFIG.storageKeys[chaveStorage], JSON.stringify(state[colecao]));
+            localStorage.setItem(CONFIG.storageKeys[chaveStorage], JSON.stringify(state[chaveState]));
           }
           if (typeof window.salvarEstado === 'function') window.salvarEstado();
           
@@ -632,14 +622,13 @@ function escutarColecoesGestor(onAtualizado) {
     }
   }
 
-  // Criar listeners para todas as coleções - EXPANDIDO para notas e registros
   criarListener('eletivas', 'eletivas');
   criarListener('alunos', 'alunos');
   criarListener('matriculas', 'matriculas');
+  criarListener('professores', 'professores');
   criarListener('notas', 'notas');
   criarListener('registros', 'registros');
   
-  // Listener para liberação de notas
   try {
     let primeiraLiber = true;
     const unsubLib = db.collection('liberacao_notas').onSnapshot((snap) => {
@@ -719,7 +708,7 @@ function atualizarStatusSincronizacaoGlobal() {
   }
 }
 
-// ========== FUNÇÃO DE RETRY COM BACKOFF ==========
+// ========== FUNÇÕES AUXILIARES ==========
 async function executarComRetry(fn, maxTentativas = 3, delayInicial = 1000) {
   let ultimoErro;
   for (let tentativa = 1; tentativa <= maxTentativas; tentativa++) {
@@ -738,22 +727,14 @@ async function executarComRetry(fn, maxTentativas = 3, delayInicial = 1000) {
   throw ultimoErro;
 }
 
-// ========== FUNÇÃO DE EXCLUSÃO ATÔMICA DE ELETIVA ==========
 async function excluirEletivaCompleta(eletivaId) {
   console.log(`🗑️ Iniciando exclusão atômica da eletiva ID: ${eletivaId}`);
   
   const idString = String(eletivaId);
   
-  // 1. Buscar dados relacionados ANTES de iniciar o batch
-  const matriculasVinculadas = (state.matriculas || []).filter(
-    m => String(m.eletivaId) === idString
-  );
-  const registrosVinculados = (state.registros || []).filter(
-    r => String(r.eletivaId) === idString
-  );
-  const notasVinculadas = (state.notas || []).filter(
-    n => String(n.eletivaId) === idString
-  );
+  const matriculasVinculadas = (state.matriculas || []).filter(m => String(m.eletivaId) === idString);
+  const registrosVinculados = (state.registros || []).filter(r => String(r.eletivaId) === idString);
+  const notasVinculadas = (state.notas || []).filter(n => String(n.eletivaId) === idString);
   
   console.log(`📊 Dados relacionados encontrados:`, {
     matriculas: matriculasVinculadas.length,
@@ -761,29 +742,24 @@ async function excluirEletivaCompleta(eletivaId) {
     notas: notasVinculadas.length
   });
   
-  // 2. Executar exclusão atômica no Firebase (com retry)
   if (window.FirebaseConfig?.firestore) {
     await executarComRetry(async () => {
       const db = window.FirebaseConfig.firestore;
       const batch = db.batch();
       
-      // Adicionar exclusão da eletiva
       const eletivaRef = db.collection('eletivas').doc(idString);
       batch.delete(eletivaRef);
       
-      // Adicionar exclusões de matrículas
       matriculasVinculadas.forEach(mat => {
         const matRef = db.collection('matriculas').doc(String(mat.id));
         batch.delete(matRef);
       });
       
-      // Adicionar exclusões de registros
       registrosVinculados.forEach(reg => {
         const regRef = db.collection('registros').doc(String(reg.id));
         batch.delete(regRef);
       });
       
-      // Adicionar exclusões de notas
       notasVinculadas.forEach(nota => {
         const notaRef = db.collection('notas').doc(String(nota.id));
         batch.delete(notaRef);
@@ -795,11 +771,7 @@ async function excluirEletivaCompleta(eletivaId) {
     });
   }
   
-  return {
-    matriculas: matriculasVinculadas,
-    registros: registrosVinculados,
-    notas: notasVinculadas
-  };
+  return { matriculas: matriculasVinculadas, registros: registrosVinculados, notas: notasVinculadas };
 }
 
 // ========== EVENT LISTENERS ==========
@@ -835,6 +807,5 @@ window.FirebaseSync = {
   excluirEletivaCompleta,
 };
 
-// Inicializar
 initSyncQueue();
 setInterval(atualizarStatusSincronizacaoGlobal, 5000);
