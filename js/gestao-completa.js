@@ -417,7 +417,8 @@ window.salvarProfessor = async function () {
       }
     } else {
       // Adicionar novo professor
-      const novoId = (state.professores?.length || 0) + 1;
+      const profIds = state.professores?.map(p => Number(p.id)) || [];
+      const novoId = profIds.length > 0 ? Math.max(...profIds) + 1 : 1;
       const novoProfessor = {
         id: novoId,
         nome: nome,
@@ -507,15 +508,16 @@ async function removerProfessor(professorId) {
     salvarEstado();
 
     if (window.FirebaseSync) {
-      await window.FirebaseSync.salvarDadosFirebase(
-        "professores",
-        null,
-        professorId,
-      );
-      // Atualizar eletivas no Firebase
+      // Deletar professor do Firebase
+      try {
+        await window.FirebaseSync.deletarDadosFirebase("professores", professorId);
+      } catch(e) { console.warn("⚠️ Erro ao deletar professor:", e); }
+      // Atualizar eletivas afetadas no Firebase (sem professor)
       for (const e of state.eletivas) {
-        if (e.professorId === null) {
-          await window.FirebaseSync.salvarDadosFirebase("eletivas", e, e.id);
+        if (e.professorId === null || e.professorId === professorId) {
+          try {
+            await window.FirebaseSync.salvarDadosFirebase("eletivas", e, e.id);
+          } catch(err) { console.warn("⚠️ Erro ao atualizar eletiva:", err); }
         }
       }
     }
@@ -1140,8 +1142,9 @@ window.salvarEletiva = async function () {
       }
     } else {
       // Criar nova eletiva
-      const novoId =
-        (state.eletivas?.length || 0) + 1000 + Math.floor(Math.random() * 100);
+      const idsExistentes = state.eletivas?.map(e => Number(e.id)) || [];
+      const maxId = idsExistentes.length > 0 ? Math.max(...idsExistentes) : 999;
+      const novoId = maxId + 1;
       const novaEletiva = {
         id: novoId,
         codigo: codigo,
@@ -1589,22 +1592,37 @@ async function removerEletiva(eletivaId) {
     salvarEstado();
 
     if (window.FirebaseSync) {
-      // Remover do Firebase (marcar para deleção)
-      await window.FirebaseSync.salvarDadosFirebase(
-        "registros",
-        null,
-        `eletiva_${eletivaId}`,
-      );
-      await window.FirebaseSync.salvarDadosFirebase(
-        "notas",
-        null,
-        `eletiva_${eletivaId}`,
-      );
-      await window.FirebaseSync.salvarDadosFirebase(
-        "eletivas",
-        null,
-        eletivaId,
-      );
+      try {
+        // Deletar eletiva do Firebase
+        await window.FirebaseSync.deletarDadosFirebase("eletivas", eletivaId);
+      } catch(e) { console.warn("⚠️ Erro ao deletar eletiva:", e); }
+
+      // Deletar matrículas vinculadas no Firebase
+      if (window.FirebaseConfig && window.FirebaseConfig.firestore) {
+        const db = window.FirebaseConfig.firestore;
+        try {
+          const snapMats = await db.collection("matriculas").where("eletivaId", "==", eletivaId).get();
+          for (const doc of snapMats.docs) {
+            await window.FirebaseSync.deletarDadosFirebase("matriculas", doc.id);
+          }
+        } catch(e) { console.warn("⚠️ Erro ao deletar matrículas:", e); }
+
+        // Deletar registros de frequência vinculados no Firebase
+        try {
+          const snapRegs = await db.collection("registros").where("eletivaId", "==", eletivaId).get();
+          for (const doc of snapRegs.docs) {
+            await window.FirebaseSync.deletarDadosFirebase("registros", doc.id);
+          }
+        } catch(e) { console.warn("⚠️ Erro ao deletar registros:", e); }
+
+        // Deletar notas vinculadas no Firebase
+        try {
+          const snapNotas = await db.collection("notas").where("eletivaId", "==", eletivaId).get();
+          for (const doc of snapNotas.docs) {
+            await window.FirebaseSync.deletarDadosFirebase("notas", doc.id);
+          }
+        } catch(e) { console.warn("⚠️ Erro ao deletar notas:", e); }
+      }
     }
 
     showToast("Eletiva removida com sucesso!", "success");
@@ -2323,7 +2341,7 @@ window.salvarEstudante = async function () {
         // Adicionar novas matrículas
         for (const eletivaId of eletivasSelecionadas) {
           const novaMatricula = {
-            id: (state.matriculas?.length || 0) + 1,
+            id: ((state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0)) + 1,
             eletivaId: eletivaId,
             alunoId: estudanteEmEdicao.id,
             tipoMatricula: "manual",
@@ -2355,7 +2373,8 @@ window.salvarEstudante = async function () {
       }
 
       // Criar novo estudante
-      const novoId = (state.alunos?.length || 0) + 1;
+      const alunoIds = state.alunos?.map(a => Number(a.id)) || [];
+      const novoId = alunoIds.length > 0 ? Math.max(...alunoIds) + 1 : 1;
       const novoEstudante = {
         id: novoId,
         nome: nome,
@@ -2378,7 +2397,7 @@ window.salvarEstudante = async function () {
       // Adicionar às eletivas selecionadas
       for (const eletivaId of eletivasSelecionadas) {
         const novaMatricula = {
-          id: (state.matriculas?.length || 0) + 1,
+          id: ((state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0)) + 1,
           eletivaId: eletivaId,
           alunoId: novoId,
           tipoMatricula: "manual",
@@ -2528,7 +2547,7 @@ window.confirmarTrocaEletivaEstudante = async function () {
   try {
     // Criar nova matrícula
     const novaMatricula = {
-      id: (state.matriculas?.length || 0) + 1,
+      id: ((state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0)) + 1,
       eletivaId: parseInt(eletivaDestinoId),
       alunoId: estudanteParaTroca.id,
       tipoMatricula: "troca",
