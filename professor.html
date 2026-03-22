@@ -76,7 +76,6 @@
         padding: 0.2rem 0.5rem;
         border-radius: 4px;
       }
-      /* Estilos para os cards de registros */
       .eletiva-card.registros-card {
         cursor: pointer;
         transition: all 0.3s ease;
@@ -140,7 +139,6 @@
         background: #e0a800;
         transform: scale(1.05);
       }
-      /* Botões de impressão */
       .btn-imprimir {
         background: var(--info);
         color: white;
@@ -194,7 +192,6 @@
       .modal-editar .aluno-chamada-item {
         padding: 0.8rem;
       }
-      /* Loader para PDF */
       .pdf-loader {
         position: fixed;
         top: 0;
@@ -234,7 +231,6 @@
           transform: rotate(360deg);
         }
       }
-      /* Estilo para botão excluir */
       .btn-excluir {
         background: var(--danger);
         color: white;
@@ -252,7 +248,6 @@
         background: #a11f1f;
         transform: scale(1.05);
       }
-      /* Estilos para registro de notas */
       .aluno-nota-item {
         display: flex;
         align-items: center;
@@ -316,6 +311,65 @@
       .modal-notas {
         max-width: 800px;
       }
+      .connection-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.3rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .connection-status.online {
+        background: var(--success);
+        color: white;
+      }
+      .connection-status.pending {
+        background: var(--warning);
+        color: var(--text-dark);
+      }
+      .connection-status.offline {
+        background: var(--danger);
+        color: white;
+      }
+      .sync-button {
+        background: var(--secondary);
+        color: var(--text-dark);
+        border: none;
+        padding: 0.3rem 1rem;
+        border-radius: 20px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: var(--transition);
+      }
+      .sync-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+      }
+      .sync-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .sync-badge {
+        background: var(--danger);
+        color: white;
+        border-radius: 50%;
+        padding: 0.1rem 0.4rem;
+        font-size: 0.7rem;
+        margin-left: 0.3rem;
+      }
+      .toast.error .toast-close {
+        background: none;
+        border: none;
+        color: white;
+        margin-left: 0.5rem;
+        cursor: pointer;
+        font-size: 1rem;
+      }
     </style>
   </head>
   <body>
@@ -323,27 +377,20 @@
       <header class="app-header">
         <div class="header-top">
           <div class="logo-area">
-            <!-- Logotipo adicionado -->
             <img
               src="assets/logo.png"
               alt="SAGE Logo"
               style="height: 50px; width: auto; margin-right: 1rem"
             />
-
             <div class="school-info">
-              <!-- Título alterado -->
               <h1>DIÁRIO DAS ELETIVAS</h1>
               <span class="sage-badge">SAGE 2026 - Gestão de Eletivas</span>
             </div>
           </div>
-          <!-- Texto "2026-1 ativo" removido -->
           <div class="header-actions">
-            <!-- Status de conexão -->
             <div class="connection-status" id="connectionStatus">
               <i class="fas fa-check-circle"></i> Conectado
             </div>
-
-            <!-- Botão de sincronização -->
             <button
               class="sync-button"
               id="syncButton"
@@ -353,7 +400,6 @@
             >
               <i class="fas fa-check"></i> Sincronizado
             </button>
-
             <div class="user-info">
               <i class="fas fa-user-circle"></i>
               <span id="userName">Professor</span>
@@ -383,7 +429,6 @@
             <div class="professor-info-header" id="professorInfoHeader"></div>
           </div>
 
-          <!-- Abas: apenas Dashboard e Registros Realizados -->
           <div class="professor-tabs">
             <button class="tab-btn active" onclick="mudarTab('dashboard')">
               <i class="fas fa-home"></i> Dashboard
@@ -393,7 +438,6 @@
             </button>
           </div>
 
-          <!-- Aba Dashboard -->
           <div id="tab-dashboard" class="tab-pane active">
             <h3>Minhas Eletivas - <span id="semestreAtual">2026.1</span></h3>
             <div class="eletivas-cards" id="professorEletivasCards">
@@ -401,7 +445,6 @@
             </div>
           </div>
 
-          <!-- Aba Registros Realizados -->
           <div id="tab-registros" class="tab-pane">
             <h3>REGISTROS REALIZADOS</h3>
 
@@ -477,7 +520,6 @@
       </section>
     </div>
 
-    <!-- Loader para PDF -->
     <div id="pdfLoader" class="pdf-loader">
       <div class="loader-content">
         <div class="loader-spinner"></div>
@@ -485,7 +527,6 @@
       </div>
     </div>
 
-    <!-- Modal de Registro de Aula (sem observações) -->
     <div id="modalRegistroAula" class="modal">
       <div class="modal-content" style="max-width: 600px">
         <div class="modal-header">
@@ -510,8 +551,6 @@
                 placeholder="Descreva o conteúdo da aula..."
               ></textarea>
             </div>
-
-            <!-- Campo Observações removido -->
 
             <div id="chamadaContainer">
               <div class="chamada-header">
@@ -553,7 +592,6 @@
       </div>
     </div>
 
-    <!-- Modal de Edição de Registro (com campos completos para edição retroativa) -->
     <div id="modalEditarRegistro" class="modal">
       <div class="modal-content modal-editar">
         <div class="modal-header">
@@ -626,7 +664,6 @@
       </div>
     </div>
 
-    <!-- Modais padrão -->
     <div id="modalDetalhes" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -654,7 +691,7 @@
     </div>
 
     <div id="toast" class="toast"></div>
-    <!-- Modal de Registro de Notas -->
+
     <div id="modalRegistroNotas" class="modal">
       <div class="modal-content modal-notas">
         <div class="modal-header">
