@@ -14,6 +14,7 @@ const firebaseConfig = {
 let firebaseApp = null;
 let db = null;
 let firebaseInitialized = false;
+let pendingInitializationResolvers = [];
 
 function initFirebase() {
   // Se já inicializado, retorna true
@@ -42,8 +43,7 @@ function initFirebase() {
     // Obter o Firestore
     db = firebase.firestore();
 
-    // CORREÇÃO: Não usar synchronizeTabs e experimentalForceOwningTab juntos
-    // Opção 1: Usar apenas synchronizeTabs (recomendado)
+    // Usar synchronizeTabs para multi-tab
     db.enablePersistence({
       synchronizeTabs: true,
     })
@@ -64,11 +64,40 @@ function initFirebase() {
 
     firebaseInitialized = true;
     console.log("✅ Firebase inicializado com sucesso!");
+    
+    // Resolver todas as promessas pendentes
+    pendingInitializationResolvers.forEach(resolve => resolve(true));
+    pendingInitializationResolvers = [];
+    
     return true;
   } catch (error) {
     console.error("❌ Erro ao inicializar Firebase:", error);
     return false;
   }
+}
+
+// NOVA FUNÇÃO: Aguardar inicialização com timeout
+async function aguardarInicializacaoFirebase(timeout = 10000) {
+  if (firebaseInitialized) return true;
+  
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    
+    // Se ainda não inicializado, adicionar à fila
+    pendingInitializationResolvers.push(resolve);
+    
+    // Configurar timeout
+    setTimeout(() => {
+      const index = pendingInitializationResolvers.indexOf(resolve);
+      if (index !== -1) {
+        pendingInitializationResolvers.splice(index, 1);
+        reject(new Error(`Timeout de ${timeout}ms ao aguardar inicialização do Firebase`));
+      }
+    }, timeout);
+    
+    // Tentar inicializar agora
+    initFirebase();
+  });
 }
 
 async function verificarConexaoFirebase() {
@@ -99,14 +128,11 @@ async function verificarConexaoFirebase() {
   }
 }
 
-// Não inicializar automaticamente - deixar para quando necessário
-// initFirebase();
-
 window.FirebaseConfig = {
   initFirebase,
+  aguardarInicializacaoFirebase,
   verificarConexaoFirebase,
   get firestore() {
-    // Garantir que db está disponível
     if (!db && !initFirebase()) {
       return null;
     }
