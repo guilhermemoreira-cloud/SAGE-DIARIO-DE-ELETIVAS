@@ -156,6 +156,14 @@ function mostrarLoader(mostrar) {
   }
 }
 
+function getTempoFromHorario(horario) {
+  if (!horario) return null;
+  if (horario.codigoTempo) {
+    return horario.codigoTempo;
+  }
+  return null;
+}
+
 // ========== FUNÇÕES DE EXPORTAÇÃO DE JSON ==========
 window.exportarJSONCompleto = function () {
   try {
@@ -1374,14 +1382,6 @@ window.salvarNovoLocal = async function () {
 };
 
 // ========== FUNÇÕES DE REMOÇÃO DE ELETIVA (CORRIGIDAS) ==========
-function getTempoFromHorario(horario) {
-  if (!horario) return null;
-  if (horario.codigoTempo) {
-    return horario.codigoTempo;
-  }
-  return null;
-}
-
 async function removerEletiva(eletivaId) {
   mostrarLoader(true);
   console.log(`🗑️ Iniciando exclusão atômica da eletiva ID: ${eletivaId}`);
@@ -1896,7 +1896,7 @@ function atualizarTabelaEstudantes() {
 
   if (totalEstudantes === 0) {
     tbody.innerHTML =
-      '}<td colspan="5" class="empty-state">Nenhum estudante encontrado</td>`;
+      '}<td colspan="5" class="empty-state">Nenhum estudante encontrado</td>';
     return;
   }
 
@@ -1918,21 +1918,21 @@ function atualizarTabelaEstudantes() {
 
     const row = document.createElement("tr");
     row.innerHTML = `
-       <td><strong>${escapeHtml(estudante.nome)}</strong></td>
-       <td>${escapeHtml(estudante.turmaOrigem)}</td>
-       <td>${escapeHtml(estudante.codigoSige)}</td>
-       <td>${eletivasHTML}</td>
-       <td>
-        <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante(${estudante.id})" title="Editar">
-          <i class="fas fa-edit"></i>
-        </button>
-        <button class="btn-secondary btn-small" onclick="abrirModalTrocarEletivaEstudante(${estudante.id})" title="Trocar eletiva">
-          <i class="fas fa-exchange-alt"></i>
-        </button>
-        <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante(${estudante.id})" title="Remover">
-          <i class="fas fa-trash"></i>
-        </button>
-       </td>
+        <td><strong>${escapeHtml(estudante.nome)}</strong></td>
+        <td>${escapeHtml(estudante.turmaOrigem)}</td>
+        <td>${escapeHtml(estudante.codigoSige)}</td>
+        <td>${eletivasHTML}</td>
+        <td>
+          <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante(${estudante.id})" title="Editar">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn-secondary btn-small" onclick="abrirModalTrocarEletivaEstudante(${estudante.id})" title="Trocar eletiva">
+            <i class="fas fa-exchange-alt"></i>
+          </button>
+          <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante(${estudante.id})" title="Remover">
+            <i class="fas fa-trash"></i>
+          </button>
+        </td>
     `;
     tbody.appendChild(row);
   });
@@ -1955,7 +1955,6 @@ function carregarEletivasCheckbox(estudanteId = null) {
   const container = document.getElementById("eletivasCheckboxContainer");
   if (!container) return;
 
-  // Buscar matrículas atuais do estudante
   const matriculasAtuais = estudanteId 
     ? (state.matriculas || []).filter(m => m.alunoId === estudanteId).map(m => m.eletivaId)
     : [];
@@ -2082,7 +2081,6 @@ window.salvarEstudante = async function () {
         throw new Error("Estudante não encontrado");
       }
       
-      // Atualizar dados básicos
       state.alunos[index] = {
         ...state.alunos[index],
         nome: nome,
@@ -2093,7 +2091,6 @@ window.salvarEstudante = async function () {
         await window.FirebaseSync.salvarDadosFirebase("alunos", state.alunos[index], state.alunos[index].id);
       }
       
-      // Processar alterações nas matrículas
       const matriculasAtuais = state.matriculas.filter(m => m.alunoId === estudanteEmEdicao.id);
       const eletivasAtuais = matriculasAtuais.map(m => m.eletivaId);
       
@@ -2102,7 +2099,6 @@ window.salvarEstudante = async function () {
       
       console.log(`📝 Alterações nas matrículas: +${idsParaAdicionar.length} / -${idsParaRemover.length}`);
       
-      // Criar batch para operações no Firebase
       if (window.FirebaseSync && window.FirebaseConfig?.firestore && (idsParaAdicionar.length > 0 || idsParaRemover.length > 0)) {
         const db = window.FirebaseConfig.firestore;
         const batch = db.batch();
@@ -2134,7 +2130,6 @@ window.salvarEstudante = async function () {
         }
       }
       
-      // Atualizar estado local
       state.matriculas = state.matriculas.filter(m => !idsParaRemover.includes(m.eletivaId) || m.alunoId !== estudanteEmEdicao.id);
       
       let nextIdLocal = (state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
@@ -2683,9 +2678,9 @@ function carregarTabelaTempos() {
     const tempoConfig = config[tempo] || { diaSemana: "?", series: [] };
 
     row.innerHTML = `
-       <td><strong>${tempo}</strong></td>
-       <td>${tempoConfig.diaSemana || "?"}</td>
-       <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
+        <td><strong>${tempo}</strong></td>
+        <td>${tempoConfig.diaSemana || "?"}</td>
+        <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
     `;
 
     tbody.appendChild(row);
