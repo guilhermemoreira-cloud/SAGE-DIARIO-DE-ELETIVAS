@@ -347,10 +347,10 @@ async function carregarColecoesGestor() {
     }
   }
 
-  // Carregar TODAS as coleções
+  // ========== CARREGAR TODAS AS COLEÇÕES ==========
   const eletivasCarregadas = await carregarColecao('eletivas', 'eletivas', 'eletivas');
   const alunosCarregados = await carregarColecao('alunos', 'alunos', 'alunos');
-  const professoresCarregados = await carregarColecao('professores', 'professores', 'professores'); // NOVO
+  const professoresCarregados = await carregarColecao('professores', 'professores', 'professores'); // ADICIONADO
   const matriculasCarregadas = await carregarColecao('matriculas', 'matriculas', 'matriculas');
   
   algumDadoCarregado = eletivasCarregadas || alunosCarregados || professoresCarregados || matriculasCarregadas;
@@ -512,7 +512,7 @@ function escutarColecoesGestor(onAtualizado) {
 
   criarListener('eletivas', 'eletivas');
   criarListener('alunos', 'alunos');
-  criarListener('professores', 'professores');
+  criarListener('professores', 'professores'); // ADICIONADO
   criarListener('matriculas', 'matriculas');
   criarListener('notas', 'notas');
   criarListener('registros', 'registros');
