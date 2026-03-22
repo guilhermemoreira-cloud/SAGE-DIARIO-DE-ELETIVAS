@@ -1,4 +1,4 @@
-// js/gestor.js - Lógica do gestor (VERSÃO CORRIGIDA COM FIREBASE)
+// js/gestor.js - Lógica do gestor
 console.log("👔 gestor.js carregado");
 
 let gestorAtual = null;
@@ -15,34 +15,50 @@ let eletivaSelecionadaParaData = null;
 let dataSelecionada = null;
 let eletivaSelecionadaParaImpressao = null;
 
-// Mapeamento de tempo eletivo baseado no horário
-const mapaTempo = {
-  "07:00-08:40": "T1",
-  "08:55-10:35": "T2",
-  "10:50-12:30": "T3",
-  "13:30-15:10": "T4",
-  "15:25-17:05": "T5",
+// Mapeamento de dia da semana para tempo
+const diaParaTempo = {
+  "segunda": "T1",
+  "terca": "T3",
+  "quarta": "T5",
+  "quinta": "T2",
+  "sexta": "T4",
+};
+
+const tempoParaDia = {
+  "T1": "SEGUNDA-FEIRA",
+  "T2": "QUINTA-FEIRA",
+  "T3": "TERÇA-FEIRA",
+  "T4": "SEXTA-FEIRA",
+  "T5": "QUARTA-FEIRA",
 };
 
 // Dias da semana
-const diasSemana = [
-  "segunda",
-  "terca",
-  "quarta",
-  "quinta",
-  "sexta",
-  "sabado",
-  "domingo",
-];
+const diasSemana = ["segunda", "terca", "quarta", "quinta", "sexta"];
+
 const nomesDias = {
-  segunda: "SEGUNDA-FEIRA",
-  terca: "TERÇA-FEIRA",
-  quarta: "QUARTA-FEIRA",
-  quinta: "QUINTA-FEIRA",
-  sexta: "SEXTA-FEIRA",
-  sabado: "SÁBADO",
-  domingo: "DOMINGO",
+  segunda: "SEGUNDA-FEIRA (T1)",
+  terca: "TERÇA-FEIRA (T3)",
+  quarta: "QUARTA-FEIRA (T5)",
+  quinta: "QUINTA-FEIRA (T2)",
+  sexta: "SEXTA-FEIRA (T4)",
 };
+
+// Função para obter tempo a partir do horário
+function getTempoFromHorario(horario) {
+  if (!horario) return null;
+  if (horario.codigoTempo) {
+    return horario.codigoTempo;
+  }
+  if (horario.diaSemana) {
+    const dia = horario.diaSemana.toLowerCase();
+    if (dia === "segunda") return "T1";
+    if (dia === "terca") return "T3";
+    if (dia === "quarta") return "T5";
+    if (dia === "quinta") return "T2";
+    if (dia === "sexta") return "T4";
+  }
+  return null;
+}
 
 document.addEventListener("DOMContentLoaded", async function () {
   console.log("👔 Inicializando página do gestor...");
@@ -58,23 +74,17 @@ document.addEventListener("DOMContentLoaded", async function () {
   gestorAtual = JSON.parse(gestorStorage);
   console.log("👤 Gestor:", gestorAtual.nome, "Perfil:", gestorAtual.perfil);
 
-  // 🔥 INICIALIZAR FIREBASE PRIMEIRO
-  console.log("🔥 Inicializando Firebase...");
+  // Inicializar Firebase
   if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
-    const initResult = window.FirebaseConfig.initFirebase();
-    console.log("🔥 Firebase inicializado:", initResult);
-  } else {
-    console.warn("⚠️ FirebaseConfig.initFirebase não disponível");
+    console.log("🔥 Inicializando Firebase...");
+    window.FirebaseConfig.initFirebase();
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
-
-  // Aguardar um pouco para garantir que o Firestore está pronto
-  await new Promise(resolve => setTimeout(resolve, 500));
 
   if (typeof carregarEstado === "function") {
     carregarEstado();
     todasEletivas = state.eletivas || [];
     console.log("📚 Eletivas carregadas:", todasEletivas.length);
-    console.log("📋 Registros no state inicial:", state.registros?.length || 0);
   }
 
   document.getElementById("userName").textContent = gestorAtual.nome;
@@ -84,23 +94,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     SECRETARIA: "Secretaria",
     GESTOR_PROFESSOR: "Gestor/Professor",
   };
-  document.getElementById("userRole").textContent =
-    roleMap[gestorAtual.perfil] || "Gestor";
-
-  // 🔥 CARREGAR REGISTROS DO FIREBASE ANTES DE CARREGAR OS CARDS
-  console.log("📡 Carregando registros do Firebase...");
-  await carregarRegistrosDoFirebase();
-  
-  console.log("✅ Estado após carregar Firebase:", {
-    registros: state.registros?.length || 0,
-    eletivas: state.eletivas?.length || 0,
-    alunos: state.alunos?.length || 0
-  });
+  document.getElementById("userRole").textContent = roleMap[gestorAtual.perfil] || "Gestor";
 
   // Carregar dados iniciais
-  carregarEstatisticas();
+  await carregarEstatisticas();
   inicializarFiltrosRegistros();
-  carregarCardsRegistros();
+  await carregarCardsRegistros();
 });
 
 // ========== FUNÇÕES DE UTILIDADE ==========
@@ -125,114 +124,29 @@ function formatarData(dataString) {
   return dataString;
 }
 
-// Mudar de aba
 window.mudarTabGestor = function (tab) {
-  console.log("🔄 Mudando para aba:", tab);
-  
-  document
-    .querySelectorAll(".gestor-tab-btn")
-    .forEach((btn) => btn.classList.remove("active"));
+  document.querySelectorAll(".gestor-tab-btn").forEach((btn) => btn.classList.remove("active"));
   document.querySelectorAll(".gestor-tab-btn").forEach((btn) => {
     if (btn.getAttribute("onclick")?.includes(`'${tab}'`)) {
       btn.classList.add("active");
     }
   });
 
-  document
-    .querySelectorAll(".gestor-tab-pane")
-    .forEach((pane) => pane.classList.remove("active"));
+  document.querySelectorAll(".gestor-tab-pane").forEach((pane) => pane.classList.remove("active"));
   document.getElementById(`tab-${tab}`).classList.add("active");
 
   if (tab === "estatisticas") {
     carregarEstatisticas();
   } else if (tab === "registros") {
-    console.log("📋 Carregando aba registros...");
-    carregarRegistrosDoFirebase().then(() => {
-      console.log("✅ Registros carregados, total:", state.registros?.length || 0);
-      inicializarFiltrosRegistros();
-      carregarCardsRegistros();
-    });
+    inicializarFiltrosRegistros();
+    carregarCardsRegistros();
   }
 };
 
-// 🔥 FUNÇÃO CORRIGIDA: Carregar registros do Firebase
-async function carregarRegistrosDoFirebase() {
-  console.log("🔥 Carregando registros do Firebase...");
-  
-  // Verificar se FirebaseSync está disponível
-  if (!window.FirebaseSync) {
-    console.warn("⚠️ FirebaseSync não disponível");
-    return false;
-  }
-  
-  if (!window.FirebaseSync.carregarRegistrosFirebase) {
-    console.warn("⚠️ FirebaseSync.carregarRegistrosFirebase não disponível");
-    return false;
-  }
-
-  // 🔥 GARANTIR QUE FIREBASE ESTÁ INICIALIZADO
-  if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
-    console.log("🔄 Inicializando Firebase (carregarRegistrosDoFirebase)...");
-    const initResult = window.FirebaseConfig.initFirebase();
-    console.log("🔥 Resultado da inicialização:", initResult);
-    
-    // Aguardar um pouco para garantir
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }
-
-  try {
-    console.log("📡 Chamando FirebaseSync.carregarRegistrosFirebase()...");
-    const registrosFirebase = await window.FirebaseSync.carregarRegistrosFirebase();
-    console.log(`📥 Quantidade: ${registrosFirebase?.length || 0} registros`);
-    
-    if (registrosFirebase && registrosFirebase.length > 0) {
-      // Inicializar state.registros se não existir
-      if (!state.registros) state.registros = [];
-      
-      // Mostrar os primeiros registros para debug
-      console.log("📋 Primeiro registro do Firebase:", registrosFirebase[0]);
-      
-      // Mesclar dados do Firebase com state local
-      registrosFirebase.forEach(regFirebase => {
-        const indexLocal = state.registros.findIndex(r => r.id == regFirebase.id);
-        if (indexLocal !== -1) {
-          // Atualizar registro existente
-          state.registros[indexLocal] = regFirebase;
-          console.log(`🔄 Atualizado registro local ID: ${regFirebase.id}`);
-        } else {
-          // Adicionar novo registro
-          state.registros.push(regFirebase);
-          console.log(`➕ Adicionado novo registro ID: ${regFirebase.id}`);
-        }
-      });
-      
-      // Salvar no localStorage para cache
-      if (typeof salvarEstado === "function") {
-        salvarEstado();
-        console.log("💾 Estado salvo no localStorage");
-      }
-      
-      console.log(`✅ Sincronizados ${registrosFirebase.length} registros com state`);
-      console.log(`📊 Total no state: ${state.registros.length} registros`);
-      return true;
-    } else {
-      console.log("⚠️ Nenhum registro retornado do Firebase");
-      console.log("📋 Registros locais existentes:", state.registros?.length || 0);
-      return false;
-    }
-  } catch (error) {
-    console.error("❌ Erro ao carregar registros do Firebase:", error);
-    console.error("Detalhes do erro:", error.message);
-    return false;
-  }
-}
-
-// Fechar modal de confirmação
 window.fecharModalConfirmacao = function () {
   document.getElementById("modalConfirmacao").classList.remove("active");
 };
 
-// Fazer logout
 window.fazerLogout = function () {
   localStorage.removeItem("gestor_atual");
   window.location.href = "index.html";
@@ -240,22 +154,8 @@ window.fazerLogout = function () {
 
 // ========== FUNÇÕES DE CÁLCULO DE ESTATÍSTICAS ==========
 
-// Calcular tempo eletivo a partir do horário
-function getTempoFromHorario(horario) {
-  if (!horario) return null;
-  if (horario.codigoTempo) {
-    return horario.codigoTempo;
-  }
-  if (horario.diaSemana && horario.codigoTempo) {
-    return horario.codigoTempo;
-  }
-  return null;
-}
-
-// Calcular total de ausências de uma eletiva
 function calcularAusenciasEletiva(eletivaId) {
-  const registros =
-    state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
+  const registros = state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
   let total = 0;
 
   registros.forEach((reg) => {
@@ -267,11 +167,8 @@ function calcularAusenciasEletiva(eletivaId) {
   return total;
 }
 
-// Calcular média de notas de uma eletiva
 function calcularMediaEletiva(eletivaId) {
-  const notasRegistro = state.notas?.find(
-    (n) => n.eletivaId === eletivaId && n.semestre === "1/2026",
-  );
+  const notasRegistro = state.notas?.find((n) => n.eletivaId === eletivaId && n.semestre === "1/2026");
 
   if (!notasRegistro?.notas || notasRegistro.notas.length === 0) {
     return null;
@@ -281,7 +178,6 @@ function calcularMediaEletiva(eletivaId) {
   return soma / notasRegistro.notas.length;
 }
 
-// Calcular estatísticas gerais
 function calcularEstatisticasGerais() {
   const eletivas = state.eletivas || [];
   const totalEletivas = eletivas.length;
@@ -317,20 +213,13 @@ function calcularEstatisticasGerais() {
     }
   });
 
-  const mediaGeral =
-    eletivasComNota > 0 ? (somaMedias / eletivasComNota).toFixed(1) : "N/A";
+  const mediaGeral = eletivasComNota > 0 ? (somaMedias / eletivasComNota).toFixed(1) : "N/A";
 
-  return {
-    totalEletivas,
-    totalEstudantes,
-    totalAusencias,
-    mediaGeral,
-  };
+  return { totalEletivas, totalEstudantes, totalAusencias, mediaGeral };
 }
 
 // ========== FUNÇÕES DA ABA ESTATÍSTICAS ==========
 
-// Filtrar por tempo
 window.filtrarPorTempo = function (tempo) {
   tempoSelecionado = tempo;
 
@@ -344,13 +233,11 @@ window.filtrarPorTempo = function (tempo) {
   carregarCardsEletivas();
 };
 
-// Filtrar por busca
 window.filtrarEletivas = function () {
   termoBusca = document.getElementById("buscaEletiva")?.value || "";
   carregarCardsEletivas();
 };
 
-// Limpar filtros
 window.limparFiltros = function () {
   tempoSelecionado = "TODOS";
   termoBusca = "";
@@ -367,26 +254,48 @@ window.limparFiltros = function () {
   carregarCardsEletivas();
 };
 
-// Carregar estatísticas
-function carregarEstatisticas() {
+async function carregarEstatisticas() {
   console.log("📊 Carregando estatísticas...");
-  
-  carregarRegistrosDoFirebase().then(() => {
-    todasEletivas = state.eletivas || [];
 
-    const stats = calcularEstatisticasGerais();
+  // Sincronizar com Firebase
+  if (window.FirebaseSync && window.FirebaseSync.carregarDadosFirebase) {
+    try {
+      if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
+        window.FirebaseConfig.initFirebase();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
 
-    document.getElementById("totalEletivas").textContent = stats.totalEletivas;
-    document.getElementById("totalEstudantes").textContent =
-      stats.totalEstudantes;
-    document.getElementById("totalAusencias").textContent = stats.totalAusencias;
-    document.getElementById("mediaGeral").textContent = stats.mediaGeral;
+      const eletivasFirebase = await window.FirebaseSync.carregarDadosFirebase("eletivas");
+      if (eletivasFirebase && eletivasFirebase.length > 0) {
+        const eletivasUnicas = [];
+        const idsVistos = new Set();
+        eletivasFirebase.forEach(e => {
+          if (!idsVistos.has(e.id)) {
+            idsVistos.add(e.id);
+            eletivasUnicas.push(e);
+          }
+        });
+        state.eletivas = eletivasUnicas;
+        localStorage.setItem(CONFIG.storageKeys.eletivas, JSON.stringify(eletivasUnicas));
+        console.log(`✅ Sincronizadas ${eletivasUnicas.length} eletivas do Firebase`);
+      }
+    } catch (error) {
+      console.error("❌ Erro ao sincronizar com Firebase:", error);
+    }
+  }
 
-    carregarCardsEletivas();
-  });
+  todasEletivas = state.eletivas || [];
+
+  const stats = calcularEstatisticasGerais();
+
+  document.getElementById("totalEletivas").textContent = stats.totalEletivas;
+  document.getElementById("totalEstudantes").textContent = stats.totalEstudantes;
+  document.getElementById("totalAusencias").textContent = stats.totalAusencias;
+  document.getElementById("mediaGeral").textContent = stats.mediaGeral;
+
+  carregarCardsEletivas();
 }
 
-// Carregar cards das eletivas (estatísticas)
 function carregarCardsEletivas() {
   const container = document.getElementById("eletivasGrid");
   if (!container) return;
@@ -403,8 +312,7 @@ function carregarCardsEletivas() {
   if (termoBusca.trim() !== "") {
     const termo = termoBusca.toLowerCase();
     eletivasFiltradas = eletivasFiltradas.filter((e) => {
-      const professor =
-        state.professores?.find((p) => p.id === e.professorId)?.nome || "";
+      const professor = state.professores?.find((p) => p.id === e.professorId)?.nome || "";
       return (
         e.nome?.toLowerCase().includes(termo) ||
         e.codigo?.toLowerCase().includes(termo) ||
@@ -414,21 +322,17 @@ function carregarCardsEletivas() {
   }
 
   if (eletivasFiltradas.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhuma eletiva encontrada</p>';
+    container.innerHTML = '<p class="empty-state">Nenhuma eletiva encontrada</p>';
     return;
   }
 
   container.innerHTML = "";
 
   eletivasFiltradas.forEach((eletiva) => {
-    const professor =
-      state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-      "Não atribuído";
+    const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
     const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
 
-    const matriculas =
-      state.matriculas?.filter((m) => m.eletivaId === eletiva.id) || [];
+    const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletiva.id) || [];
     const totalAlunos = matriculas.length;
     const totalAusencias = calcularAusenciasEletiva(eletiva.id);
     const media = calcularMediaEletiva(eletiva.id);
@@ -468,7 +372,6 @@ function carregarCardsEletivas() {
   });
 }
 
-// Ver detalhes da eletiva
 window.verDetalhesEletiva = function (eletivaId) {
   mostrarLoaderGestor(true);
 
@@ -480,25 +383,18 @@ window.verDetalhesEletiva = function (eletivaId) {
         return;
       }
 
-      const professor =
-        state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-        "Não atribuído";
+      const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
       const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
 
-      const matriculas =
-        state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-      const alunos =
-        state.alunos
-          ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-          .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+      const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+      const alunos = state.alunos?.filter((a) => matriculas.some((m) => m.alunoId === a.id)).sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
       const totalAlunos = alunos.length;
       const totalAusencias = calcularAusenciasEletiva(eletivaId);
       const media = calcularMediaEletiva(eletivaId);
       const mediaDisplay = media !== null ? media.toFixed(1) : "N/A";
 
-      const registros =
-        state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
+      const registros = state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
       const ausenciasPorAluno = {};
 
       registros.forEach((reg) => {
@@ -506,16 +402,13 @@ window.verDetalhesEletiva = function (eletivaId) {
           reg.frequencia.ausentes.forEach((codigo) => {
             const aluno = alunos.find((a) => a.codigoSige === codigo);
             if (aluno) {
-              ausenciasPorAluno[aluno.id] =
-                (ausenciasPorAluno[aluno.id] || 0) + 1;
+              ausenciasPorAluno[aluno.id] = (ausenciasPorAluno[aluno.id] || 0) + 1;
             }
           });
         }
       });
 
-      const notasRegistro = state.notas?.find(
-        (n) => n.eletivaId === eletivaId && n.semestre === "1/2026",
-      );
+      const notasRegistro = state.notas?.find((n) => n.eletivaId === eletivaId && n.semestre === "1/2026");
       const notasPorAluno = {};
       if (notasRegistro?.notas) {
         notasRegistro.notas.forEach((n) => {
@@ -526,13 +419,7 @@ window.verDetalhesEletiva = function (eletivaId) {
       let tabelaHTML = `
         <table class="alunos-table">
           <thead>
-            <tr>
-              <th>NOME</th>
-              <th>TURMA</th>
-              <th>SIGE</th>
-              <th>AUSÊNCIAS</th>
-              <th>NOTA</th>
-            </tr>
+            <tr><th>NOME</th><th>TURMA</th><th>SIGE</th><th>AUSÊNCIAS</th><th>NOTA</th></tr>
           </thead>
           <tbody>
       `;
@@ -543,23 +430,14 @@ window.verDetalhesEletiva = function (eletivaId) {
         const notaDisplay = nota !== undefined ? nota.toFixed(1) : "-";
 
         tabelaHTML += `
-          <tr>
-            <td>${aluno.nome}</td>
-            <td>${aluno.turmaOrigem}</td>
-            <td>${aluno.codigoSige}</td>
-            <td><span class="badge-falta">${ausencias}</span></td>
-            <td><span class="badge-nota">${notaDisplay}</span></td>
-          </tr>
+          <tr><td>${aluno.nome}</td><td>${aluno.turmaOrigem}</td><td>${aluno.codigoSige}</td>
+          <td><span class="badge-falta">${ausencias}</span></td><td><span class="badge-nota">${notaDisplay}</span></td></tr>
         `;
       });
 
-      tabelaHTML += `
-          </tbody>
-        </table>
-      `;
+      tabelaHTML += `</tbody></table>`;
 
-      document.getElementById("modalTitulo").textContent =
-        `👥 ALUNOS - ${eletiva.nome}`;
+      document.getElementById("modalTitulo").textContent = `👥 ALUNOS - ${eletiva.nome}`;
       document.getElementById("modalInfo").innerHTML = `
         <p><strong>Professor:</strong> ${professor} | <strong>Tempo:</strong> ${tempo}</p>
         <p><strong>Total de Alunos:</strong> ${totalAlunos} | <strong>Total Ausências:</strong> ${totalAusencias} | <strong>Média:</strong> ${mediaDisplay}</p>
@@ -567,14 +445,7 @@ window.verDetalhesEletiva = function (eletivaId) {
       document.getElementById("modalTabelaContainer").innerHTML = tabelaHTML;
 
       document.getElementById("btnImprimirLista").onclick = () =>
-        imprimirListaAlunos(
-          eletiva,
-          alunos,
-          ausenciasPorAluno,
-          notasPorAluno,
-          professor,
-          tempo,
-        );
+        imprimirListaAlunos(eletiva, alunos, ausenciasPorAluno, notasPorAluno, professor, tempo);
 
       document.getElementById("modalDetalhesEletiva").classList.add("active");
     } catch (error) {
@@ -585,26 +456,22 @@ window.verDetalhesEletiva = function (eletivaId) {
   }, 50);
 };
 
-// Fechar modal de detalhes
 window.fecharModalDetalhes = function () {
   document.getElementById("modalDetalhesEletiva").classList.remove("active");
 };
 
 // ========== FUNÇÕES DA ABA VER REGISTROS ==========
 
-// Inicializar filtros da aba registros
 function inicializarFiltrosRegistros() {
   carregarSelectProfessoresRegistros();
   carregarSelectDiasRegistros();
 }
 
-// Carregar select de professores
 function carregarSelectProfessoresRegistros() {
   const select = document.getElementById("filtroProfessorRegistros");
   if (!select) return;
 
-  const professores =
-    state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  const professores = state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
   select.innerHTML = '<option value="">Todos os professores</option>';
 
@@ -616,7 +483,6 @@ function carregarSelectProfessoresRegistros() {
   });
 }
 
-// Carregar select de dias da semana
 function carregarSelectDiasRegistros() {
   const select = document.getElementById("filtroDiaRegistros");
   if (!select) return;
@@ -631,33 +497,24 @@ function carregarSelectDiasRegistros() {
   });
 }
 
-// Mostrar/esconder campos de filtro
 window.toggleFiltroRegistros = function () {
   const tipo = document.getElementById("filtroTipoRegistros")?.value;
 
-  document.getElementById("filtroProfessorContainer").style.display =
-    tipo === "professor" ? "block" : "none";
-  document.getElementById("filtroDiaContainer").style.display =
-    tipo === "dia" ? "block" : "none";
+  document.getElementById("filtroProfessorContainer").style.display = tipo === "professor" ? "block" : "none";
+  document.getElementById("filtroDiaContainer").style.display = tipo === "dia" ? "block" : "none";
 
   aplicarFiltrosRegistros();
 };
 
-// Aplicar filtros
 window.aplicarFiltrosRegistros = function () {
-  buscaRegistros =
-    document.getElementById("buscaRegistros")?.value?.toLowerCase() || "";
-  filtroTipoRegistros =
-    document.getElementById("filtroTipoRegistros")?.value || "todas";
-  filtroProfessorRegistros =
-    document.getElementById("filtroProfessorRegistros")?.value || "";
-  filtroDiaRegistros =
-    document.getElementById("filtroDiaRegistros")?.value || "";
+  buscaRegistros = document.getElementById("buscaRegistros")?.value?.toLowerCase() || "";
+  filtroTipoRegistros = document.getElementById("filtroTipoRegistros")?.value || "todas";
+  filtroProfessorRegistros = document.getElementById("filtroProfessorRegistros")?.value || "";
+  filtroDiaRegistros = document.getElementById("filtroDiaRegistros")?.value || "";
 
   carregarCardsRegistros();
 };
 
-// Limpar filtros
 window.limparFiltrosRegistros = function () {
   document.getElementById("buscaRegistros").value = "";
   document.getElementById("filtroTipoRegistros").value = "todas";
@@ -675,26 +532,20 @@ window.limparFiltrosRegistros = function () {
   carregarCardsRegistros();
 };
 
-// Filtrar eletivas para registros
 function filtrarEletivasRegistros() {
   let eletivas = state.eletivas || [];
 
   if (filtroTipoRegistros === "professor" && filtroProfessorRegistros) {
-    eletivas = eletivas.filter(
-      (e) => e.professorId === parseInt(filtroProfessorRegistros),
-    );
+    eletivas = eletivas.filter((e) => e.professorId === parseInt(filtroProfessorRegistros));
   }
 
   if (filtroTipoRegistros === "dia" && filtroDiaRegistros) {
-    eletivas = eletivas.filter(
-      (e) => e.horario?.diaSemana?.toLowerCase() === filtroDiaRegistros,
-    );
+    eletivas = eletivas.filter((e) => e.horario?.diaSemana?.toLowerCase() === filtroDiaRegistros);
   }
 
   if (buscaRegistros) {
     eletivas = eletivas.filter((e) => {
-      const professor =
-        state.professores?.find((p) => p.id === e.professorId)?.nome || "";
+      const professor = state.professores?.find((p) => p.id === e.professorId)?.nome || "";
       return (
         e.nome?.toLowerCase().includes(buscaRegistros) ||
         e.codigo?.toLowerCase().includes(buscaRegistros) ||
@@ -706,13 +557,28 @@ function filtrarEletivasRegistros() {
   return eletivas;
 }
 
-// Carregar cards da aba registros
 async function carregarCardsRegistros() {
   const container = document.getElementById("registrosCardsGrid");
   if (!container) return;
 
-  // 🔥 Carregar registros do Firebase antes de exibir
-  await carregarRegistrosDoFirebase();
+  // Sincronizar com Firebase
+  if (window.FirebaseSync && window.FirebaseSync.carregarDadosFirebase) {
+    try {
+      if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
+        window.FirebaseConfig.initFirebase();
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      const registrosFirebase = await window.FirebaseSync.carregarDadosFirebase("registros");
+      if (registrosFirebase && registrosFirebase.length > 0) {
+        state.registros = registrosFirebase;
+        localStorage.setItem(CONFIG.storageKeys.registros, JSON.stringify(registrosFirebase));
+        console.log(`✅ Sincronizados ${registrosFirebase.length} registros do Firebase`);
+      }
+    } catch (error) {
+      console.error("❌ Erro ao sincronizar registros:", error);
+    }
+  }
 
   const eletivas = filtrarEletivasRegistros();
 
@@ -722,8 +588,7 @@ async function carregarCardsRegistros() {
   }
 
   if (eletivas.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhuma eletiva encontrada</p>';
+    container.innerHTML = '<p class="empty-state">Nenhuma eletiva encontrada</p>';
     return;
   }
 
@@ -732,16 +597,10 @@ async function carregarCardsRegistros() {
   eletivas.sort((a, b) => a.nome.localeCompare(b.nome));
 
   eletivas.forEach((eletiva) => {
-    const professor =
-      state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-      "Não atribuído";
+    const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
     const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
 
-    const registros =
-      state.registros
-        ?.filter((r) => r.eletivaId === eletiva.id)
-        .sort((a, b) => b.data.localeCompare(a.data)) || [];
-
+    const registros = state.registros?.filter((r) => r.eletivaId === eletiva.id).sort((a, b) => b.data.localeCompare(a.data)) || [];
     const notas = state.notas?.filter((n) => n.eletivaId === eletiva.id) || [];
 
     let mediaDisplay = "N/A";
@@ -761,8 +620,7 @@ async function carregarCardsRegistros() {
     const card = document.createElement("div");
     card.className = "eletiva-card-estatistica";
 
-    let registrosHTML =
-      '<div style="margin: 0.5rem 0; font-weight: bold;">📅 ÚLTIMOS REGISTROS:</div>';
+    let registrosHTML = '<div style="margin: 0.5rem 0; font-weight: bold;">📅 ÚLTIMOS REGISTROS:</div>';
 
     registros.slice(0, 3).forEach((reg) => {
       const presentes = reg.frequencia?.presentes?.length || 0;
@@ -772,18 +630,12 @@ async function carregarCardsRegistros() {
     });
 
     notas.slice(0, 1).forEach((nota) => {
-      const mediaNota =
-        nota.notas?.length > 0
-          ? (
-              nota.notas.reduce((acc, n) => acc + n.nota, 0) / nota.notas.length
-            ).toFixed(1)
-          : "0.0";
+      const mediaNota = nota.notas?.length > 0 ? (nota.notas.reduce((acc, n) => acc + n.nota, 0) / nota.notas.length).toFixed(1) : "0.0";
       registrosHTML += `<div style="font-size: 0.9rem; padding: 0.2rem 0;">• ${nota.semestre} - Notas (média: ${mediaNota})</div>`;
     });
 
     if (registros.length === 0 && notas.length === 0) {
-      registrosHTML +=
-        '<div style="font-size: 0.9rem; color: var(--text-light);">Nenhum registro encontrado</div>';
+      registrosHTML += '<div style="font-size: 0.9rem; color: var(--text-light);">Nenhum registro encontrado</div>';
     }
 
     card.innerHTML = `
@@ -812,32 +664,25 @@ async function carregarCardsRegistros() {
 
 // ========== FUNÇÕES DO MODAL DE OPÇÕES DE IMPRESSÃO ==========
 
-// Abrir modal de opções de impressão
 window.abrirModalOpcoesImpressao = function (eletivaId) {
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) return;
 
   eletivaSelecionadaParaImpressao = eletiva;
 
-  const professor =
-    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-    "Não atribuído";
+  const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
 
-  document.getElementById("modalImpressaoTitulo").textContent =
-    `🖨️ OPÇÕES DE IMPRESSÃO`;
-  document.getElementById("modalImpressaoEletiva").textContent =
-    `${eletiva.nome} (${eletiva.codigo}) - Prof. ${professor}`;
+  document.getElementById("modalImpressaoTitulo").textContent = `🖨️ OPÇÕES DE IMPRESSÃO`;
+  document.getElementById("modalImpressaoEletiva").textContent = `${eletiva.nome} (${eletiva.codigo}) - Prof. ${professor}`;
 
   document.getElementById("modalOpcoesImpressao").classList.add("active");
 };
 
-// Fechar modal de opções de impressão
 window.fecharModalOpcoesImpressao = function () {
   document.getElementById("modalOpcoesImpressao").classList.remove("active");
   eletivaSelecionadaParaImpressao = null;
 };
 
-// Selecionar opção de impressão
 window.selecionarOpcaoImpressao = function (opcao) {
   console.log("🎯 Opção selecionada:", opcao);
 
@@ -862,15 +707,12 @@ window.selecionarOpcaoImpressao = function (opcao) {
   setTimeout(() => {
     switch (opcao) {
       case "listaBranco":
-        console.log("🖨️ Chamando listaBranco para eletiva:", eletivaId);
         window.imprimirListaBrancoGestor(eletivaId);
         break;
       case "registrosData":
-        console.log("📅 Chamando registrosData para eletiva:", eletivaId);
         window.abrirSelecaoData(eletivaId);
         break;
       case "boletim":
-        console.log("📊 Chamando boletim para eletiva:", eletivaId);
         window.imprimirBoletimGestor(eletivaId);
         break;
       default:
@@ -881,7 +723,6 @@ window.selecionarOpcaoImpressao = function (opcao) {
 
 // ========== FUNÇÕES DE IMPRESSÃO DA ABA REGISTROS ==========
 
-// Imprimir lista em branco
 window.imprimirListaBrancoGestor = async function (eletivaId) {
   console.log("🖨️ Chamando imprimirListaBrancoGestor para eletiva:", eletivaId);
 
@@ -891,16 +732,10 @@ window.imprimirListaBrancoGestor = async function (eletivaId) {
     return;
   }
 
-  const professor =
-    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-    "Não atribuído";
+  const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
 
-  const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-  const alunos =
-    state.alunos
-      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+  const alunos = state.alunos?.filter((a) => matriculas.some((m) => m.alunoId === a.id)).sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
   if (alunos.length === 0) {
     showToast("Esta eletiva não possui alunos cadastrados", "warning");
@@ -920,23 +755,16 @@ window.imprimirListaBrancoGestor = async function (eletivaId) {
   }
 };
 
-// Gerar PDF lista em branco
 async function gerarPDFListaBrancoGestor(eletiva, alunos, professorNome) {
   return new Promise((resolve, reject) => {
     try {
-      console.log("📄 Gerando PDF lista em branco para:", eletiva.nome);
-
       if (typeof window.jspdf === "undefined") {
         reject("Biblioteca jsPDF não encontrada");
         return;
       }
 
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
       let paginaAtual = 1;
       let y = 10;
@@ -946,56 +774,29 @@ async function gerarPDFListaBrancoGestor(eletiva, alunos, professorNome) {
 
       function adicionarCabecalho() {
         let yCabecalho = 10;
-
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
-        doc.text(
-          "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 7;
 
         doc.setFontSize(12);
         doc.setFont("helvetica", "normal");
-        doc.text(
-          "EEMTI Filgueiras Lima - Inep: 23142804",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 7;
 
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text(
-          `LISTA DE FREQUÊNCIA - ${eletiva.nome}`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text(`LISTA DE FREQUÊNCIA - ${eletiva.nome}`, pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 6;
 
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
-        doc.text(
-          `Professor: ${professorNome} | Total: ${alunos.length} alunos`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text(`Professor: ${professorNome} | Total: ${alunos.length} alunos`, pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 6;
 
         doc.setFontSize(10);
-        doc.text(
-          `Data: ________ / ________ / __________`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text(`Data: ________ / ________ / __________`, pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 8;
-
         return yCabecalho;
       }
 
@@ -1022,7 +823,6 @@ async function gerarPDFListaBrancoGestor(eletiva, alunos, professorNome) {
         yPos += 4;
         doc.line(margin, yPos, pageWidth - margin, yPos);
         yPos += 4;
-
         return { yPos, posNome, posTurma, posSige, posAus, posNota, colWidths };
       }
 
@@ -1041,22 +841,16 @@ async function gerarPDFListaBrancoGestor(eletiva, alunos, professorNome) {
       doc.setFontSize(10);
 
       const alturaPorLinha = 5.5;
-      const linhasPorPagina = Math.floor(
-        (pageHeight - y - 25) / alturaPorLinha,
-      );
+      const linhasPorPagina = Math.floor((pageHeight - y - 25) / alturaPorLinha);
 
       let alunosProcessados = 0;
       let maxPaginas = 2;
 
       while (alunosProcessados < alunos.length && paginaAtual <= maxPaginas) {
-        const alunosNestaPagina = Math.min(
-          linhasPorPagina,
-          alunos.length - alunosProcessados,
-        );
+        const alunosNestaPagina = Math.min(linhasPorPagina, alunos.length - alunosProcessados);
 
         for (let i = 0; i < alunosNestaPagina; i++) {
           const aluno = alunos[alunosProcessados + i];
-
           doc.text(aluno.nome, posNome, y);
           doc.text(aluno.turmaOrigem, posTurma, y);
           doc.text(aluno.codigoSige, posSige, y);
@@ -1084,11 +878,7 @@ async function gerarPDFListaBrancoGestor(eletiva, alunos, professorNome) {
       if (alunosProcessados < alunos.length) {
         doc.setTextColor(255, 0, 0);
         doc.setFontSize(8);
-        doc.text(
-          `⚠️ Lista parcial. ${alunos.length - alunosProcessados} alunos não listados.`,
-          margin,
-          y,
-        );
+        doc.text(`⚠️ Lista parcial. ${alunos.length - alunosProcessados} alunos não listados.`, margin, y);
         doc.setTextColor(0, 0, 0);
         y += 6;
       }
@@ -1114,47 +904,30 @@ async function gerarPDFListaBrancoGestor(eletiva, alunos, professorNome) {
       const yAssinaturas = pageHeight - 12;
 
       doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
-      doc.line(
-        pageWidth - margin - 60,
-        yAssinaturas,
-        pageWidth - margin,
-        yAssinaturas,
-      );
+      doc.line(pageWidth - margin - 60, yAssinaturas, pageWidth - margin, yAssinaturas);
 
       doc.setFontSize(9);
       doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
-      doc.text(
-        "Assinatura do Gestor",
-        pageWidth - margin - 60,
-        yAssinaturas + 4,
-      );
+      doc.text("Assinatura do Gestor", pageWidth - margin - 60, yAssinaturas + 4);
 
       const pdfBlob = doc.output("blob");
       const pdfUrl = URL.createObjectURL(pdfBlob);
       window.open(pdfUrl, "_blank");
 
-      console.log("✅ PDF gerado com sucesso");
       resolve(true);
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
       reject(error);
     }
   });
 }
 
-// Abrir modal de seleção de data
 window.abrirSelecaoData = function (eletivaId) {
-  console.log("📅 Abrindo seleção de data para eletiva:", eletivaId);
-
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) return;
 
   eletivaSelecionadaParaData = eletiva;
 
-  const registros =
-    state.registros
-      ?.filter((r) => r.eletivaId === eletivaId)
-      .sort((a, b) => b.data.localeCompare(a.data)) || [];
+  const registros = state.registros?.filter((r) => r.eletivaId === eletivaId).sort((a, b) => b.data.localeCompare(a.data)) || [];
 
   if (registros.length === 0) {
     showToast("Não há registros para esta eletiva", "warning");
@@ -1166,8 +939,7 @@ window.abrirSelecaoData = function (eletivaId) {
     const presentes = reg.frequencia?.presentes?.length || 0;
     const dataFormatada = formatarData(reg.data);
     datasHTML += `
-      <div style="padding: 0.5rem; border-bottom: 1px solid var(--bg-gray); cursor: pointer;" 
-           onclick="selecionarData('${reg.data}')">
+      <div style="padding: 0.5rem; border-bottom: 1px solid var(--bg-gray); cursor: pointer;" onclick="selecionarData('${reg.data}')">
         <input type="radio" name="dataSelecionada" value="${reg.data}" id="data_${reg.data}">
         <label for="data_${reg.data}">📅 ${dataFormatada} - Frequência (${presentes} presentes)</label>
       </div>
@@ -1175,30 +947,21 @@ window.abrirSelecaoData = function (eletivaId) {
   });
   datasHTML += "</div>";
 
-  document.getElementById("modalDataTitulo").textContent =
-    `📅 SELECIONAR DATA - ${eletiva.nome}`;
-  document.getElementById("modalDataEletiva").textContent =
-    `Eletiva: ${eletiva.nome} | Código: ${eletiva.codigo}`;
+  document.getElementById("modalDataTitulo").textContent = `📅 SELECIONAR DATA - ${eletiva.nome}`;
+  document.getElementById("modalDataEletiva").textContent = `Eletiva: ${eletiva.nome} | Código: ${eletiva.codigo}`;
   document.getElementById("listaDatasContainer").innerHTML = datasHTML;
 
   document.getElementById("modalSelecionarData").classList.add("active");
 };
 
-// Selecionar data
 window.selecionarData = function (data) {
-  console.log("📅 Data selecionada:", data);
   dataSelecionada = data;
-  document
-    .querySelectorAll('input[name="dataSelecionada"]')
-    .forEach((r) => (r.checked = false));
+  document.querySelectorAll('input[name="dataSelecionada"]').forEach((r) => (r.checked = false));
   const radio = document.getElementById(`data_${data}`);
   if (radio) radio.checked = true;
 };
 
-// Confirmar seleção de data
 window.confirmarSelecaoData = function () {
-  console.log("✅ Confirmando data:", dataSelecionada);
-
   if (!dataSelecionada) {
     showToast("Selecione uma data", "warning");
     return;
@@ -1210,45 +973,28 @@ window.confirmarSelecaoData = function () {
   imprimirRegistroPorDataGestor(eletivaSelecionadaParaData.id, dataSelecionada);
 };
 
-// Fechar modal de seleção de data
 window.fecharModalSelecionarData = function () {
   document.getElementById("modalSelecionarData").classList.remove("active");
   dataSelecionada = null;
 };
 
-// Imprimir registro por data
 window.imprimirRegistroPorDataGestor = async function (eletivaId, data) {
-  console.log(
-    "🖨️ Chamando imprimirRegistroPorDataGestor para eletiva:",
-    eletivaId,
-    "data:",
-    data,
-  );
-
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) {
     showToast("Eletiva não encontrada", "error");
     return;
   }
 
-  const registro = state.registros?.find(
-    (r) => r.eletivaId === eletivaId && r.data === data,
-  );
+  const registro = state.registros?.find((r) => r.eletivaId === eletivaId && r.data === data);
   if (!registro) {
     showToast("Registro não encontrado", "error");
     return;
   }
 
-  const professor =
-    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-    "Não atribuído";
+  const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
 
-  const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-  const alunos =
-    state.alunos
-      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+  const alunos = state.alunos?.filter((a) => matriculas.some((m) => m.alunoId === a.id)).sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
   mostrarLoaderGestor(true);
 
@@ -1263,28 +1009,16 @@ window.imprimirRegistroPorDataGestor = async function (eletivaId, data) {
   }
 };
 
-// Gerar PDF de registro por data
-async function gerarPDFRegistroDataGestor(
-  eletiva,
-  alunos,
-  registro,
-  professorNome,
-) {
+async function gerarPDFRegistroDataGestor(eletiva, alunos, registro, professorNome) {
   return new Promise((resolve, reject) => {
     try {
-      console.log("📄 Gerando PDF registro por data para:", eletiva.nome);
-
       if (typeof window.jspdf === "undefined") {
         reject("Biblioteca jsPDF não encontrada");
         return;
       }
 
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
       let paginaAtual = 1;
       let y = 10;
@@ -1296,48 +1030,26 @@ async function gerarPDFRegistroDataGestor(
 
       function adicionarCabecalho() {
         let yCabecalho = 10;
-
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
-        doc.text(
-          "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 7;
 
         doc.setFontSize(12);
         doc.setFont("helvetica", "normal");
-        doc.text(
-          "EEMTI Filgueiras Lima - Inep: 23142804",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 7;
 
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text(
-          `REGISTRO DE FREQUÊNCIA - ${eletiva.nome}`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text(`REGISTRO DE FREQUÊNCIA - ${eletiva.nome}`, pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 6;
 
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
         const dataFormatada = formatarData(registro.data);
-        doc.text(
-          `Professor: ${professorNome} | Data: ${dataFormatada} | Total: ${alunos.length} alunos`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text(`Professor: ${professorNome} | Data: ${dataFormatada} | Total: ${alunos.length} alunos`, pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 8;
-
         return yCabecalho;
       }
 
@@ -1364,16 +1076,7 @@ async function gerarPDFRegistroDataGestor(
         yPos += 4;
         doc.line(margin, yPos, pageWidth - margin, yPos);
         yPos += 4;
-
-        return {
-          yPos,
-          posNome,
-          posTurma,
-          posSige,
-          posStatus,
-          posObs,
-          colWidths,
-        };
+        return { yPos, posNome, posTurma, posSige, posStatus, posObs, colWidths };
       }
 
       y = adicionarCabecalho();
@@ -1391,22 +1094,16 @@ async function gerarPDFRegistroDataGestor(
       doc.setFontSize(10);
 
       const alturaPorLinha = 5.5;
-      const linhasPorPagina = Math.floor(
-        (pageHeight - y - 35) / alturaPorLinha,
-      );
+      const linhasPorPagina = Math.floor((pageHeight - y - 35) / alturaPorLinha);
 
       let alunosProcessados = 0;
       let maxPaginas = 2;
 
       while (alunosProcessados < alunos.length && paginaAtual <= maxPaginas) {
-        const alunosNestaPagina = Math.min(
-          linhasPorPagina,
-          alunos.length - alunosProcessados,
-        );
+        const alunosNestaPagina = Math.min(linhasPorPagina, alunos.length - alunosProcessados);
 
         for (let i = 0; i < alunosNestaPagina; i++) {
           const aluno = alunos[alunosProcessados + i];
-
           const isPresente = presentesSet.has(aluno.codigoSige);
           const status = isPresente ? "✅" : "❌";
           const tempo = isPresente ? eletiva.horario?.codigoTempo || "T1" : "-";
@@ -1461,10 +1158,7 @@ async function gerarPDFRegistroDataGestor(
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
 
-      const linhasConteudo = doc.splitTextToSize(
-        registro.conteudo,
-        pageWidth - 2 * margin,
-      );
+      const linhasConteudo = doc.splitTextToSize(registro.conteudo, pageWidth - 2 * margin);
       linhasConteudo.forEach((linha) => {
         if (y > pageHeight - 25) {
           doc.addPage();
@@ -1481,39 +1175,25 @@ async function gerarPDFRegistroDataGestor(
         const yAssinaturas = pageHeight - 12;
 
         doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
-        doc.line(
-          pageWidth - margin - 60,
-          yAssinaturas,
-          pageWidth - margin,
-          yAssinaturas,
-        );
+        doc.line(pageWidth - margin - 60, yAssinaturas, pageWidth - margin, yAssinaturas);
 
         doc.setFontSize(9);
         doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
-        doc.text(
-          "Assinatura do Gestor",
-          pageWidth - margin - 60,
-          yAssinaturas + 4,
-        );
+        doc.text("Assinatura do Gestor", pageWidth - margin - 60, yAssinaturas + 4);
       }
 
       const pdfBlob = doc.output("blob");
       const pdfUrl = URL.createObjectURL(pdfBlob);
       window.open(pdfUrl, "_blank");
 
-      console.log("✅ PDF gerado com sucesso");
       resolve(true);
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
       reject(error);
     }
   });
 }
 
-// Imprimir boletim de notas
 window.imprimirBoletimGestor = async function (eletivaId) {
-  console.log("🖨️ Chamando imprimirBoletimGestor para eletiva:", eletivaId);
-
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) {
     showToast("Eletiva não encontrada", "error");
@@ -1527,20 +1207,12 @@ window.imprimirBoletimGestor = async function (eletivaId) {
     return;
   }
 
-  const professor =
-    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-    "Não atribuído";
+  const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
 
-  const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-  const alunos =
-    state.alunos
-      ?.filter((a) => matriculas.some((m) => m.alunoId === a.id))
-      .sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+  const alunos = state.alunos?.filter((a) => matriculas.some((m) => m.alunoId === a.id)).sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
-  const ultimoSemestre = notas.sort((a, b) =>
-    b.semestre.localeCompare(a.semestre),
-  )[0];
+  const ultimoSemestre = notas.sort((a, b) => b.semestre.localeCompare(a.semestre))[0];
 
   mostrarLoaderGestor(true);
 
@@ -1555,28 +1227,16 @@ window.imprimirBoletimGestor = async function (eletivaId) {
   }
 };
 
-// Gerar PDF de boletim de notas
-async function gerarPDFBoletimGestor(
-  eletiva,
-  alunos,
-  registroNotas,
-  professorNome,
-) {
+async function gerarPDFBoletimGestor(eletiva, alunos, registroNotas, professorNome) {
   return new Promise((resolve, reject) => {
     try {
-      console.log("📄 Gerando PDF boletim de notas para:", eletiva.nome);
-
       if (typeof window.jspdf === "undefined") {
         reject("Biblioteca jsPDF não encontrada");
         return;
       }
 
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
       let paginaAtual = 1;
       let y = 10;
@@ -1591,59 +1251,30 @@ async function gerarPDFBoletimGestor(
         });
       }
 
-      const notasValidas = Object.values(mapaNotas).filter(
-        (n) => n !== undefined,
-      );
-      const mediaGeral =
-        notasValidas.length > 0
-          ? (
-              notasValidas.reduce((a, b) => a + b, 0) / notasValidas.length
-            ).toFixed(1)
-          : "N/A";
+      const notasValidas = Object.values(mapaNotas).filter((n) => n !== undefined);
+      const mediaGeral = notasValidas.length > 0 ? (notasValidas.reduce((a, b) => a + b, 0) / notasValidas.length).toFixed(1) : "N/A";
 
       function adicionarCabecalho() {
         let yCabecalho = 10;
-
         doc.setFontSize(16);
         doc.setFont("helvetica", "bold");
-        doc.text(
-          "DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 7;
 
         doc.setFontSize(12);
         doc.setFont("helvetica", "normal");
-        doc.text(
-          "EEMTI Filgueiras Lima - Inep: 23142804",
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 7;
 
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text(
-          `BOLETIM DE NOTAS - ${eletiva.nome}`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text(`BOLETIM DE NOTAS - ${eletiva.nome}`, pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 6;
 
         doc.setFontSize(11);
         doc.setFont("helvetica", "normal");
-        doc.text(
-          `Professor: ${professorNome} | Semestre: ${registroNotas?.semestre || "1/2026"} | Total: ${alunos.length} alunos`,
-          pageWidth / 2,
-          yCabecalho,
-          { align: "center" },
-        );
+        doc.text(`Professor: ${professorNome} | Semestre: ${registroNotas?.semestre || "1/2026"} | Total: ${alunos.length} alunos`, pageWidth / 2, yCabecalho, { align: "center" });
         yCabecalho += 8;
-
         return yCabecalho;
       }
 
@@ -1668,7 +1299,6 @@ async function gerarPDFBoletimGestor(
         yPos += 4;
         doc.line(margin, yPos, pageWidth - margin, yPos);
         yPos += 4;
-
         return { yPos, posNome, posTurma, posSige, posNota, colWidths };
       }
 
@@ -1686,18 +1316,13 @@ async function gerarPDFBoletimGestor(
       doc.setFontSize(10);
 
       const alturaPorLinha = 5.5;
-      const linhasPorPagina = Math.floor(
-        (pageHeight - y - 35) / alturaPorLinha,
-      );
+      const linhasPorPagina = Math.floor((pageHeight - y - 35) / alturaPorLinha);
 
       let alunosProcessados = 0;
       let maxPaginas = 2;
 
       while (alunosProcessados < alunos.length && paginaAtual <= maxPaginas) {
-        const alunosNestaPagina = Math.min(
-          linhasPorPagina,
-          alunos.length - alunosProcessados,
-        );
+        const alunosNestaPagina = Math.min(linhasPorPagina, alunos.length - alunosProcessados);
 
         for (let i = 0; i < alunosNestaPagina; i++) {
           const aluno = alunos[alunosProcessados + i];
@@ -1741,35 +1366,22 @@ async function gerarPDFBoletimGestor(
       const yAssinaturas = pageHeight - 12;
 
       doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
-      doc.line(
-        pageWidth - margin - 60,
-        yAssinaturas,
-        pageWidth - margin,
-        yAssinaturas,
-      );
+      doc.line(pageWidth - margin - 60, yAssinaturas, pageWidth - margin, yAssinaturas);
 
       doc.setFontSize(9);
       doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
-      doc.text(
-        "Assinatura do Gestor",
-        pageWidth - margin - 60,
-        yAssinaturas + 4,
-      );
+      doc.text("Assinatura do Gestor", pageWidth - margin - 60, yAssinaturas + 4);
 
       const dataAtual = new Date().toLocaleDateString("pt-BR");
       doc.setFontSize(8);
-      doc.text(`Data: ${dataAtual}`, pageWidth / 2, yAssinaturas + 8, {
-        align: "center",
-      });
+      doc.text(`Data: ${dataAtual}`, pageWidth / 2, yAssinaturas + 8, { align: "center" });
 
       const pdfBlob = doc.output("blob");
       const pdfUrl = URL.createObjectURL(pdfBlob);
       window.open(pdfUrl, "_blank");
 
-      console.log("✅ PDF gerado com sucesso");
       resolve(true);
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
       reject(error);
     }
   });
@@ -1777,15 +1389,7 @@ async function gerarPDFBoletimGestor(
 
 // ========== FUNÇÕES DE IMPRESSÃO DA ABA ESTATÍSTICAS ==========
 
-// Imprimir lista de alunos (estatísticas)
-function imprimirListaAlunos(
-  eletiva,
-  alunos,
-  ausenciasPorAluno,
-  notasPorAluno,
-  professor,
-  tempo,
-) {
+function imprimirListaAlunos(eletiva, alunos, ausenciasPorAluno, notasPorAluno, professor, tempo) {
   mostrarLoaderGestor(true);
 
   try {
@@ -1796,11 +1400,7 @@ function imprimirListaAlunos(
     }
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-    });
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
     let y = 10;
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -1809,33 +1409,22 @@ function imprimirListaAlunos(
 
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
-      align: "center",
-    });
+    doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, { align: "center" });
     y += 7;
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, {
-      align: "center",
-    });
+    doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, { align: "center" });
     y += 7;
 
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text(`LISTA DE ALUNOS - ${eletiva.nome}`, pageWidth / 2, y, {
-      align: "center",
-    });
+    doc.text(`LISTA DE ALUNOS - ${eletiva.nome}`, pageWidth / 2, y, { align: "center" });
     y += 6;
 
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
-    doc.text(
-      `Professor: ${professor} | Tempo: ${tempo} | Total: ${alunos.length} alunos`,
-      pageWidth / 2,
-      y,
-      { align: "center" },
-    );
+    doc.text(`Professor: ${professor} | Tempo: ${tempo} | Total: ${alunos.length} alunos`, pageWidth / 2, y, { align: "center" });
     y += 8;
 
     const colWidths = [70, 18, 18, 20, 25];
@@ -1904,12 +1493,7 @@ function imprimirListaAlunos(
     const yAssinaturas = pageHeight - 12;
 
     doc.line(margin, yAssinaturas, margin + 60, yAssinaturas);
-    doc.line(
-      pageWidth - margin - 60,
-      yAssinaturas,
-      pageWidth - margin,
-      yAssinaturas,
-    );
+    doc.line(pageWidth - margin - 60, yAssinaturas, pageWidth - margin, yAssinaturas);
 
     doc.setFontSize(9);
     doc.text("Assinatura do Professor", margin, yAssinaturas + 4);
@@ -1917,9 +1501,7 @@ function imprimirListaAlunos(
 
     const dataAtual = new Date().toLocaleDateString("pt-BR");
     doc.setFontSize(8);
-    doc.text(`Data: ${dataAtual}`, pageWidth / 2, yAssinaturas + 8, {
-      align: "center",
-    });
+    doc.text(`Data: ${dataAtual}`, pageWidth / 2, yAssinaturas + 8, { align: "center" });
 
     const pdfBlob = doc.output("blob");
     const pdfUrl = URL.createObjectURL(pdfBlob);
@@ -1949,3 +1531,46 @@ window.abrirModalRestaurarBackup = function () {
 window.abrirModalConflitos = function () {
   window.location.href = "gestao-completa.html#dados";
 };
+
+// ========== EVENT LISTENERS PARA ATUALIZAÇÃO AUTOMÁTICA ==========
+
+window.addEventListener('dadosAtualizados', function(event) {
+  console.log("📡 Gestor recebeu evento de atualização:", event.detail);
+  if (document.visibilityState === 'visible') {
+    const abaAtiva = document.querySelector('.gestor-tab-pane.active')?.id;
+    if (abaAtiva === 'tab-estatisticas') {
+      carregarEstatisticas();
+    } else if (abaAtiva === 'tab-registros') {
+      carregarCardsRegistros();
+    }
+  }
+});
+
+window.addEventListener('storage', function(event) {
+  if (event.key === CONFIG.storageKeys.eletivas) {
+    console.log("📦 Mudança detectada nas eletivas");
+    if (document.visibilityState === 'visible') {
+      carregarEstatisticas();
+    }
+  }
+  if (event.key === CONFIG.storageKeys.registros) {
+    console.log("📦 Mudança detectada nos registros");
+    if (document.visibilityState === 'visible') {
+      const abaAtiva = document.querySelector('.gestor-tab-pane.active')?.id;
+      if (abaAtiva === 'tab-registros') {
+        carregarCardsRegistros();
+      }
+    }
+  }
+});
+
+setInterval(() => {
+  if (document.visibilityState === 'visible') {
+    const abaAtiva = document.querySelector('.gestor-tab-pane.active')?.id;
+    if (abaAtiva === 'tab-estatisticas') {
+      carregarEstatisticas();
+    } else if (abaAtiva === 'tab-registros') {
+      carregarCardsRegistros();
+    }
+  }
+}, 30000);
