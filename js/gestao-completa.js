@@ -61,13 +61,11 @@ const diasSemanaOpcoes = [
 ];
 
 // ========== INICIALIZAÇÃO ==========
-
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", async function () {
   console.log("📋 Inicializando página de gestão completa...");
 
   carregarTheme();
 
-  // Verificar se usuário está logado
   const gestorStorage = localStorage.getItem("gestor_atual");
   if (!gestorStorage) {
     window.location.href = "selecionar-gestor.html";
@@ -78,13 +76,15 @@ document.addEventListener("DOMContentLoaded", function () {
     carregarEstado();
   }
 
-  // Inicializar Firebase e sincronizar dados mais recentes
+  // 🔥 Sincronização com Firebase - SEM TIMEOUTS FIXOS
   if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
-    window.FirebaseConfig.initFirebase();
-  }
-  setTimeout(function () {
-    if (window.FirebaseSync && typeof window.FirebaseSync.carregarColecoesGestor === "function") {
-      window.FirebaseSync.carregarColecoesGestor().then(function (carregou) {
+    try {
+      console.log("🔥 Aguardando inicialização do Firebase...");
+      await window.FirebaseConfig.aguardarInicializacaoFirebase(10000);
+      console.log("✅ Firebase inicializado");
+      
+      if (window.FirebaseSync && typeof window.FirebaseSync.carregarColecoesGestor === "function") {
+        const carregou = await window.FirebaseSync.carregarColecoesGestor();
         if (carregou) {
           console.log("✅ Dados do Firebase carregados - atualizando gestão...");
           carregarProfessores();
@@ -92,28 +92,32 @@ document.addEventListener("DOMContentLoaded", function () {
           filtrarEstudantes();
           carregarAbaDados();
         }
-      }).catch(function (err) {
-        console.warn("⚠️ Erro na sincronização inicial:", err);
-      });
+      }
+      
+      // Ativar listener em tempo real
+      if (typeof window.FirebaseSync.escutarColecoesGestor === "function") {
+        window.FirebaseSync.escutarColecoesGestor(function (colecao) {
+          console.log(`🔄 Atualização recebida: ${colecao} - recarregando...`);
+          carregarProfessores();
+          carregarEletivas();
+          filtrarEstudantes();
+          carregarAbaDados();
+        });
+      }
+    } catch (err) {
+      console.warn("⚠️ Erro na inicialização do Firebase:", err);
     }
-  }, 1500);
+  }
 
   // Carregar dados iniciais
   carregarProfessores();
-
-  // Inicializar aba eletivas
   carregarLocais();
   carregarSelectsEletivas();
   carregarEletivas();
-
-  // Inicializar aba estudantes
   carregarSelectsEstudantes();
   filtrarEstudantes();
-
-  // Inicializar aba dados
   carregarAbaDados();
 
-  // Carregar checkboxes de turmas no modal de eletiva
   const turmas = CONFIG.turmas || [
     "1ª SÉRIE A",
     "1ª SÉRIE B",
@@ -141,7 +145,6 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 // ========== FUNÇÕES DE UTILIDADE ==========
-
 function mostrarLoader(mostrar) {
   const loader = document.getElementById("gestorLoader");
   if (loader) {
@@ -153,63 +156,7 @@ function mostrarLoader(mostrar) {
   }
 }
 
-function showToast(message, type = "success") {
-  const toast = document.getElementById("toast");
-  if (toast) {
-    toast.textContent = message;
-    toast.className = `toast show ${type}`;
-    setTimeout(() => {
-      toast.classList.remove("show");
-    }, 3000);
-  } else {
-    alert(message);
-  }
-}
-
-// Mudar de aba
-window.mudarTabGestao = function (tab) {
-  document
-    .querySelectorAll(".gestao-tab-btn")
-    .forEach((btn) => btn.classList.remove("active"));
-  document.querySelectorAll(".gestao-tab-btn").forEach((btn) => {
-    if (btn.getAttribute("onclick")?.includes(`'${tab}'`)) {
-      btn.classList.add("active");
-    }
-  });
-
-  document
-    .querySelectorAll(".gestao-tab-pane")
-    .forEach((pane) => pane.classList.remove("active"));
-  document.getElementById(`tab-${tab}`).classList.add("active");
-
-  if (tab === "professores") {
-    carregarProfessores();
-  } else if (tab === "eletivas") {
-    carregarEletivas();
-  } else if (tab === "estudantes") {
-    filtrarEstudantes();
-  } else if (tab === "dados") {
-    carregarAbaDados();
-  }
-};
-
-// Fechar modal de confirmação
-window.fecharModalConfirmacao = function () {
-  document.getElementById("modalConfirmacao").classList.remove("active");
-};
-
-// Função auxiliar para obter tempo do horário
-function getTempoFromHorario(horario) {
-  if (!horario) return null;
-  if (horario.codigoTempo) {
-    return horario.codigoTempo;
-  }
-  return null;
-}
-
 // ========== FUNÇÕES DE EXPORTAÇÃO DE JSON ==========
-
-// Exportar JSON completo
 window.exportarJSONCompleto = function () {
   try {
     const dadosExport = {
@@ -250,8 +197,6 @@ window.exportarJSONCompleto = function () {
 };
 
 // ========== FUNÇÕES DA ABA PROFESSORES ==========
-
-// Carregar lista de professores
 function carregarProfessores() {
   const container = document.getElementById("professoresGrid");
   if (!container) return;
@@ -261,7 +206,6 @@ function carregarProfessores() {
 
   let professores = state.professores || [];
 
-  // Filtrar por busca
   if (busca) {
     professores = professores.filter(
       (p) =>
@@ -270,10 +214,8 @@ function carregarProfessores() {
     );
   }
 
-  // Ordenar por nome
   professores.sort((a, b) => a.nome.localeCompare(b.nome));
 
-  // Atualizar contador
   document.getElementById("contadorProfessores").textContent =
     `(${professores.length} professores encontrados)`;
 
@@ -286,7 +228,6 @@ function carregarProfessores() {
   container.innerHTML = "";
 
   professores.forEach((professor) => {
-    // Buscar eletivas do professor
     const eletivas =
       state.eletivas?.filter((e) => e.professorId === professor.id) || [];
 
@@ -318,8 +259,8 @@ function carregarProfessores() {
     card.innerHTML = `
       <div class="professor-header">
         <div class="professor-info">
-          <h3>👤 ${professor.nome}</h3>
-          <p><i class="fas fa-envelope"></i> ${professor.email}</p>
+          <h3>👤 ${escapeHtml(professor.nome)}</h3>
+          <p><i class="fas fa-envelope"></i> ${escapeHtml(professor.email)}</p>
         </div>
         <div class="professor-actions">
           <button class="btn-primary btn-small" onclick="abrirModalEditarProfessor(${professor.id})" title="Editar">
@@ -340,14 +281,11 @@ function carregarProfessores() {
   });
 }
 
-// Filtrar professores
 window.filtrarProfessores = function () {
   carregarProfessores();
 };
 
 // ========== FUNÇÕES DO MODAL DE PROFESSOR ==========
-
-// Abrir modal para adicionar professor
 window.abrirModalAdicionarProfessor = function () {
   professorEmEdicao = null;
   document.getElementById("modalProfessorTitulo").textContent =
@@ -358,7 +296,6 @@ window.abrirModalAdicionarProfessor = function () {
   document.getElementById("modalProfessor").classList.add("active");
 };
 
-// Abrir modal para editar professor
 window.abrirModalEditarProfessor = function (professorId) {
   const professor = state.professores?.find((p) => p.id === professorId);
   if (!professor) return;
@@ -372,13 +309,11 @@ window.abrirModalEditarProfessor = function (professorId) {
   document.getElementById("modalProfessor").classList.add("active");
 };
 
-// Fechar modal de professor
 window.fecharModalProfessor = function () {
   document.getElementById("modalProfessor").classList.remove("active");
   professorEmEdicao = null;
 };
 
-// Salvar professor
 window.salvarProfessor = async function () {
   const nome = document.getElementById("professorNome")?.value.trim();
   const email = document.getElementById("professorEmail")?.value.trim();
@@ -393,7 +328,6 @@ window.salvarProfessor = async function () {
 
   try {
     if (professorEmEdicao) {
-      // Editar professor existente
       const index = state.professores.findIndex(
         (p) => p.id === professorEmEdicao.id,
       );
@@ -416,7 +350,6 @@ window.salvarProfessor = async function () {
         showToast("Professor atualizado com sucesso!", "success");
       }
     } else {
-      // Adicionar novo professor
       const profIds = state.professores?.map(p => Number(p.id)) || [];
       const novoId = profIds.length > 0 ? Math.max(...profIds) + 1 : 1;
       const novoProfessor = {
@@ -452,8 +385,6 @@ window.salvarProfessor = async function () {
 };
 
 // ========== FUNÇÕES DE REMOÇÃO DE PROFESSOR ==========
-
-// Confirmar remoção de professor
 window.confirmarRemoverProfessor = function (professorId) {
   const professor = state.professores?.find((p) => p.id === professorId);
   if (!professor) return;
@@ -467,7 +398,7 @@ window.confirmarRemoverProfessor = function (professorId) {
 
   confirmTitle.textContent = "⚠️ REMOVER PROFESSOR";
   confirmBody.innerHTML = `
-    <p>Tem certeza que deseja remover <strong>${professor.nome}</strong>?</p>
+    <p>Tem certeza que deseja remover <strong>${escapeHtml(professor.nome)}</strong>?</p>
     <p style="margin-top: 1rem;">Esta ação:</p>
     <ul style="margin-left: 1.5rem;">
       <li>Remove o professor do sistema</li>
@@ -489,15 +420,11 @@ window.confirmarRemoverProfessor = function (professorId) {
   document.getElementById("modalConfirmacao").classList.add("active");
 };
 
-// Remover professor
 async function removerProfessor(professorId) {
   mostrarLoader(true);
 
   try {
-    // Remover professor
     state.professores = state.professores.filter((p) => p.id !== professorId);
-
-    // Atualizar eletivas (deixar sem professor)
     state.eletivas = state.eletivas.map((e) => {
       if (e.professorId === professorId) {
         return { ...e, professorId: null, professorNome: "" };
@@ -508,11 +435,9 @@ async function removerProfessor(professorId) {
     salvarEstado();
 
     if (window.FirebaseSync) {
-      // Deletar professor do Firebase
       try {
         await window.FirebaseSync.deletarDadosFirebase("professores", professorId);
       } catch(e) { console.warn("⚠️ Erro ao deletar professor:", e); }
-      // Atualizar eletivas afetadas no Firebase (sem professor)
       for (const e of state.eletivas) {
         if (e.professorId === null || e.professorId === professorId) {
           try {
@@ -533,8 +458,6 @@ async function removerProfessor(professorId) {
 }
 
 // ========== FUNÇÕES DE TROCA DE ELETIVAS (PROFESSORES) ==========
-
-// Abrir modal de troca de eletivas
 window.abrirModalTrocarEletivas = function (professorId) {
   const professor = state.professores?.find((p) => p.id === professorId);
   if (!professor) return;
@@ -547,7 +470,6 @@ window.abrirModalTrocarEletivas = function (professorId) {
   document.getElementById("modalTrocarProfessor").textContent =
     `Professor: ${professor.nome}`;
 
-  // Carregar eletivas do professor
   const eletivasOrigem =
     state.eletivas?.filter((e) => e.professorId === professorId) || [];
 
@@ -571,7 +493,6 @@ window.abrirModalTrocarEletivas = function (professorId) {
   }
   document.getElementById("eletivasOrigem").innerHTML = origemHTML;
 
-  // Carregar select de professores destino
   const selectDestino = document.getElementById("selectProfessorDestino");
   selectDestino.innerHTML = '<option value="">Selecione um professor</option>';
 
@@ -587,7 +508,6 @@ window.abrirModalTrocarEletivas = function (professorId) {
   document.getElementById("modalTrocarEletivas").classList.add("active");
 };
 
-// Toggle eletiva selecionada
 window.toggleEletivaSelecionada = function (eletivaId) {
   const index = eletivasSelecionadasParaTroca.indexOf(eletivaId);
   if (index === -1) {
@@ -597,7 +517,6 @@ window.toggleEletivaSelecionada = function (eletivaId) {
   }
 };
 
-// Carregar eletivas do destino
 window.carregarEletivasDestino = function () {
   const destinoId = document.getElementById("selectProfessorDestino")?.value;
   if (!destinoId) {
@@ -631,7 +550,6 @@ window.carregarEletivasDestino = function () {
   document.getElementById("eletivasDestino").innerHTML = destinoHTML;
 };
 
-// Confirmar troca de eletivas
 window.confirmarTrocaEletivas = async function () {
   if (!professorParaTroca) return;
 
@@ -654,7 +572,6 @@ window.confirmarTrocaEletivas = async function () {
   mostrarLoader(true);
 
   try {
-    // Transferir cada eletiva selecionada
     for (const eletivaId of eletivasSelecionadasParaTroca) {
       const index = state.eletivas.findIndex((e) => e.id === eletivaId);
       if (index !== -1) {
@@ -690,7 +607,6 @@ window.confirmarTrocaEletivas = async function () {
   }
 };
 
-// Fechar modal de troca
 window.fecharModalTrocarEletivas = function () {
   document.getElementById("modalTrocarEletivas").classList.remove("active");
   professorParaTroca = null;
@@ -698,13 +614,10 @@ window.fecharModalTrocarEletivas = function () {
 };
 
 // ========== FUNÇÕES DA ABA ELETIVAS ==========
-
-// Carregar locais (inicializar se não existir)
 function carregarLocais() {
   if (state.locais) {
     locais = state.locais;
   } else {
-    // Locais padrão
     locais = [
       { id: "sala1", nome: "Sala de Dança", capacidade: 40 },
       { id: "lab", nome: "Laboratório", capacidade: 25 },
@@ -716,7 +629,6 @@ function carregarLocais() {
   }
 }
 
-// Salvar locais
 function salvarLocais() {
   state.locais = locais;
   salvarEstado();
@@ -726,9 +638,7 @@ function salvarLocais() {
   }
 }
 
-// Carregar selects da aba eletivas
 function carregarSelectsEletivas() {
-  // Select de professores
   const selectProf = document.getElementById("filtroProfessorEletiva");
   if (selectProf) {
     const professores =
@@ -739,7 +649,6 @@ function carregarSelectsEletivas() {
     });
   }
 
-  // Select de locais
   const selectLocal = document.getElementById("filtroLocalEletiva");
   if (selectLocal) {
     selectLocal.innerHTML = '<option value="">Todos os locais</option>';
@@ -748,7 +657,6 @@ function carregarSelectsEletivas() {
     });
   }
 
-  // Select de professores no modal
   const selectModalProf = document.getElementById("selectProfessorEletiva");
   if (selectModalProf) {
     const professores =
@@ -760,7 +668,6 @@ function carregarSelectsEletivas() {
     });
   }
 
-  // Select de locais no modal
   const selectModalLocal = document.getElementById("selectLocalEletiva");
   if (selectModalLocal) {
     selectModalLocal.innerHTML = '<option value="">Selecione um local</option>';
@@ -769,7 +676,6 @@ function carregarSelectsEletivas() {
     });
   }
 
-  // Select de dias da semana no modal
   const selectDia = document.getElementById("selectDiaEletiva");
   if (selectDia) {
     selectDia.innerHTML = "";
@@ -779,7 +685,6 @@ function carregarSelectsEletivas() {
     });
   }
 
-  // Select de professores no modal de troca rápida
   const selectNovoProf = document.getElementById("selectNovoProfessor");
   if (selectNovoProf) {
     const professores =
@@ -792,7 +697,6 @@ function carregarSelectsEletivas() {
   }
 }
 
-// Filtrar por tempo
 window.filtrarPorTempoEletiva = function (tempo) {
   filtroTempoEletiva = tempo;
 
@@ -806,7 +710,6 @@ window.filtrarPorTempoEletiva = function (tempo) {
   carregarEletivas();
 };
 
-// Limpar filtros
 window.limparFiltrosEletivas = function () {
   filtroTempoEletiva = "TODOS";
 
@@ -824,12 +727,10 @@ window.limparFiltrosEletivas = function () {
   carregarEletivas();
 };
 
-// Aplicar filtros
 window.filtrarEletivas = function () {
   carregarEletivas();
 };
 
-// Carregar lista de eletivas
 function carregarEletivas() {
   const container = document.getElementById("eletivasGrid");
   if (!container) return;
@@ -841,7 +742,6 @@ function carregarEletivas() {
 
   let eletivas = state.eletivas || [];
 
-  // Filtrar por tempo
   if (filtroTempoEletiva !== "TODOS") {
     eletivas = eletivas.filter((e) => {
       const tempo = getTempoFromHorario(e.horario);
@@ -849,17 +749,14 @@ function carregarEletivas() {
     });
   }
 
-  // Filtrar por professor
   if (professorId) {
     eletivas = eletivas.filter((e) => e.professorId === parseInt(professorId));
   }
 
-  // Filtrar por local
   if (local) {
     eletivas = eletivas.filter((e) => e.local === local);
   }
 
-  // Filtrar por busca
   if (busca) {
     eletivas = eletivas.filter((e) => {
       const professor =
@@ -872,10 +769,8 @@ function carregarEletivas() {
     });
   }
 
-  // Ordenar por nome
   eletivas.sort((a, b) => a.nome.localeCompare(b.nome));
 
-  // Atualizar contador
   document.getElementById("contadorEletivas").textContent =
     `(${eletivas.length} eletivas encontradas)`;
 
@@ -931,14 +826,11 @@ function carregarEletivas() {
 }
 
 // ========== FUNÇÕES DO MODAL DE ELETIVA ==========
-
-// Abrir modal para criar eletiva
 window.abrirModalCriarEletiva = function () {
   eletivaEmEdicao = null;
   document.getElementById("modalEletivaTitulo").textContent =
     "➕ CRIAR NOVA ELETIVA";
 
-  // Limpar campos
   document.getElementById("eletivaNome").value = "";
   document.getElementById("eletivaCodigo").value = "";
   document.getElementById("selectProfessorEletiva").value = "";
@@ -948,7 +840,6 @@ window.abrirModalCriarEletiva = function () {
   document.getElementById("horarioFim").value = "08:40";
   document.getElementById("eletivaTipoMista").checked = true;
 
-  // Limpar checkboxes de turmas
   document
     .querySelectorAll(".turma-checkbox")
     .forEach((cb) => (cb.checked = false));
@@ -956,7 +847,6 @@ window.abrirModalCriarEletiva = function () {
   document.getElementById("modalEletiva").classList.add("active");
 };
 
-// Abrir modal para editar eletiva
 window.abrirModalEditarEletiva = function (eletivaId) {
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) return;
@@ -965,7 +855,6 @@ window.abrirModalEditarEletiva = function (eletivaId) {
   document.getElementById("modalEletivaTitulo").textContent =
     "✏️ EDITAR ELETIVA";
 
-  // Preencher campos
   document.getElementById("eletivaNome").value = eletiva.nome;
   document.getElementById("eletivaCodigo").value = eletiva.codigo;
   document.getElementById("selectProfessorEletiva").value =
@@ -974,7 +863,6 @@ window.abrirModalEditarEletiva = function (eletivaId) {
   document.getElementById("selectDiaEletiva").value =
     eletiva.horario?.diaSemana || "segunda";
 
-  // Mapear horário para selects
   const tempo = eletiva.horario?.codigoTempo || "T1";
   const horario =
     Object.entries(mapaTempoEletiva).find(([h, t]) => t === tempo)?.[0] ||
@@ -983,14 +871,12 @@ window.abrirModalEditarEletiva = function (eletivaId) {
   document.getElementById("horarioInicio").value = hInicio;
   document.getElementById("horarioFim").value = hFim;
 
-  // Tipo
   if (eletiva.tipo === "FIXA") {
     document.getElementById("eletivaTipoFixa").checked = true;
   } else {
     document.getElementById("eletivaTipoMista").checked = true;
   }
 
-  // Turmas
   const turmas = eletiva.turmaOrigem?.split(", ") || [];
   document.querySelectorAll(".turma-checkbox").forEach((cb) => {
     cb.checked = turmas.includes(cb.value);
@@ -999,20 +885,17 @@ window.abrirModalEditarEletiva = function (eletivaId) {
   document.getElementById("modalEletiva").classList.add("active");
 };
 
-// Fechar modal de eletiva
 window.fecharModalEletiva = function () {
   document.getElementById("modalEletiva").classList.remove("active");
   eletivaEmEdicao = null;
 };
 
-// Selecionar todas as turmas
 window.selecionarTodasTurmas = function (selecionar) {
   document.querySelectorAll(".turma-checkbox").forEach((cb) => {
     cb.checked = selecionar;
   });
 };
 
-// Salvar eletiva
 window.salvarEletiva = async function () {
   const nome = document.getElementById("eletivaNome")?.value.trim();
   const codigo = document
@@ -1028,13 +911,11 @@ window.salvarEletiva = async function () {
     document.querySelector('input[name="tipoEletiva"]:checked')?.value ||
     "MISTA";
 
-  // Coletar turmas selecionadas
   const turmasSelecionadas = [];
   document.querySelectorAll(".turma-checkbox:checked").forEach((cb) => {
     turmasSelecionadas.push(cb.value);
   });
 
-  // Validações
   if (!nome || nome.length < 3) {
     showToast("Nome da eletiva é obrigatório (mínimo 3 caracteres)", "error");
     return;
@@ -1055,7 +936,6 @@ window.salvarEletiva = async function () {
     return;
   }
 
-  // Validar categoria FIXA x turmas
   if (tipo === "FIXA" && turmasSelecionadas.length > 1) {
     showToast(
       "Eletivas FIXAS só podem ter UMA turma. Selecione apenas uma turma.",
@@ -1064,7 +944,6 @@ window.salvarEletiva = async function () {
     return;
   }
 
-  // Verificar código único (se for novo ou se alterou)
   if (
     !eletivaEmEdicao ||
     (eletivaEmEdicao && eletivaEmEdicao.codigo !== codigo)
@@ -1076,7 +955,6 @@ window.salvarEletiva = async function () {
     }
   }
 
-  // Se for edição e estiver mudando para FIXA, verificar alunos existentes
   if (eletivaEmEdicao && tipo === "FIXA" && eletivaEmEdicao.tipo !== "FIXA") {
     const matriculas =
       state.matriculas?.filter((m) => m.eletivaId === eletivaEmEdicao.id) || [];
@@ -1110,7 +988,6 @@ window.salvarEletiva = async function () {
     const codigoTempo = mapaTempoEletiva[horarioCompleto] || "T1";
 
     if (eletivaEmEdicao) {
-      // Editar eletiva existente
       const index = state.eletivas.findIndex(
         (e) => e.id === eletivaEmEdicao.id,
       );
@@ -1141,7 +1018,6 @@ window.salvarEletiva = async function () {
         showToast("Eletiva atualizada com sucesso!", "success");
       }
     } else {
-      // Criar nova eletiva
       const idsExistentes = state.eletivas?.map(e => Number(e.id)) || [];
       const maxId = idsExistentes.length > 0 ? Math.max(...idsExistentes) : 999;
       const novoId = maxId + 1;
@@ -1188,9 +1064,7 @@ window.salvarEletiva = async function () {
   }
 };
 
-// ========== FUNÇÃO PARA EDITAR CATEGORIA DA ELETIVA (FIXA/MISTA) ==========
-
-// Abrir modal para editar categoria da eletiva
+// ========== FUNÇÃO PARA EDITAR CATEGORIA DA ELETIVA ==========
 window.abrirModalEditarCategoria = function (eletivaId) {
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) return;
@@ -1202,14 +1076,12 @@ window.abrirModalEditarCategoria = function (eletivaId) {
   document.getElementById("categoriaAtual").textContent =
     eletiva.tipo || "MISTA";
 
-  // Marcar o radio button correspondente
   if (eletiva.tipo === "FIXA") {
     document.getElementById("categoriaFixa").checked = true;
   } else {
     document.getElementById("categoriaMista").checked = true;
   }
 
-  // Mostrar informações sobre a categoria
   const infoDiv = document.getElementById("categoriaInfo");
   if (eletiva.tipo === "FIXA") {
     infoDiv.innerHTML = `
@@ -1229,13 +1101,11 @@ window.abrirModalEditarCategoria = function (eletivaId) {
   document.getElementById("modalEditarCategoria").classList.add("active");
 };
 
-// Fechar modal de edição de categoria
 window.fecharModalEditarCategoria = function () {
   document.getElementById("modalEditarCategoria").classList.remove("active");
   eletivaEmEdicao = null;
 };
 
-// Salvar alteração de categoria
 window.salvarCategoriaEletiva = async function () {
   if (!eletivaEmEdicao) return;
 
@@ -1247,9 +1117,7 @@ window.salvarCategoriaEletiva = async function () {
     return;
   }
 
-  // Se estiver mudando de MISTA para FIXA, verificar se todos os alunos são da mesma turma
   if (eletivaEmEdicao.tipo === "MISTA" && novaCategoria === "FIXA") {
-    // Buscar alunos da eletiva
     const matriculas =
       state.matriculas?.filter((m) => m.eletivaId === eletivaEmEdicao.id) || [];
     const alunos =
@@ -1257,7 +1125,6 @@ window.salvarCategoriaEletiva = async function () {
       [];
 
     if (alunos.length > 0) {
-      // Verificar se todos são da mesma turma
       const primeiraTurma = alunos[0].turmaOrigem;
       const todosMesmaTurma = alunos.every(
         (a) => a.turmaOrigem === primeiraTurma,
@@ -1288,7 +1155,6 @@ window.salvarCategoriaEletiva = async function () {
         confirmBtn.onclick = function () {
           confirmBtn.onclick = originalOnClick;
           fecharModalConfirmacao();
-          // Continuar com a alteração mesmo assim (o usuário confirmou)
           executarAlteracaoCategoria(eletivaEmEdicao.id, novaCategoria);
         };
 
@@ -1299,11 +1165,9 @@ window.salvarCategoriaEletiva = async function () {
     }
   }
 
-  // Se não houver problemas ou for FIXA -> MISTA, executar direto
   await executarAlteracaoCategoria(eletivaEmEdicao.id, novaCategoria);
 };
 
-// Função auxiliar para executar a alteração
 async function executarAlteracaoCategoria(eletivaId, novaCategoria) {
   mostrarLoader(true);
 
@@ -1344,13 +1208,8 @@ async function executarAlteracaoCategoria(eletivaId, novaCategoria) {
 }
 
 // ========== FUNÇÕES DE TROCA RÁPIDA DE PROFESSOR ==========
-
-// Abrir modal para trocar professor
 window.abrirModalTrocarProfessor = function (eletivaId) {
-  console.log(
-    "🔄 Abrindo modal de troca de professor para eletiva ID:",
-    eletivaId,
-  );
+  console.log("🔄 Abrindo modal de troca de professor para eletiva ID:", eletivaId);
 
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) {
@@ -1369,7 +1228,6 @@ window.abrirModalTrocarProfessor = function (eletivaId) {
     `🔄 TROCAR PROFESSOR - ${eletiva.nome}`;
   document.getElementById("professorAtualTroca").textContent = professorAtual;
 
-  // Carregar select de professores (excluindo o atual)
   const select = document.getElementById("selectNovoProfessor");
   if (!select) {
     console.error("❌ Elemento selectNovoProfessor não encontrado");
@@ -1384,7 +1242,6 @@ window.abrirModalTrocarProfessor = function (eletivaId) {
     select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
   });
 
-  // Se não houver outros professores
   if (professores.length === 0) {
     select.innerHTML =
       '<option value="">Nenhum outro professor disponível</option>';
@@ -1393,14 +1250,12 @@ window.abrirModalTrocarProfessor = function (eletivaId) {
   document.getElementById("modalTrocarProfessor").classList.add("active");
 };
 
-// Fechar modal de troca
 window.fecharModalTrocarProfessor = function () {
   console.log("❌ Fechando modal de troca de professor");
   document.getElementById("modalTrocarProfessor").classList.remove("active");
   eletivaEmEdicao = null;
 };
 
-// Confirmar troca de professor
 window.confirmarTrocaProfessor = async function () {
   console.log("✅ Confirmando troca de professor");
 
@@ -1435,7 +1290,6 @@ window.confirmarTrocaProfessor = async function () {
 
     const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
     if (index !== -1) {
-      // Guardar nome antigo para mensagem
       const professorAntigo = state.eletivas[index].professorNome;
 
       state.eletivas[index] = {
@@ -1444,10 +1298,8 @@ window.confirmarTrocaProfessor = async function () {
         professorNome: professor.nome,
       };
 
-      // Salvar no estado
       salvarEstado();
 
-      // Salvar no Firebase
       if (window.FirebaseSync) {
         await window.FirebaseSync.salvarDadosFirebase(
           "eletivas",
@@ -1463,7 +1315,6 @@ window.confirmarTrocaProfessor = async function () {
 
       fecharModalTrocarProfessor();
 
-      // Recarregar a lista de eletivas
       if (
         document.getElementById("tab-eletivas")?.classList.contains("active")
       ) {
@@ -1479,20 +1330,16 @@ window.confirmarTrocaProfessor = async function () {
 };
 
 // ========== FUNÇÕES DE NOVO LOCAL ==========
-
-// Abrir modal de novo local
 window.abrirModalNovoLocal = function () {
   document.getElementById("novoLocalNome").value = "";
   document.getElementById("novoLocalCapacidade").value = "";
   document.getElementById("modalNovoLocal").classList.add("active");
 };
 
-// Fechar modal de novo local
 window.fecharModalNovoLocal = function () {
   document.getElementById("modalNovoLocal").classList.remove("active");
 };
 
-// Salvar novo local
 window.salvarNovoLocal = async function () {
   const nome = document.getElementById("novoLocalNome")?.value.trim();
   const capacidade = document.getElementById("novoLocalCapacidade")?.value;
@@ -1514,7 +1361,6 @@ window.salvarNovoLocal = async function () {
     locais.push(novoLocal);
     salvarLocais();
 
-    // Atualizar selects
     carregarSelectsEletivas();
 
     showToast("Local adicionado com sucesso!", "success");
@@ -1527,9 +1373,71 @@ window.salvarNovoLocal = async function () {
   }
 };
 
-// ========== FUNÇÕES DE REMOÇÃO DE ELETIVA ==========
+// ========== FUNÇÕES DE REMOÇÃO DE ELETIVA (CORRIGIDAS) ==========
+function getTempoFromHorario(horario) {
+  if (!horario) return null;
+  if (horario.codigoTempo) {
+    return horario.codigoTempo;
+  }
+  return null;
+}
 
-// Confirmar remoção de eletiva
+async function removerEletiva(eletivaId) {
+  mostrarLoader(true);
+  console.log(`🗑️ Iniciando exclusão atômica da eletiva ID: ${eletivaId}`);
+
+  try {
+    const idString = String(eletivaId);
+    
+    // Usar a função do FirebaseSync para exclusão atômica
+    let dadosExcluidos = null;
+    if (window.FirebaseSync && window.FirebaseSync.excluirEletivaCompleta) {
+      dadosExcluidos = await window.FirebaseSync.excluirEletivaCompleta(eletivaId);
+      console.log(`✅ Exclusão no Firebase concluída:`, dadosExcluidos);
+    }
+    
+    // Atualizar estado local APÓS confirmação
+    state.eletivas = state.eletivas.filter(e => String(e.id) !== idString);
+    state.matriculas = state.matriculas.filter(m => String(m.eletivaId) !== idString);
+    state.registros = state.registros.filter(r => String(r.eletivaId) !== idString);
+    state.notas = state.notas.filter(n => String(n.eletivaId) !== idString);
+    
+    salvarEstado();
+    
+    // Recarregar interface
+    carregarEletivas();
+    
+    const contador = document.getElementById('contadorEletivas');
+    if (contador) {
+      contador.textContent = `(${state.eletivas.length} eletivas encontradas)`;
+    }
+    
+    showToast(`✅ Eletiva removida com sucesso!`, "success");
+    console.log(`✅ Eletiva ${idString} removida completamente do sistema`);
+    
+  } catch (error) {
+    console.error(`❌ Erro na exclusão da eletiva ${eletivaId}:`, error);
+    
+    // Fallback: adicionar à fila de pendências
+    if (window.FirebaseSync && window.FirebaseSync.adicionarOperacaoFila) {
+      window.FirebaseSync.adicionarOperacaoFila('deletar', 'eletivas', null, eletivaId);
+      console.log(`📦 Operação adicionada à fila de pendências`);
+      showToast(
+        `⚠️ A eletiva será removida em breve. Operação foi agendada.`, 
+        "warning"
+      );
+      
+      state.eletivas = state.eletivas.filter(e => String(e.id) !== String(eletivaId));
+      salvarEstado();
+      carregarEletivas();
+    } else {
+      showToast(`❌ Erro ao remover eletiva: ${error.message}`, "error");
+    }
+  } finally {
+    mostrarLoader(false);
+  }
+}
+
 window.confirmarRemoverEletiva = function (eletivaId) {
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) return;
@@ -1570,74 +1478,7 @@ window.confirmarRemoverEletiva = function (eletivaId) {
   document.getElementById("modalConfirmacao").classList.add("active");
 };
 
-// Remover eletiva
-async function removerEletiva(eletivaId) {
-  mostrarLoader(true);
-
-  try {
-    // Remover registros de frequência
-    state.registros = state.registros.filter((r) => r.eletivaId !== eletivaId);
-
-    // Remover registros de notas
-    state.notas = state.notas.filter((n) => n.eletivaId !== eletivaId);
-
-    // Remover matrículas
-    state.matriculas = state.matriculas.filter(
-      (m) => m.eletivaId !== eletivaId,
-    );
-
-    // Remover eletiva
-    state.eletivas = state.eletivas.filter((e) => e.id !== eletivaId);
-
-    salvarEstado();
-
-    if (window.FirebaseSync) {
-      try {
-        // Deletar eletiva do Firebase
-        await window.FirebaseSync.deletarDadosFirebase("eletivas", eletivaId);
-      } catch(e) { console.warn("⚠️ Erro ao deletar eletiva:", e); }
-
-      // Deletar matrículas vinculadas no Firebase
-      if (window.FirebaseConfig && window.FirebaseConfig.firestore) {
-        const db = window.FirebaseConfig.firestore;
-        try {
-          const snapMats = await db.collection("matriculas").where("eletivaId", "==", eletivaId).get();
-          for (const doc of snapMats.docs) {
-            await window.FirebaseSync.deletarDadosFirebase("matriculas", doc.id);
-          }
-        } catch(e) { console.warn("⚠️ Erro ao deletar matrículas:", e); }
-
-        // Deletar registros de frequência vinculados no Firebase
-        try {
-          const snapRegs = await db.collection("registros").where("eletivaId", "==", eletivaId).get();
-          for (const doc of snapRegs.docs) {
-            await window.FirebaseSync.deletarDadosFirebase("registros", doc.id);
-          }
-        } catch(e) { console.warn("⚠️ Erro ao deletar registros:", e); }
-
-        // Deletar notas vinculadas no Firebase
-        try {
-          const snapNotas = await db.collection("notas").where("eletivaId", "==", eletivaId).get();
-          for (const doc of snapNotas.docs) {
-            await window.FirebaseSync.deletarDadosFirebase("notas", doc.id);
-          }
-        } catch(e) { console.warn("⚠️ Erro ao deletar notas:", e); }
-      }
-    }
-
-    showToast("Eletiva removida com sucesso!", "success");
-    carregarEletivas();
-  } catch (error) {
-    console.error("Erro ao remover eletiva:", error);
-    showToast("Erro ao remover eletiva", "error");
-  } finally {
-    mostrarLoader(false);
-  }
-}
-
 // ========== FUNÇÕES DE IMPRESSÃO ==========
-
-// Imprimir lista de professores
 window.imprimirListaProfessores = function () {
   const professores = state.professores || [];
 
@@ -1666,7 +1507,6 @@ window.imprimirListaProfessores = function () {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
 
-    // Título
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
@@ -1686,7 +1526,6 @@ window.imprimirListaProfessores = function () {
     doc.text("LISTA DE PROFESSORES", pageWidth / 2, y, { align: "center" });
     y += 10;
 
-    // Cabeçalho da tabela
     const colWidths = [80, 60, 30];
 
     doc.setFontSize(10);
@@ -1726,7 +1565,6 @@ window.imprimirListaProfessores = function () {
 
     y += 10;
 
-    // Totalizadores
     const totalEletivas = state.eletivas?.length || 0;
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
@@ -1735,7 +1573,6 @@ window.imprimirListaProfessores = function () {
     doc.text(`Total de Eletivas: ${totalEletivas}`, margin, y);
     y += 10;
 
-    // Data
     const dataAtual = new Date().toLocaleDateString("pt-BR");
     doc.text(`Data: ${dataAtual}`, pageWidth / 2, y, { align: "center" });
 
@@ -1750,7 +1587,6 @@ window.imprimirListaProfessores = function () {
   }
 };
 
-// Imprimir lista de eletivas
 window.imprimirListaEletivas = function () {
   const eletivas = state.eletivas || [];
 
@@ -1779,7 +1615,6 @@ window.imprimirListaEletivas = function () {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
 
-    // Título
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
@@ -1799,7 +1634,6 @@ window.imprimirListaEletivas = function () {
     doc.text("LISTA DE ELETIVAS", pageWidth / 2, y, { align: "center" });
     y += 10;
 
-    // Cabeçalho da tabela
     const colWidths = [60, 25, 50, 20, 30];
 
     doc.setFontSize(10);
@@ -1849,7 +1683,6 @@ window.imprimirListaEletivas = function () {
 
     y += 10;
 
-    // Totalizadores
     const totalProfessores = state.professores?.length || 0;
     const totalAlunos = state.alunos?.length || 0;
 
@@ -1862,7 +1695,6 @@ window.imprimirListaEletivas = function () {
     doc.text(`Total de Alunos: ${totalAlunos}`, margin, y);
     y += 10;
 
-    // Data
     const dataAtual = new Date().toLocaleDateString("pt-BR");
     doc.text(`Data: ${dataAtual}`, pageWidth / 2, y, { align: "center" });
 
@@ -1878,10 +1710,7 @@ window.imprimirListaEletivas = function () {
 };
 
 // ========== FUNÇÕES DA ABA ESTUDANTES ==========
-
-// Carregar selects da aba estudantes
 function carregarSelectsEstudantes() {
-  // Select de turmas
   const selectTurma = document.getElementById("filtroTurmaEstudante");
   if (selectTurma) {
     const turmas = CONFIG.turmas || [
@@ -1902,7 +1731,6 @@ function carregarSelectsEstudantes() {
     });
   }
 
-  // Select de eletivas
   const selectEletiva = document.getElementById("filtroEletivaEstudante");
   if (selectEletiva) {
     const eletivas =
@@ -1913,7 +1741,6 @@ function carregarSelectsEstudantes() {
     });
   }
 
-  // Select de turmas no modal de adicionar/editar
   const selectTurmaModal = document.getElementById("selectTurmaEstudante");
   if (selectTurmaModal) {
     const turmas = CONFIG.turmas || [
@@ -1936,7 +1763,6 @@ function carregarSelectsEstudantes() {
   }
 }
 
-// Filtrar por tempo
 window.filtrarPorTempoEstudante = function (tempo) {
   filtroTempoEstudante = tempo;
 
@@ -1950,7 +1776,6 @@ window.filtrarPorTempoEstudante = function (tempo) {
   filtrarEstudantes();
 };
 
-// Limpar filtros
 window.limparFiltrosEstudantes = function () {
   filtroTempoEstudante = "TODOS";
 
@@ -1969,7 +1794,6 @@ window.limparFiltrosEstudantes = function () {
   filtrarEstudantes();
 };
 
-// Verificar se estudante está em eletiva de determinado tempo
 function estudanteTemEletivaNoTempo(estudanteId, tempo) {
   const matriculas =
     state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
@@ -1986,14 +1810,12 @@ function estudanteTemEletivaNoTempo(estudanteId, tempo) {
   return false;
 }
 
-// Verificar se estudante está em determinada eletiva
 function estudanteEstaNaEletiva(estudanteId, eletivaId) {
   return state.matriculas?.some(
     (m) => m.alunoId === estudanteId && m.eletivaId === parseInt(eletivaId),
   );
 }
 
-// Buscar eletivas do estudante
 function getEletivasEstudante(estudanteId) {
   const matriculas =
     state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
@@ -2017,7 +1839,6 @@ function getEletivasEstudante(estudanteId) {
   return eletivas;
 }
 
-// Filtrar estudantes
 window.filtrarEstudantes = function () {
   const busca =
     document.getElementById("buscaEstudante")?.value?.toLowerCase() || "";
@@ -2026,26 +1847,22 @@ window.filtrarEstudantes = function () {
 
   let estudantes = state.alunos || [];
 
-  // Filtrar por turma
   if (turma) {
     estudantes = estudantes.filter((e) => e.turmaOrigem === turma);
   }
 
-  // Filtrar por eletiva
   if (eletivaId) {
     estudantes = estudantes.filter((e) =>
       estudanteEstaNaEletiva(e.id, eletivaId),
     );
   }
 
-  // Filtrar por tempo
   if (filtroTempoEstudante !== "TODOS") {
     estudantes = estudantes.filter((e) =>
       estudanteTemEletivaNoTempo(e.id, filtroTempoEstudante),
     );
   }
 
-  // Filtrar por busca
   if (busca) {
     estudantes = estudantes.filter(
       (e) =>
@@ -2053,7 +1870,6 @@ window.filtrarEstudantes = function () {
     );
   }
 
-  // Ordenar por nome
   estudantes.sort((a, b) => a.nome.localeCompare(b.nome));
 
   estudantesFiltrados = estudantes;
@@ -2062,7 +1878,6 @@ window.filtrarEstudantes = function () {
   atualizarTabelaEstudantes();
 };
 
-// Atualizar tabela de estudantes
 function atualizarTabelaEstudantes() {
   const tbody = document.getElementById("tabelaEstudantesBody");
   if (!tbody) return;
@@ -2070,15 +1885,10 @@ function atualizarTabelaEstudantes() {
   const totalEstudantes = estudantesFiltrados.length;
   const totalPaginas = Math.ceil(totalEstudantes / ITENS_POR_PAGINA);
 
-  // Atualizar contador
   document.getElementById("contadorEstudantes").textContent =
     `(${totalEstudantes} estudantes encontrados)`;
-
-  // Atualizar info de paginação
   document.getElementById("infoPaginaEstudantes").textContent =
     `Página ${paginaAtualEstudantes} de ${totalPaginas || 1}`;
-
-  // Habilitar/desabilitar botões de paginação
   document.getElementById("btnPaginaAnterior").disabled =
     paginaAtualEstudantes <= 1;
   document.getElementById("btnPaginaProxima").disabled =
@@ -2086,11 +1896,10 @@ function atualizarTabelaEstudantes() {
 
   if (totalEstudantes === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="5" class="empty-state">Nenhum estudante encontrado</td></tr>';
+      '}<td colspan="5" class="empty-state">Nenhum estudante encontrado</td>`;
     return;
   }
 
-  // Paginar resultados
   const inicio = (paginaAtualEstudantes - 1) * ITENS_POR_PAGINA;
   const fim = Math.min(inicio + ITENS_POR_PAGINA, totalEstudantes);
   const estudantesPagina = estudantesFiltrados.slice(inicio, fim);
@@ -2109,11 +1918,11 @@ function atualizarTabelaEstudantes() {
 
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td><strong>${estudante.nome}</strong></td>
-      <td>${estudante.turmaOrigem}</td>
-      <td>${estudante.codigoSige}</td>
-      <td>${eletivasHTML}</td>
-      <td>
+       <td><strong>${escapeHtml(estudante.nome)}</strong></td>
+       <td>${escapeHtml(estudante.turmaOrigem)}</td>
+       <td>${escapeHtml(estudante.codigoSige)}</td>
+       <td>${eletivasHTML}</td>
+       <td>
         <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante(${estudante.id})" title="Editar">
           <i class="fas fa-edit"></i>
         </button>
@@ -2123,13 +1932,12 @@ function atualizarTabelaEstudantes() {
         <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante(${estudante.id})" title="Remover">
           <i class="fas fa-trash"></i>
         </button>
-      </td>
+       </td>
     `;
     tbody.appendChild(row);
   });
 }
 
-// Mudar página
 window.mudarPaginaEstudantes = function (direcao) {
   const totalPaginas = Math.ceil(estudantesFiltrados.length / ITENS_POR_PAGINA);
 
@@ -2143,87 +1951,25 @@ window.mudarPaginaEstudantes = function (direcao) {
 };
 
 // ========== FUNÇÕES DO MODAL DE ESTUDANTE ==========
-
-// Abrir modal para adicionar estudante
-window.abrirModalAdicionarEstudante = function () {
-  estudanteEmEdicao = null;
-  document.getElementById("modalEstudanteTitulo").textContent =
-    "➕ ADICIONAR ESTUDANTE";
-  document.getElementById("estudanteNome").value = "";
-  document.getElementById("estudanteSige").value = "";
-  document.getElementById("estudanteSige").disabled = false;
-  document.getElementById("selectTurmaEstudante").value = "";
-  document.getElementById("sigeAviso").style.display = "none";
-
-  // Carregar eletivas disponíveis
-  carregarEletivasCheckbox();
-
-  document.getElementById("modalEstudante").classList.add("active");
-};
-
-// Abrir modal para editar estudante
-window.abrirModalEditarEstudante = function (estudanteId) {
-  const estudante = state.alunos?.find((a) => a.id === estudanteId);
-  if (!estudante) return;
-
-  estudanteEmEdicao = estudante;
-  document.getElementById("modalEstudanteTitulo").textContent =
-    "✏️ EDITAR ESTUDANTE";
-  document.getElementById("estudanteNome").value = estudante.nome;
-  document.getElementById("estudanteSige").value = estudante.codigoSige;
-  document.getElementById("estudanteSige").disabled = true; // SIGE NÃO PODE SER ALTERADO
-  document.getElementById("selectTurmaEstudante").value = estudante.turmaOrigem;
-  document.getElementById("sigeAviso").style.display = "block";
-
-  // Carregar eletivas disponíveis e marcar as que o estudante já está
-  carregarEletivasCheckbox(estudante.id);
-
-  document.getElementById("modalEstudante").classList.add("active");
-};
-
-// Fechar modal de estudante
-window.fecharModalEstudante = function () {
-  document.getElementById("modalEstudante").classList.remove("active");
-  estudanteEmEdicao = null;
-};
-
-// Carregar eletivas para checkbox
 function carregarEletivasCheckbox(estudanteId = null) {
   const container = document.getElementById("eletivasCheckboxContainer");
   if (!container) return;
 
-  const eletivas =
-    state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  // Buscar matrículas atuais do estudante
+  const matriculasAtuais = estudanteId 
+    ? (state.matriculas || []).filter(m => m.alunoId === estudanteId).map(m => m.eletivaId)
+    : [];
 
-  // Agrupar por tempo
-  const eletivasPorTempo = {
-    T1: [],
-    T2: [],
-    T3: [],
-    T4: [],
-    T5: [],
-    OUTROS: [],
-  };
+  const eletivas = state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
-  eletivas.forEach((e) => {
+  const eletivasPorTempo = {};
+  eletivas.forEach(e => {
     const tempo = getTempoFromHorario(e.horario) || "OUTROS";
-    if (eletivasPorTempo[tempo]) {
-      eletivasPorTempo[tempo].push(e);
-    } else {
-      eletivasPorTempo["OUTROS"].push(e);
-    }
+    if (!eletivasPorTempo[tempo]) eletivasPorTempo[tempo] = [];
+    eletivasPorTempo[tempo].push(e);
   });
 
   let html = "";
-
-  // Buscar matrículas do estudante (se for edição)
-  const matriculasEstudante = estudanteId
-    ? state.matriculas
-        ?.filter((m) => m.alunoId === estudanteId)
-        .map((m) => m.eletivaId) || []
-    : [];
-
-  // Mostrar eletivas por tempo
   const tempos = ["T1", "T2", "T3", "T4", "T5", "OUTROS"];
   const nomesTempo = {
     T1: "TEMPO 1 (07:00-08:40)",
@@ -2234,20 +1980,17 @@ function carregarEletivasCheckbox(estudanteId = null) {
     OUTROS: "OUTROS HORÁRIOS",
   };
 
-  tempos.forEach((tempo) => {
+  tempos.forEach(tempo => {
     const eletivasDoTempo = eletivasPorTempo[tempo];
-    if (eletivasDoTempo.length === 0) return;
+    if (!eletivasDoTempo?.length) return;
 
     html += `<div style="margin-top: 1rem;"><strong>${nomesTempo[tempo]}:</strong></div>`;
-
-    eletivasDoTempo.forEach((e) => {
-      const professor =
-        state.professores?.find((p) => p.id === e.professorId)?.nome ||
-        "Não atribuído";
-      const matriculados =
-        state.matriculas?.filter((m) => m.eletivaId === e.id).length || 0;
-      const checked = matriculasEstudante.includes(e.id) ? "checked" : "";
-
+    
+    eletivasDoTempo.forEach(e => {
+      const professor = state.professores?.find(p => p.id === e.professorId)?.nome || "Não atribuído";
+      const matriculados = state.matriculas?.filter(m => m.eletivaId === e.id).length || 0;
+      const checked = matriculasAtuais.includes(e.id) ? "checked" : "";
+      
       html += `
         <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border-bottom: 1px solid var(--bg-light);">
           <input type="checkbox" class="eletiva-checkbox" value="${e.id}" ${checked}>
@@ -2260,38 +2003,71 @@ function carregarEletivasCheckbox(estudanteId = null) {
   });
 
   if (eletivas.length === 0) {
-    html =
-      '<p style="color: var(--text-light);">Nenhuma eletiva cadastrada</p>';
+    html = '<p style="color: var(--text-light);">Nenhuma eletiva cadastrada</p>';
   }
 
   container.innerHTML = html;
 }
 
-// Salvar estudante
+window.abrirModalAdicionarEstudante = function () {
+  estudanteEmEdicao = null;
+  document.getElementById("modalEstudanteTitulo").textContent =
+    "➕ ADICIONAR ESTUDANTE";
+  document.getElementById("estudanteNome").value = "";
+  document.getElementById("estudanteSige").value = "";
+  document.getElementById("estudanteSige").disabled = false;
+  document.getElementById("selectTurmaEstudante").value = "";
+  document.getElementById("sigeAviso").style.display = "none";
+
+  carregarEletivasCheckbox();
+
+  document.getElementById("modalEstudante").classList.add("active");
+};
+
+window.abrirModalEditarEstudante = function (estudanteId) {
+  const estudante = state.alunos?.find((a) => a.id === estudanteId);
+  if (!estudante) {
+    showToast("Estudante não encontrado", "error");
+    return;
+  }
+
+  estudanteEmEdicao = estudante;
+  document.getElementById("modalEstudanteTitulo").textContent =
+    "✏️ EDITAR ESTUDANTE";
+  document.getElementById("estudanteNome").value = estudante.nome;
+  document.getElementById("estudanteSige").value = estudante.codigoSige;
+  document.getElementById("estudanteSige").disabled = true;
+  document.getElementById("selectTurmaEstudante").value = estudante.turmaOrigem;
+  document.getElementById("sigeAviso").style.display = "block";
+
+  carregarEletivasCheckbox(estudante.id);
+
+  document.getElementById("modalEstudante").classList.add("active");
+};
+
+window.fecharModalEstudante = function () {
+  document.getElementById("modalEstudante").classList.remove("active");
+  estudanteEmEdicao = null;
+};
+
 window.salvarEstudante = async function () {
   const nome = document.getElementById("estudanteNome")?.value.trim();
   const sige = document.getElementById("estudanteSige")?.value.trim();
   const turma = document.getElementById("selectTurmaEstudante")?.value;
-
-  // Coletar eletivas selecionadas
+  
   const eletivasSelecionadas = [];
-  document
-    .querySelectorAll("#eletivasCheckboxContainer .eletiva-checkbox:checked")
-    .forEach((cb) => {
-      eletivasSelecionadas.push(parseInt(cb.value));
-    });
+  document.querySelectorAll("#eletivasCheckboxContainer .eletiva-checkbox:checked").forEach(cb => {
+    eletivasSelecionadas.push(parseInt(cb.value));
+  });
 
-  // Validações
   if (!nome || nome.length < 3) {
     showToast("Nome do estudante é obrigatório (mínimo 3 caracteres)", "error");
     return;
   }
-
   if (!sige) {
     showToast("SIGE é obrigatório", "error");
     return;
   }
-
   if (!turma) {
     showToast("Selecione uma turma", "error");
     return;
@@ -2301,78 +2077,88 @@ window.salvarEstudante = async function () {
 
   try {
     if (estudanteEmEdicao) {
-      // Editar estudante existente (SIGE não pode ser alterado)
-      const index = state.alunos.findIndex(
-        (a) => a.id === estudanteEmEdicao.id,
-      );
-      if (index !== -1) {
-        state.alunos[index] = {
-          ...state.alunos[index],
-          nome: nome,
-          turmaOrigem: turma,
-          // SIGE NÃO É ALTERADO
-        };
-
-        if (window.FirebaseSync) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "alunos",
-            state.alunos[index],
-            state.alunos[index].id,
-          );
-        }
-
-        // Remover matrículas antigas (local e Firebase)
-        const matriculasAntigas = state.matriculas.filter(
-          (m) => m.alunoId === estudanteEmEdicao.id,
-        );
-        if (window.FirebaseSync && matriculasAntigas.length > 0) {
-          for (const mat of matriculasAntigas) {
-            try {
-              await window.FirebaseSync.deletarDadosFirebase("matriculas", mat.id);
-            } catch (e) {
-              console.warn("⚠️ Erro ao deletar matrícula antiga do Firebase:", e);
-            }
-          }
-        }
-        state.matriculas = state.matriculas.filter(
-          (m) => m.alunoId !== estudanteEmEdicao.id,
-        );
-
-        // Adicionar novas matrículas
-        for (const eletivaId of eletivasSelecionadas) {
+      const index = state.alunos.findIndex(a => a.id === estudanteEmEdicao.id);
+      if (index === -1) {
+        throw new Error("Estudante não encontrado");
+      }
+      
+      // Atualizar dados básicos
+      state.alunos[index] = {
+        ...state.alunos[index],
+        nome: nome,
+        turmaOrigem: turma,
+      };
+      
+      if (window.FirebaseSync) {
+        await window.FirebaseSync.salvarDadosFirebase("alunos", state.alunos[index], state.alunos[index].id);
+      }
+      
+      // Processar alterações nas matrículas
+      const matriculasAtuais = state.matriculas.filter(m => m.alunoId === estudanteEmEdicao.id);
+      const eletivasAtuais = matriculasAtuais.map(m => m.eletivaId);
+      
+      const idsParaAdicionar = eletivasSelecionadas.filter(id => !eletivasAtuais.includes(id));
+      const idsParaRemover = eletivasAtuais.filter(id => !eletivasSelecionadas.includes(id));
+      
+      console.log(`📝 Alterações nas matrículas: +${idsParaAdicionar.length} / -${idsParaRemover.length}`);
+      
+      // Criar batch para operações no Firebase
+      if (window.FirebaseSync && window.FirebaseConfig?.firestore && (idsParaAdicionar.length > 0 || idsParaRemover.length > 0)) {
+        const db = window.FirebaseConfig.firestore;
+        const batch = db.batch();
+        
+        const matriculasParaRemover = matriculasAtuais.filter(m => idsParaRemover.includes(m.eletivaId));
+        matriculasParaRemover.forEach(mat => {
+          const matRef = db.collection("matriculas").doc(String(mat.id));
+          batch.delete(matRef);
+        });
+        
+        let nextId = (state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
+        
+        for (const eletivaId of idsParaAdicionar) {
           const novaMatricula = {
-            id: ((state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0)) + 1,
+            id: nextId++,
             eletivaId: eletivaId,
             alunoId: estudanteEmEdicao.id,
             tipoMatricula: "manual",
             dataMatricula: new Date().toISOString().split("T")[0],
             semestreId: "2026-1",
           };
-
-          if (!state.matriculas) state.matriculas = [];
-          state.matriculas.push(novaMatricula);
-
-          if (window.FirebaseSync) {
-            await window.FirebaseSync.salvarDadosFirebase(
-              "matriculas",
-              novaMatricula,
-              novaMatricula.id,
-            );
-          }
+          const matRef = db.collection("matriculas").doc();
+          batch.set(matRef, novaMatricula);
         }
-
-        showToast("Estudante atualizado com sucesso!", "success");
+        
+        if (batch._ops.length > 0) {
+          await batch.commit();
+          console.log(`✅ Batch de matrículas executado: ${batch._ops.length} operações`);
+        }
       }
+      
+      // Atualizar estado local
+      state.matriculas = state.matriculas.filter(m => !idsParaRemover.includes(m.eletivaId) || m.alunoId !== estudanteEmEdicao.id);
+      
+      let nextIdLocal = (state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
+      for (const eletivaId of idsParaAdicionar) {
+        state.matriculas.push({
+          id: nextIdLocal++,
+          eletivaId: eletivaId,
+          alunoId: estudanteEmEdicao.id,
+          tipoMatricula: "manual",
+          dataMatricula: new Date().toISOString().split("T")[0],
+          semestreId: "2026-1",
+        });
+      }
+      
+      salvarEstado();
+      showToast("Estudante atualizado com sucesso!", "success");
+      
     } else {
-      // Verificar se SIGE já existe
-      const sigeExistente = state.alunos?.some((a) => a.codigoSige === sige);
-      if (sigeExistente) {
+      if (state.alunos?.some(a => a.codigoSige === sige)) {
         showToast(`Já existe um estudante com o SIGE ${sige}`, "error");
         mostrarLoader(false);
         return;
       }
-
-      // Criar novo estudante
+      
       const alunoIds = state.alunos?.map(a => Number(a.id)) || [];
       const novoId = alunoIds.length > 0 ? Math.max(...alunoIds) + 1 : 1;
       const novoEstudante = {
@@ -2382,58 +2168,48 @@ window.salvarEstudante = async function () {
         turmaOrigem: turma,
         serie: turma?.substring(0, 3) || "1ª",
       };
-
+      
       if (!state.alunos) state.alunos = [];
       state.alunos.push(novoEstudante);
-
+      
       if (window.FirebaseSync) {
-        await window.FirebaseSync.salvarDadosFirebase(
-          "alunos",
-          novoEstudante,
-          novoId,
-        );
+        await window.FirebaseSync.salvarDadosFirebase("alunos", novoEstudante, novoId);
       }
-
-      // Adicionar às eletivas selecionadas
+      
+      let nextId = (state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
       for (const eletivaId of eletivasSelecionadas) {
         const novaMatricula = {
-          id: ((state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0)) + 1,
+          id: nextId++,
           eletivaId: eletivaId,
           alunoId: novoId,
           tipoMatricula: "manual",
           dataMatricula: new Date().toISOString().split("T")[0],
           semestreId: "2026-1",
         };
-
         if (!state.matriculas) state.matriculas = [];
         state.matriculas.push(novaMatricula);
-
+        
         if (window.FirebaseSync) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "matriculas",
-            novaMatricula,
-            novaMatricula.id,
-          );
+          await window.FirebaseSync.salvarDadosFirebase("matriculas", novaMatricula, novaMatricula.id);
         }
       }
-
+      
+      salvarEstado();
       showToast("Estudante adicionado com sucesso!", "success");
     }
-
-    salvarEstado();
+    
     fecharModalEstudante();
     filtrarEstudantes();
+    
   } catch (error) {
-    console.error("Erro ao salvar estudante:", error);
-    showToast("Erro ao salvar estudante", "error");
+    console.error("❌ Erro ao salvar estudante:", error);
+    showToast(`Erro ao salvar estudante: ${error.message}`, "error");
   } finally {
     mostrarLoader(false);
   }
 };
 
 // ========== FUNÇÕES DE TROCA DE ELETIVA DO ESTUDANTE ==========
-
-// Abrir modal para trocar eletiva do estudante
 window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
   const estudante = state.alunos?.find((a) => a.id === estudanteId);
   if (!estudante) return;
@@ -2445,7 +2221,6 @@ window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
   document.getElementById("estudanteTrocaInfo").textContent =
     `${estudante.nome} (SIGE: ${estudante.codigoSige})`;
 
-  // Carregar eletivas atuais do estudante
   const eletivasAtuais = getEletivasEstudante(estudante.id);
 
   let atuaisHTML = "";
@@ -2458,7 +2233,6 @@ window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
   }
   document.getElementById("eletivasAtuaisEstudante").innerHTML = atuaisHTML;
 
-  // Carregar eletivas disponíveis
   carregarEletivasDisponiveisTroca(estudante.id);
 
   document
@@ -2466,7 +2240,6 @@ window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
     .classList.add("active");
 };
 
-// Carregar eletivas disponíveis para troca
 function carregarEletivasDisponiveisTroca(estudanteId = null) {
   const container = document.getElementById("eletivasDisponiveisContainer");
   if (!container) return;
@@ -2474,7 +2247,6 @@ function carregarEletivasDisponiveisTroca(estudanteId = null) {
   const eletivas =
     state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
 
-  // Agrupar por tempo
   const eletivasPorTempo = {};
   eletivas.forEach((e) => {
     const tempo = getTempoFromHorario(e.horario) || "OUTROS";
@@ -2517,7 +2289,6 @@ function carregarEletivasDisponiveisTroca(estudanteId = null) {
   container.innerHTML = html;
 }
 
-// Fechar modal de troca
 window.fecharModalTrocarEletivaEstudante = function () {
   document
     .getElementById("modalTrocarEletivaEstudante")
@@ -2525,7 +2296,6 @@ window.fecharModalTrocarEletivaEstudante = function () {
   estudanteParaTroca = null;
 };
 
-// Confirmar troca de eletiva
 window.confirmarTrocaEletivaEstudante = async function () {
   if (!estudanteParaTroca) return;
 
@@ -2545,7 +2315,6 @@ window.confirmarTrocaEletivaEstudante = async function () {
   mostrarLoader(true);
 
   try {
-    // Criar nova matrícula
     const novaMatricula = {
       id: ((state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0)) + 1,
       eletivaId: parseInt(eletivaDestinoId),
@@ -2584,11 +2353,13 @@ window.confirmarTrocaEletivaEstudante = async function () {
 };
 
 // ========== FUNÇÕES DE REMOÇÃO DE ESTUDANTE ==========
-
-// Confirmar remoção de estudante
 window.confirmarRemoverEstudante = function (estudanteId) {
   const estudante = state.alunos?.find((a) => a.id === estudanteId);
-  if (!estudante) return;
+  if (!estudante) {
+    showToast("Estudante não encontrado. Recarregando lista...", "warning");
+    filtrarEstudantes();
+    return;
+  }
 
   const matriculas =
     state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
@@ -2605,14 +2376,14 @@ window.confirmarRemoverEstudante = function (estudanteId) {
 
   confirmTitle.textContent = "⚠️ REMOVER ESTUDANTE";
   confirmBody.innerHTML = `
-    <p>Tem certeza que deseja remover <strong>${estudante.nome} (${estudante.codigoSige})</strong>?</p>
+    <p>Tem certeza que deseja remover <strong>${escapeHtml(estudante.nome)} (${estudante.codigoSige})</strong>?</p>
     <p style="margin-top: 1rem;">Esta ação irá:</p>
     <ul style="margin-left: 1.5rem;">
       <li>Remover o estudante de TODAS as eletivas (${matriculas.length})</li>
       <li>Manter os registros de frequência e notas já existentes</li>
       <li>O estudante não poderá mais ser vinculado a novas eletivas (a menos que seja adicionado novamente)</li>
     </ul>
-    ${matriculas.length > 0 ? `<p style="margin-top: 0.5rem; color: var(--warning);">Eletivas atuais: ${eletivas}</p>` : ""}
+    ${matriculas.length > 0 ? `<p style="margin-top: 0.5rem; color: var(--warning);">Eletivas atuais: ${eletivas.substring(0, 100)}</p>` : ""}
   `;
 
   const originalOnClick = confirmBtn.onclick;
@@ -2627,37 +2398,32 @@ window.confirmarRemoverEstudante = function (estudanteId) {
   document.getElementById("modalConfirmacao").classList.add("active");
 };
 
-// Remover estudante
 async function removerEstudante(estudanteId) {
   mostrarLoader(true);
 
   try {
-    // Remover matrículas do estudante
+    const matriculasEstudante = state.matriculas.filter(
+      (m) => m.alunoId === estudanteId,
+    );
+    
     state.matriculas = state.matriculas.filter(
       (m) => m.alunoId !== estudanteId,
     );
-
-    // Remover estudante da lista de alunos
     state.alunos = state.alunos.filter((a) => a.id !== estudanteId);
 
     salvarEstado();
 
     if (window.FirebaseSync) {
-      // Deletar estudante do Firebase
       try {
         await window.FirebaseSync.deletarDadosFirebase("alunos", estudanteId);
       } catch (e) {
         console.warn("⚠️ Erro ao deletar aluno do Firebase:", e);
       }
-      // Deletar matrículas do Firebase (by alunoId query)
+      
       try {
         if (window.FirebaseConfig && window.FirebaseConfig.firestore) {
-          const snapMats = await window.FirebaseConfig.firestore
-            .collection("matriculas")
-            .where("alunoId", "==", estudanteId)
-            .get();
-          for (const doc of snapMats.docs) {
-            await window.FirebaseSync.deletarDadosFirebase("matriculas", doc.id);
+          for (const mat of matriculasEstudante) {
+            await window.FirebaseSync.deletarDadosFirebase("matriculas", mat.id);
           }
         }
       } catch (e) {
@@ -2675,9 +2441,6 @@ async function removerEstudante(estudanteId) {
   }
 }
 
-// ========== FUNÇÃO DE IMPRESSÃO DE ESTUDANTES ==========
-
-// Imprimir lista de estudantes
 window.imprimirListaEstudantes = function () {
   if (estudantesFiltrados.length === 0) {
     showToast("Nenhum estudante para imprimir", "warning");
@@ -2704,7 +2467,6 @@ window.imprimirListaEstudantes = function () {
     const pageWidth = doc.internal.pageSize.getWidth();
     const margin = 15;
 
-    // Título
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
     doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
@@ -2724,7 +2486,6 @@ window.imprimirListaEstudantes = function () {
     doc.text("LISTA DE ESTUDANTES", pageWidth / 2, y, { align: "center" });
     y += 6;
 
-    // Filtros aplicados
     const filtros = [];
     if (filtroTempoEstudante !== "TODOS")
       filtros.push(`Tempo ${filtroTempoEstudante}`);
@@ -2747,7 +2508,6 @@ window.imprimirListaEstudantes = function () {
 
     y += 4;
 
-    // Cabeçalho da tabela
     const colWidths = [80, 25, 25, 50];
 
     doc.setFontSize(10);
@@ -2793,13 +2553,11 @@ window.imprimirListaEstudantes = function () {
 
     y += 10;
 
-    // Total
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     doc.text(`Total de Estudantes: ${estudantesFiltrados.length}`, margin, y);
     y += 10;
 
-    // Data
     const dataAtual = new Date().toLocaleDateString("pt-BR");
     doc.text(`Data: ${dataAtual}`, pageWidth / 2, y, { align: "center" });
 
@@ -2815,20 +2573,12 @@ window.imprimirListaEstudantes = function () {
 };
 
 // ========== FUNÇÕES DA ABA DADOS ==========
-
-// Carregar aba dados
 function carregarAbaDados() {
-  // Atualizar status
   atualizarStatusDados();
-
-  // Carregar tabela de tempos
   carregarTabelaTempos();
-
-  // Carregar lista de backups
   carregarListaBackups();
 }
 
-// Atualizar status dos dados
 function atualizarStatusDados() {
   const metadata = state.metadata || {};
   const estatisticas = state.estatisticas || {};
@@ -2854,7 +2604,6 @@ function atualizarStatusDados() {
   document.getElementById("totalConflitos").textContent =
     conflitos.pendentes?.length || 0;
 
-  // Liberação de notas
   const lib = state.liberacaoNotas || liberacaoNotasPadrao;
   document.getElementById("semestreAtual").textContent =
     lib.semestre || "1º/2026";
@@ -2866,7 +2615,6 @@ function atualizarStatusDados() {
   document.getElementById("eletivasLiberadas").textContent =
     `${liberadas} de ${totalEletivas}`;
 
-  // Seção de choques
   const secaoChoques = document.getElementById("secaoChoques");
   const choquesResolvidos = document.getElementById("choquesResolvidos");
   const choquesPendentes = document.getElementById("choquesPendentes");
@@ -2878,7 +2626,6 @@ function atualizarStatusDados() {
   ) {
     secaoChoques.style.display = "block";
 
-    // Choques resolvidos
     if (conflitos.resolvidosAutomaticamente?.length > 0) {
       choquesResolvidos.innerHTML = `
         <p><strong>✅ ${conflitos.resolvidosAutomaticamente.length} conflitos resolvidos automaticamente:</strong></p>
@@ -2899,7 +2646,6 @@ function atualizarStatusDados() {
       choquesResolvidos.style.display = "none";
     }
 
-    // Choques pendentes
     if (conflitos.pendentes?.length > 0) {
       const fixas = conflitos.pendentes.filter((c) => c.tipo === "fixa").length;
       const mistas = conflitos.pendentes.filter(
@@ -2924,7 +2670,6 @@ function atualizarStatusDados() {
   }
 }
 
-// Carregar tabela de tempos
 function carregarTabelaTempos() {
   const tbody = document.getElementById("tabelaTempos");
   if (!tbody) return;
@@ -2938,21 +2683,19 @@ function carregarTabelaTempos() {
     const tempoConfig = config[tempo] || { diaSemana: "?", series: [] };
 
     row.innerHTML = `
-      <td><strong>${tempo}</strong></td>
-      <td>${tempoConfig.diaSemana || "?"}</td>
-      <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
+       <td><strong>${tempo}</strong></td>
+       <td>${tempoConfig.diaSemana || "?"}</td>
+       <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
     `;
 
     tbody.appendChild(row);
   });
 }
 
-// Carregar lista de backups
 function carregarListaBackups() {
   const container = document.getElementById("listaBackups");
   if (!container) return;
 
-  // Carregar backups do localStorage
   try {
     const backupsSalvos = JSON.parse(
       localStorage.getItem("sage_backups") || "[]",
@@ -2988,8 +2731,6 @@ function carregarListaBackups() {
 }
 
 // ========== FUNÇÕES DE IMPORTAÇÃO SAGE ==========
-
-// Importar JSON do SAGE
 window.importarJSONSage = async function () {
   const jsonString = document.getElementById("jsonInput")?.value.trim();
 
@@ -3001,7 +2742,6 @@ window.importarJSONSage = async function () {
   mostrarLoader(true);
 
   try {
-    // 1. Parse do JSON
     let dadosNovos;
     try {
       dadosNovos = JSON.parse(jsonString);
@@ -3009,23 +2749,19 @@ window.importarJSONSage = async function () {
       throw new Error("JSON inválido. Verifique o formato.");
     }
 
-    // 2. Validar estrutura do SAGE ELETIVAS
     const erros = validarEstruturaSAGE(dadosNovos);
     if (erros.length > 0) {
       throw new Error("Estrutura inválida:\n" + erros.join("\n"));
     }
 
-    // 3. Criar backup automático antes de importar
     await criarBackupAutomatico("antes_importacao_sage");
 
-    // 4. Carregar dados atuais (para preservar configurações manuais)
     const dadosAtuais = {
       configTempos: state.configTempos || configTemposPadrao,
       liberacaoNotas: state.liberacaoNotas || liberacaoNotasPadrao,
       metadata: state.metadata || {},
     };
 
-    // 5. Processar eletivas (adicionar tipo e preparar)
     const eletivasFixas = (dadosNovos.dados.eletivasFixas || []).map((e) => ({
       ...e,
       tipo: "FIXA",
@@ -3040,7 +2776,6 @@ window.importarJSONSage = async function () {
 
     const todasEletivas = [...eletivasFixas, ...eletivasMistas];
 
-    // 6. RESOLVER CHOQUES DE HORÁRIO (COM REGRA CORRIGIDA: MISTA PRIORITÁRIA)
     const configTempos = dadosAtuais.configTempos;
     const resultadoChoques = resolverChoquesHorario(
       todasEletivas,
@@ -3048,13 +2783,11 @@ window.importarJSONSage = async function () {
       configTempos,
     );
 
-    // 7. Aplicar resoluções automáticas (remover alunos de fixas quando em conflito com mistas)
     const eletivasProcessadas = aplicarResolucaoAutomatica(
       todasEletivas,
       resultadoChoques.remocoesAutomaticas,
     );
 
-    // 8. Atualizar estatísticas
     const estatisticas = {
       alunos: dadosNovos.estatisticas?.alunos || 0,
       professores: dadosNovos.estatisticas?.professores || 0,
@@ -3064,7 +2797,6 @@ window.importarJSONSage = async function () {
         .length,
     };
 
-    // 9. Mesclar dados
     const dadosMesclados = {
       metadata: {
         ...dadosAtuais.metadata,
@@ -3088,19 +2820,14 @@ window.importarJSONSage = async function () {
       },
     };
 
-    // 10. Gerar lista consolidada de eletivas
     dadosMesclados.eletivas = [
       ...dadosMesclados.dados.eletivasFixas,
       ...dadosMesclados.dados.eletivasMistas,
     ];
 
-    // 11. Atualizar state
     Object.assign(state, dadosMesclados);
-
-    // 12. Salvar no localStorage
     salvarEstado();
 
-    // 13. Atualizar Firebase em background
     if (window.FirebaseSync) {
       setTimeout(() => {
         window.FirebaseSync.salvarDadosFirebase(
@@ -3110,17 +2837,14 @@ window.importarJSONSage = async function () {
       }, 100);
     }
 
-    // 14. Atualizar interface
     carregarAbaDados();
 
-    // 15. Recarregar outras abas se necessário
     if (typeof carregarEletivas === "function") carregarEletivas();
     if (typeof carregarProfessores === "function") carregarProfessores();
     if (typeof filtrarEstudantes === "function") filtrarEstudantes();
 
     mostrarLoader(false);
 
-    // 16. Mostrar resumo com alertas se houver conflitos pendentes
     if (resultadoChoques.conflitosPendentes.length > 0) {
       const fixas = resultadoChoques.conflitosPendentes.filter(
         (c) => c.tipo === "fixa",
@@ -3142,7 +2866,6 @@ window.importarJSONSage = async function () {
       );
     }
 
-    // Limpar campo
     document.getElementById("jsonInput").value = "";
   } catch (error) {
     mostrarLoader(false);
@@ -3151,7 +2874,6 @@ window.importarJSONSage = async function () {
   }
 };
 
-// Validar estrutura do SAGE
 function validarEstruturaSAGE(dados) {
   const erros = [];
 
@@ -3181,14 +2903,10 @@ function validarEstruturaSAGE(dados) {
   return erros;
 }
 
-// Determinar tempo baseado no horário
 function determinarTempo(horarioInicio, configTempos) {
   if (!horarioInicio) return "T1";
 
-  // Extrair hora
   const hora = horarioInicio.split(":")[0];
-
-  // Mapeamento simplificado baseado na hora de início
   const mapaHorario = {
     "07": "T1",
     "08": "T1",
@@ -3201,11 +2919,9 @@ function determinarTempo(horarioInicio, configTempos) {
   return mapaHorario[hora] || "T1";
 }
 
-// RESOLVER CHOQUES DE HORÁRIO (CORRIGIDO - MISTA PRIORITÁRIA)
 function resolverChoquesHorario(eletivas, alunos, configTempos) {
   console.log("🔍 Resolvendo choques de horário (MISTA prioritária)...");
 
-  // Mapear tempo de cada eletiva baseado no horário
   const eletivasComTempo = eletivas.map((e) => ({
     ...e,
     tempo: determinarTempo(
@@ -3214,7 +2930,6 @@ function resolverChoquesHorario(eletivas, alunos, configTempos) {
     ),
   }));
 
-  // Agrupar eletivas por tempo
   const eletivasPorTempo = {};
   eletivasComTempo.forEach((e) => {
     if (!eletivasPorTempo[e.tempo]) eletivasPorTempo[e.tempo] = [];
@@ -3224,17 +2939,13 @@ function resolverChoquesHorario(eletivas, alunos, configTempos) {
   const remocoesAutomaticas = [];
   const conflitosPendentes = [];
 
-  // Para cada tempo, verificar alunos em múltiplas eletivas
   Object.entries(eletivasPorTempo).forEach(([tempo, eletivasDoTempo]) => {
-    // Mapear alunos para as eletivas que participam
-    const alunoEletivas = {}; // alunoId -> array de {eletiva, tipo}
+    const alunoEletivas = {};
 
     eletivasDoTempo.forEach((eletiva) => {
-      // Verificar se a eletiva tem alunos (pode ser array de objetos ou array de IDs)
       const alunosEletiva = eletiva.alunos || [];
 
       alunosEletiva.forEach((alunoRef) => {
-        // Pode ser objeto com id ou string com ID
         const alunoId =
           typeof alunoRef === "object"
             ? alunoRef.id || alunoRef.sige
@@ -3250,18 +2961,13 @@ function resolverChoquesHorario(eletivas, alunos, configTempos) {
       });
     });
 
-    // Analisar cada aluno
     Object.entries(alunoEletivas).forEach(([alunoId, eletivasDoAluno]) => {
-      if (eletivasDoAluno.length <= 1) return; // Sem choque
+      if (eletivasDoAluno.length <= 1) return;
 
-      // Separar por tipo
       const fixas = eletivasDoAluno.filter((e) => e.tipo === "FIXA");
       const mistas = eletivasDoAluno.filter((e) => e.tipo === "MISTA");
 
-      // ===== REGRA CORRIGIDA: MISTA TEM PRIORIDADE SOBRE FIXA =====
-      // Caso 1: Mista + Fixa(s) -> Priorizar mista, remover TODAS as fixas
       if (mistas.length > 0 && fixas.length > 0) {
-        // Manter todas as mistas, remover todas as fixas
         const fixasRemover = fixas;
 
         remocoesAutomaticas.push({
@@ -3284,10 +2990,7 @@ function resolverChoquesHorario(eletivas, alunos, configTempos) {
         console.log(
           `✅ Conflito resolvido: Aluno ${alunoId} - Mantido em ${mistas.length} mista(s), removido de ${fixasRemover.length} fixa(s)`,
         );
-      }
-
-      // Caso 2: Apenas Fixas (2 ou mais) -> Conflito pendente
-      else if (fixas.length > 1 && mistas.length === 0) {
+      } else if (fixas.length > 1 && mistas.length === 0) {
         conflitosPendentes.push({
           alunoId,
           tempo,
@@ -3299,10 +3002,7 @@ function resolverChoquesHorario(eletivas, alunos, configTempos) {
           gravidade: "alta",
           descricao: `Aluno está em ${fixas.length} eletivas FIXAS no mesmo tempo`,
         });
-      }
-
-      // Caso 3: Apenas Mistas (2 ou mais) -> Conflito pendente
-      else if (mistas.length > 1 && fixas.length === 0) {
+      } else if (mistas.length > 1 && fixas.length === 0) {
         conflitosPendentes.push({
           alunoId,
           tempo,
@@ -3324,12 +3024,9 @@ function resolverChoquesHorario(eletivas, alunos, configTempos) {
   };
 }
 
-// Aplicar resolução automática
 function aplicarResolucaoAutomatica(eletivas, remocoesAutomaticas) {
-  // Clonar eletivas para não modificar original
   const eletivasProcessadas = JSON.parse(JSON.stringify(eletivas));
 
-  // Para cada remoção automática, remover aluno da eletiva fixa
   remocoesAutomaticas.forEach((remocao) => {
     remocao.detalhes.removidos.forEach((item) => {
       const eletiva = eletivasProcessadas.find(
@@ -3337,7 +3034,6 @@ function aplicarResolucaoAutomatica(eletivas, remocoesAutomaticas) {
       );
 
       if (eletiva && eletiva.alunos) {
-        // Filtrar alunos (pode ser array de objetos ou strings)
         eletiva.alunos = eletiva.alunos.filter((ref) => {
           const alunoId = typeof ref === "object" ? ref.id || ref.sige : ref;
           return alunoId !== remocao.alunoId;
@@ -3350,19 +3046,16 @@ function aplicarResolucaoAutomatica(eletivas, remocoesAutomaticas) {
 }
 
 // ========== FUNÇÕES DE BACKUP ==========
-
-// Criar backup automático
 async function criarBackupAutomatico(nome) {
   const backup = {
     id: `backup_${Date.now()}`,
     nome: nome,
     data: new Date().toISOString(),
-    dados: JSON.parse(JSON.stringify(state)), // Clonar state
+    dados: JSON.parse(JSON.stringify(state)),
   };
 
   backups.push(backup);
 
-  // Manter apenas últimos 10 backups
   if (backups.length > 10) {
     backups = backups.slice(-10);
   }
@@ -3370,7 +3063,6 @@ async function criarBackupAutomatico(nome) {
   localStorage.setItem("sage_backups", JSON.stringify(backups));
 }
 
-// Criar backup manual
 window.criarBackup = async function () {
   const nome = prompt(
     "Digite um nome para o backup:",
@@ -3391,7 +3083,6 @@ window.criarBackup = async function () {
   }
 };
 
-// Restaurar backup
 window.restaurarBackup = function (backupId) {
   const backup = backups.find((b) => b.id === backupId);
   if (!backup) return;
@@ -3418,23 +3109,17 @@ window.restaurarBackup = function (backupId) {
   document.getElementById("modalConfirmacao").classList.add("active");
 };
 
-// Executar restauração
 async function executarRestauracao(backup) {
   mostrarLoader(true);
 
   try {
-    // Restaurar dados
     Object.assign(state, backup.dados);
-
-    // Salvar
     salvarEstado();
 
-    // Atualizar Firebase
     if (window.FirebaseSync) {
       await window.FirebaseSync.salvarDadosFirebase("dados_completos", state);
     }
 
-    // Atualizar interface
     carregarAbaDados();
     if (typeof carregarEletivas === "function") carregarEletivas();
     if (typeof carregarProfessores === "function") carregarProfessores();
@@ -3448,8 +3133,6 @@ async function executarRestauracao(backup) {
   }
 }
 
-// ========== FUNÇÕES REAIS (SUBSTITUINDO PLACEHOLDERS) ==========
-
 // ========== MODAL DE EDIÇÃO DE TEMPOS ==========
 window.abrirModalEditarTempos = function () {
   console.log("⚙️ Abrindo modal de edição de tempos");
@@ -3457,7 +3140,6 @@ window.abrirModalEditarTempos = function () {
   const container = document.getElementById("temposEditContainer");
   if (!container) return;
 
-  // Usar configuração atual ou padrão
   const config = state.configTempos || configTemposPadrao;
 
   let html = "";
@@ -3471,7 +3153,6 @@ window.abrirModalEditarTempos = function () {
     "DOMINGO",
   ];
 
-  // T1 a T5
   ["T1", "T2", "T3", "T4", "T5"].forEach((tempo) => {
     const tempoConfig = config[tempo] || {
       diaSemana: "SEGUNDA",
@@ -3537,21 +3218,18 @@ window.salvarConfigTempos = async function () {
     const diasUsados = new Set();
     const erros = [];
 
-    // Coletar dados do formulário
     ["T1", "T2", "T3", "T4", "T5"].forEach((tempo) => {
       const diaSelect = document.getElementById(`tempo_dia_${tempo}`);
       if (!diaSelect) return;
 
       const dia = diaSelect.value;
 
-      // Verificar dia duplicado
       if (diasUsados.has(dia)) {
         erros.push(`Tempo ${tempo}: dia ${dia} já utilizado por outro tempo`);
       } else {
         diasUsados.add(dia);
       }
 
-      // Coletar séries selecionadas
       const series = [];
       ["1ª", "2ª", "3ª"].forEach((serie) => {
         const checkbox = document.getElementById(
@@ -3562,7 +3240,6 @@ window.salvarConfigTempos = async function () {
         }
       });
 
-      // Validar pelo menos uma série
       if (series.length === 0) {
         erros.push(`Tempo ${tempo}: selecione pelo menos uma série`);
       }
@@ -3573,20 +3250,15 @@ window.salvarConfigTempos = async function () {
       };
     });
 
-    // Se houver erros, mostrar e interromper
     if (erros.length > 0) {
       showToast("Erros na configuração:\n" + erros.join("\n"), "error");
       mostrarLoader(false);
       return;
     }
 
-    // Atualizar state
     state.configTempos = novaConfig;
-
-    // Salvar no localStorage
     salvarEstado();
 
-    // Salvar no Firebase
     if (window.FirebaseSync) {
       await window.FirebaseSync.salvarDadosFirebase(
         "config_tempos",
@@ -3594,7 +3266,6 @@ window.salvarConfigTempos = async function () {
       );
     }
 
-    // Atualizar tabela na aba dados
     carregarTabelaTempos();
 
     showToast("✅ Configuração dos tempos salva com sucesso!", "success");
@@ -3611,7 +3282,6 @@ window.salvarConfigTempos = async function () {
 window.abrirModalEditarLiberacao = function () {
   console.log("📊 Abrindo modal de liberação de notas");
 
-  // Preencher datas padrão se não existirem
   const hoje = new Date();
   const inicioPadrao = new Date(
     hoje.getFullYear(),
@@ -3644,7 +3314,6 @@ window.abrirModalEditarLiberacao = function () {
   document.getElementById("dataFimLiberacao").value =
     liberacao.periodo?.fim || formatarDataInput(fimPadrao);
 
-  // Carregar eletivas
   const container = document.getElementById("eletivasLiberacaoContainer");
   if (!container) return;
 
@@ -3704,7 +3373,6 @@ window.salvarLiberacaoNotas = async function () {
     return;
   }
 
-  // Validar datas
   if (new Date(dataInicio) > new Date(dataFim)) {
     showToast("Data de início não pode ser maior que data de fim", "error");
     return;
@@ -3713,7 +3381,6 @@ window.salvarLiberacaoNotas = async function () {
   mostrarLoader(true);
 
   try {
-    // Coletar eletivas liberadas
     const eletivasLiberadas = [];
     document
       .querySelectorAll(".eletiva-liberacao-checkbox:checked")
@@ -3730,13 +3397,9 @@ window.salvarLiberacaoNotas = async function () {
       eletivasLiberadas: eletivasLiberadas,
     };
 
-    // Atualizar state
     state.liberacaoNotas = novaConfig;
-
-    // Salvar no localStorage
     salvarEstado();
 
-    // Salvar no Firebase
     if (window.FirebaseSync) {
       await window.FirebaseSync.salvarDadosFirebase(
         "liberacao_notas",
@@ -3744,7 +3407,6 @@ window.salvarLiberacaoNotas = async function () {
       );
     }
 
-    // Atualizar interface na aba dados
     document.getElementById("semestreAtual").textContent = novaConfig.semestre;
     document.getElementById("periodoLiberacao").textContent =
       `${new Date(dataInicio).toLocaleDateString()} a ${new Date(dataFim).toLocaleDateString()}`;
@@ -3770,7 +3432,6 @@ window.abrirModalRestaurarBackup = function () {
   const container = document.getElementById("listaBackupsRestaurar");
   if (!container) return;
 
-  // Carregar backups do localStorage
   try {
     const backupsSalvos = JSON.parse(
       localStorage.getItem("sage_backups") || "[]",
@@ -3787,7 +3448,6 @@ window.abrirModalRestaurarBackup = function () {
     return;
   }
 
-  // Ordenar por data (mais recente primeiro)
   const backupsOrdenados = backups.sort(
     (a, b) => new Date(b.data) - new Date(a.data),
   );
@@ -3810,7 +3470,6 @@ window.abrirModalRestaurarBackup = function () {
 
   container.innerHTML = html;
 
-  // Habilitar botão quando um backup for selecionado
   const radios = container.querySelectorAll('input[type="radio"]');
   radios.forEach((radio) => {
     radio.addEventListener("change", () => {
@@ -3846,7 +3505,6 @@ window.confirmarRestaurarBackup = async function () {
     return;
   }
 
-  // Abrir modal de confirmação
   const confirmBody = document.getElementById("confirmBody");
   const confirmTitle = document.getElementById("confirmTitle");
   const confirmBtn = document.getElementById("confirmActionBtn");
@@ -3879,15 +3537,10 @@ async function executarRestauracaoBackup(backup) {
   try {
     console.log("🔄 Restaurando backup:", backup.nome);
 
-    // Substituir state pelos dados do backup
     Object.assign(state, backup.dados);
-
-    // Salvar no localStorage
     salvarEstado();
 
-    // Salvar no Firebase
     if (window.FirebaseSync) {
-      // Salvar cada coleção separadamente
       if (state.professores) {
         for (const prof of state.professores) {
           await window.FirebaseSync.salvarDadosFirebase(
@@ -3939,7 +3592,6 @@ async function executarRestauracaoBackup(backup) {
         }
       }
 
-      // Salvar configurações
       if (state.configTempos) {
         await window.FirebaseSync.salvarDadosFirebase(
           "config_tempos",
@@ -3954,7 +3606,6 @@ async function executarRestauracaoBackup(backup) {
       }
     }
 
-    // Atualizar interface
     if (typeof carregarEletivas === "function") carregarEletivas();
     if (typeof carregarProfessores === "function") carregarProfessores();
     if (typeof filtrarEstudantes === "function") filtrarEstudantes();
@@ -4017,7 +3668,7 @@ window.abrirModalConflitos = function () {
         
         <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-light); border-radius: 4px;">
           <p style="margin: 0.2rem 0;">
-            <strong>👤 Aluno:</strong> ${nomeAluno} (${turmaAluno} - SIGE: ${aluno?.codigoSige || "N/A"})
+            <strong>👤 Aluno:</strong> ${escapeHtml(nomeAluno)} (${turmaAluno} - SIGE: ${aluno?.codigoSige || "N/A"})
           </p>
           <p style="margin: 0.2rem 0;">
             <strong>⏰ Tempo:</strong> ${conflito.tempo || "N/A"}
@@ -4042,11 +3693,9 @@ window.abrirModalConflitos = function () {
         <div style="margin-top: 0.5rem; padding: 0.5rem; background: ${corBorda}20; border-radius: 4px;">
           <p style="margin: 0; font-size: 0.9rem;">
             <strong>💡 Recomendação:</strong> 
-            ${
-              conflito.tipo === "fixa"
+            ${conflito.tipo === "fixa"
                 ? "Eletivas FIXAS exigem que o aluno esteja em apenas UMA por tempo. Remova uma das matrículas."
-                : "Eletivas MISTAS também permitem apenas UMA por tempo. Remova uma das matrículas."
-            }
+                : "Eletivas MISTAS também permitem apenas UMA por tempo. Remova uma das matrículas."}
           </p>
         </div>
       </div>
@@ -4062,5 +3711,29 @@ window.fecharModalConflitos = function () {
   document.getElementById("modalConflitos").classList.remove("active");
 };
 
-// ========== FUNÇÃO PARA ABRIR MODAL DE RESTAURAR BACKUP (ALIAS) ==========
-window.abrirModalRestaurarBackup = window.abrirModalRestaurarBackup;
+// ========== MUDAR ABA GESTÃO ==========
+window.mudarTabGestao = function (tab) {
+  document
+    .querySelectorAll(".gestao-tab-btn")
+    .forEach((btn) => btn.classList.remove("active"));
+  document.querySelectorAll(".gestao-tab-btn").forEach((btn) => {
+    if (btn.getAttribute("onclick")?.includes(`'${tab}'`)) {
+      btn.classList.add("active");
+    }
+  });
+
+  document
+    .querySelectorAll(".gestao-tab-pane")
+    .forEach((pane) => pane.classList.remove("active"));
+  document.getElementById(`tab-${tab}`).classList.add("active");
+
+  if (tab === "professores") {
+    carregarProfessores();
+  } else if (tab === "eletivas") {
+    carregarEletivas();
+  } else if (tab === "estudantes") {
+    filtrarEstudantes();
+  } else if (tab === "dados") {
+    carregarAbaDados();
+  }
+};
