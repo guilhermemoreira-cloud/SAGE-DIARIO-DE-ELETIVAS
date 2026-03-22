@@ -14,6 +14,7 @@ let state = {
   semestreAtivo: null,
   configTempos: null,
   liberacaoNotas: null,
+  locais: [],
   nextId: {
     aluno: 1,
     professor: 1,
@@ -36,6 +37,7 @@ function carregarEstado() {
     state.semestres = JSON.parse(localStorage.getItem(CONFIG.storageKeys.semestres)) || [];
     state.remocoes = JSON.parse(localStorage.getItem(CONFIG.storageKeys.remocoes)) || [];
     state.ultimaSincronizacao = localStorage.getItem(CONFIG.storageKeys.ultimaSincronizacao);
+    state.locais = JSON.parse(localStorage.getItem("sage_locais_2026")) || [];
     
     state.configTempos = JSON.parse(localStorage.getItem("sage_config_tempos")) || null;
     state.liberacaoNotas = JSON.parse(localStorage.getItem("sage_liberacao_notas")) || null;
@@ -78,6 +80,7 @@ function salvarEstado() {
     localStorage.setItem("sage_notas_2026", JSON.stringify(state.notas || []));
     localStorage.setItem(CONFIG.storageKeys.semestres, JSON.stringify(state.semestres));
     localStorage.setItem(CONFIG.storageKeys.remocoes, JSON.stringify(state.remocoes));
+    localStorage.setItem("sage_locais_2026", JSON.stringify(state.locais || []));
     localStorage.setItem("sage_nextId_2026", JSON.stringify(state.nextId));
     
     if (state.configTempos) {
