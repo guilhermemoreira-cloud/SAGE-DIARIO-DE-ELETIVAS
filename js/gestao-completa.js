@@ -60,6 +60,53 @@ const diasSemanaOpcoes = [
   "domingo",
 ];
 
+// ========== FUNÇÕES DE UTILIDADE ==========
+function mostrarLoader(mostrar) {
+  const loader = document.getElementById("gestorLoader");
+  if (loader) {
+    if (mostrar) {
+      loader.classList.add("active");
+    } else {
+      loader.classList.remove("active");
+    }
+  }
+}
+
+function getTempoFromHorario(horario) {
+  if (!horario) return null;
+  if (horario.codigoTempo) {
+    return horario.codigoTempo;
+  }
+  return null;
+}
+
+// ========== FUNÇÃO PARA REMOVER DUPLICATAS ==========
+function removerDuplicatasEletivas() {
+  if (!state.eletivas || state.eletivas.length === 0) return;
+  
+  const eletivasUnicas = [];
+  const idsVistos = new Set();
+  const codigosVistos = new Set();
+  
+  state.eletivas.forEach(eletiva => {
+    // Usar ID se existir, senão usar código
+    const identificador = eletiva.id || eletiva.codigo;
+    if (!idsVistos.has(identificador) && !codigosVistos.has(eletiva.codigo)) {
+      idsVistos.add(identificador);
+      codigosVistos.add(eletiva.codigo);
+      eletivasUnicas.push(eletiva);
+    } else {
+      console.log(`⚠️ Duplicata removida: ${eletiva.nome} (${eletiva.codigo})`);
+    }
+  });
+  
+  if (eletivasUnicas.length !== state.eletivas.length) {
+    console.log(`✅ Removidas ${state.eletivas.length - eletivasUnicas.length} duplicatas de eletivas`);
+    state.eletivas = eletivasUnicas;
+    salvarEstado();
+  }
+}
+
 // ========== INICIALIZAÇÃO ==========
 document.addEventListener("DOMContentLoaded", async function () {
   console.log("📋 Inicializando página de gestão completa...");
@@ -76,28 +123,51 @@ document.addEventListener("DOMContentLoaded", async function () {
     carregarEstado();
   }
 
-  // 🔥 Sincronização com Firebase - SEM TIMEOUTS FIXOS
+  // Garantir que arrays existem
+  if (!state.alunos) state.alunos = [];
+  if (!state.professores) state.professores = [];
+  if (!state.eletivas) state.eletivas = [];
+  if (!state.matriculas) state.matriculas = [];
+  if (!state.registros) state.registros = [];
+  if (!state.notas) state.notas = [];
+
+  // REMOVER DUPLICATAS
+  removerDuplicatasEletivas();
+
+  console.log("📊 Estado inicial:", {
+    alunos: state.alunos.length,
+    professores: state.professores.length,
+    eletivas: state.eletivas.length,
+    matriculas: state.matriculas.length
+  });
+
+  // 🔥 Sincronização com Firebase
   if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
     try {
       console.log("🔥 Aguardando inicialização do Firebase...");
-      await window.FirebaseConfig.aguardarInicializacaoFirebase(10000);
+      if (window.FirebaseConfig.aguardarInicializacaoFirebase) {
+        await window.FirebaseConfig.aguardarInicializacaoFirebase(10000);
+      } else {
+        window.FirebaseConfig.initFirebase();
+        await new Promise(r => setTimeout(r, 1000));
+      }
       console.log("✅ Firebase inicializado");
       
       if (window.FirebaseSync && typeof window.FirebaseSync.carregarColecoesGestor === "function") {
         const carregou = await window.FirebaseSync.carregarColecoesGestor();
         if (carregou) {
           console.log("✅ Dados do Firebase carregados - atualizando gestão...");
-          carregarProfessores();
-          carregarEletivas();
-          filtrarEstudantes();
-          carregarAbaDados();
+          // Remover duplicatas novamente após carregar do Firebase
+          removerDuplicatasEletivas();
         }
       }
       
-      // Ativar listener em tempo real
       if (typeof window.FirebaseSync.escutarColecoesGestor === "function") {
         window.FirebaseSync.escutarColecoesGestor(function (colecao) {
           console.log(`🔄 Atualização recebida: ${colecao} - recarregando...`);
+          if (colecao === 'eletivas') {
+            removerDuplicatasEletivas();
+          }
           carregarProfessores();
           carregarEletivas();
           filtrarEstudantes();
@@ -144,26 +214,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 });
 
-// ========== FUNÇÕES DE UTILIDADE ==========
-function mostrarLoader(mostrar) {
-  const loader = document.getElementById("gestorLoader");
-  if (loader) {
-    if (mostrar) {
-      loader.classList.add("active");
-    } else {
-      loader.classList.remove("active");
-    }
-  }
-}
-
-function getTempoFromHorario(horario) {
-  if (!horario) return null;
-  if (horario.codigoTempo) {
-    return horario.codigoTempo;
-  }
-  return null;
-}
-
 // ========== FUNÇÕES DE EXPORTAÇÃO DE JSON ==========
 window.exportarJSONCompleto = function () {
   try {
@@ -209,35 +259,30 @@ function carregarProfessores() {
   const container = document.getElementById("professoresGrid");
   if (!container) return;
 
-  const busca =
-    document.getElementById("buscaProfessor")?.value?.toLowerCase() || "";
-
+  const busca = document.getElementById("buscaProfessor")?.value?.toLowerCase() || "";
   let professores = state.professores || [];
 
   if (busca) {
     professores = professores.filter(
-      (p) =>
-        p.nome?.toLowerCase().includes(busca) ||
-        p.email?.toLowerCase().includes(busca),
+      (p) => p.nome?.toLowerCase().includes(busca) || p.email?.toLowerCase().includes(busca)
     );
   }
 
   professores.sort((a, b) => a.nome.localeCompare(b.nome));
 
-  document.getElementById("contadorProfessores").textContent =
-    `(${professores.length} professores encontrados)`;
+  const contador = document.getElementById("contadorProfessores");
+  if (contador) contador.textContent = `(${professores.length} professores encontrados)`;
 
   if (professores.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhum professor encontrado</p>';
+    container.innerHTML = '<p class="empty-state">Nenhum professor encontrado</p>';
     return;
   }
 
   container.innerHTML = "";
 
   professores.forEach((professor) => {
-    const eletivas =
-      state.eletivas?.filter((e) => e.professorId === professor.id) || [];
+    // Buscar eletivas vinculadas a este professor
+    const eletivas = state.eletivas?.filter((e) => e.professorId === professor.id) || [];
 
     const card = document.createElement("div");
     card.className = "professor-card";
@@ -245,30 +290,25 @@ function carregarProfessores() {
     let eletivasHTML = "";
     if (eletivas.length > 0) {
       eletivasHTML = '<div class="eletivas-lista"><h4>📚 ELETIVAS:</h4>';
-      eletivas.slice(0, 3).forEach((e) => {
-        const matriculas =
-          state.matriculas?.filter((m) => m.eletivaId === e.id) || [];
+      eletivas.forEach((e) => {
+        const matriculas = state.matriculas?.filter((m) => m.eletivaId === e.id) || [];
         eletivasHTML += `
           <div class="eletiva-item">
-            <span class="eletiva-nome">${e.nome} (${e.codigo})</span>
-            <span class="eletiva-detalhes">${e.horario?.diaSemana} ${e.horario?.codigoTempo} - ${matriculas.length} alunos</span>
+            <span class="eletiva-nome">${e.nome || "?"} (${e.codigo || "?"})</span>
+            <span class="eletiva-detalhes">${e.horario?.diaSemana || "?"} ${e.horario?.codigoTempo || "?"} - ${matriculas.length} alunos</span>
           </div>
         `;
       });
-      if (eletivas.length > 3) {
-        eletivasHTML += `<div style="font-size: 0.85rem; color: var(--text-light); text-align: center; padding-top: 0.5rem;">... e mais ${eletivas.length - 3} eletivas</div>`;
-      }
       eletivasHTML += "</div>";
     } else {
-      eletivasHTML =
-        '<div class="eletivas-lista"><p style="color: var(--text-light); text-align: center;">Nenhuma eletiva vinculada</p></div>';
+      eletivasHTML = '<div class="eletivas-lista"><p style="color: var(--text-light); text-align: center;">Nenhuma eletiva vinculada</p></div>';
     }
 
     card.innerHTML = `
       <div class="professor-header">
         <div class="professor-info">
-          <h3>👤 ${escapeHtml(professor.nome)}</h3>
-          <p><i class="fas fa-envelope"></i> ${escapeHtml(professor.email)}</p>
+          <h3>👤 ${escapeHtml(professor.nome || "?")}</h3>
+          <p><i class="fas fa-envelope"></i> ${escapeHtml(professor.email || "?")}</p>
         </div>
         <div class="professor-actions">
           <button class="btn-primary btn-small" onclick="abrirModalEditarProfessor(${professor.id})" title="Editar">
@@ -296,8 +336,7 @@ window.filtrarProfessores = function () {
 // ========== FUNÇÕES DO MODAL DE PROFESSOR ==========
 window.abrirModalAdicionarProfessor = function () {
   professorEmEdicao = null;
-  document.getElementById("modalProfessorTitulo").textContent =
-    "➕ ADICIONAR PROFESSOR";
+  document.getElementById("modalProfessorTitulo").textContent = "➕ ADICIONAR PROFESSOR";
   document.getElementById("professorNome").value = "";
   document.getElementById("professorEmail").value = "";
   document.getElementById("professorId").value = "";
@@ -306,13 +345,15 @@ window.abrirModalAdicionarProfessor = function () {
 
 window.abrirModalEditarProfessor = function (professorId) {
   const professor = state.professores?.find((p) => p.id === professorId);
-  if (!professor) return;
+  if (!professor) {
+    showToast("Professor não encontrado", "error");
+    return;
+  }
 
   professorEmEdicao = professor;
-  document.getElementById("modalProfessorTitulo").textContent =
-    "✏️ EDITAR PROFESSOR";
-  document.getElementById("professorNome").value = professor.nome;
-  document.getElementById("professorEmail").value = professor.email;
+  document.getElementById("modalProfessorTitulo").textContent = "✏️ EDITAR PROFESSOR";
+  document.getElementById("professorNome").value = professor.nome || "";
+  document.getElementById("professorEmail").value = professor.email || "";
   document.getElementById("professorId").value = professor.id;
   document.getElementById("modalProfessor").classList.add("active");
 };
@@ -336,9 +377,7 @@ window.salvarProfessor = async function () {
 
   try {
     if (professorEmEdicao) {
-      const index = state.professores.findIndex(
-        (p) => p.id === professorEmEdicao.id,
-      );
+      const index = state.professores.findIndex((p) => p.id === professorEmEdicao.id);
       if (index !== -1) {
         state.professores[index] = {
           ...state.professores[index],
@@ -348,11 +387,7 @@ window.salvarProfessor = async function () {
         salvarEstado();
 
         if (window.FirebaseSync) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "professores",
-            state.professores[index],
-            state.professores[index].id,
-          );
+          await window.FirebaseSync.salvarDadosFirebase("professores", state.professores[index], state.professores[index].id);
         }
 
         showToast("Professor atualizado com sucesso!", "success");
@@ -372,11 +407,7 @@ window.salvarProfessor = async function () {
       salvarEstado();
 
       if (window.FirebaseSync) {
-        await window.FirebaseSync.salvarDadosFirebase(
-          "professores",
-          novoProfessor,
-          novoId,
-        );
+        await window.FirebaseSync.salvarDadosFirebase("professores", novoProfessor, novoId);
       }
 
       showToast("Professor adicionado com sucesso!", "success");
@@ -397,8 +428,7 @@ window.confirmarRemoverProfessor = function (professorId) {
   const professor = state.professores?.find((p) => p.id === professorId);
   if (!professor) return;
 
-  const eletivas =
-    state.eletivas?.filter((e) => e.professorId === professorId) || [];
+  const eletivas = state.eletivas?.filter((e) => e.professorId === professorId) || [];
 
   const confirmBody = document.getElementById("confirmBody");
   const confirmTitle = document.getElementById("confirmTitle");
@@ -447,7 +477,7 @@ async function removerProfessor(professorId) {
         await window.FirebaseSync.deletarDadosFirebase("professores", professorId);
       } catch(e) { console.warn("⚠️ Erro ao deletar professor:", e); }
       for (const e of state.eletivas) {
-        if (e.professorId === null || e.professorId === professorId) {
+        if (e.professorId === null) {
           try {
             await window.FirebaseSync.salvarDadosFirebase("eletivas", e, e.id);
           } catch(err) { console.warn("⚠️ Erro ao atualizar eletiva:", err); }
@@ -473,19 +503,15 @@ window.abrirModalTrocarEletivas = function (professorId) {
   professorParaTroca = professor;
   eletivasSelecionadasParaTroca = [];
 
-  document.getElementById("modalTrocarTitulo").textContent =
-    `🔄 TROCAR ELETIVAS - ${professor.nome}`;
-  document.getElementById("modalTrocarProfessor").textContent =
-    `Professor: ${professor.nome}`;
+  document.getElementById("modalTrocarTitulo").textContent = `🔄 TROCAR ELETIVAS - ${professor.nome}`;
+  document.getElementById("modalTrocarProfessor").textContent = `Professor: ${professor.nome}`;
 
-  const eletivasOrigem =
-    state.eletivas?.filter((e) => e.professorId === professorId) || [];
+  const eletivasOrigem = state.eletivas?.filter((e) => e.professorId === professorId) || [];
 
   let origemHTML = "";
   if (eletivasOrigem.length > 0) {
     eletivasOrigem.forEach((e) => {
-      const matriculas =
-        state.matriculas?.filter((m) => m.eletivaId === e.id) || [];
+      const matriculas = state.matriculas?.filter((m) => m.eletivaId === e.id) || [];
       origemHTML += `
         <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem;">
           <input type="checkbox" class="eletiva-checkbox" value="${e.id}" onchange="toggleEletivaSelecionada(${e.id})">
@@ -496,22 +522,19 @@ window.abrirModalTrocarEletivas = function (professorId) {
       `;
     });
   } else {
-    origemHTML =
-      '<p style="color: var(--text-light); text-align: center;">Nenhuma eletiva vinculada</p>';
+    origemHTML = '<p style="color: var(--text-light); text-align: center;">Nenhuma eletiva vinculada</p>';
   }
   document.getElementById("eletivasOrigem").innerHTML = origemHTML;
 
   const selectDestino = document.getElementById("selectProfessorDestino");
   selectDestino.innerHTML = '<option value="">Selecione um professor</option>';
 
-  const outrosProfessores =
-    state.professores?.filter((p) => p.id !== professorId) || [];
+  const outrosProfessores = state.professores?.filter((p) => p.id !== professorId) || [];
   outrosProfessores.forEach((p) => {
     selectDestino.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
   });
 
-  document.getElementById("eletivasDestino").innerHTML =
-    '<p style="color: var(--text-light); text-align: center;">Selecione um professor destino</p>';
+  document.getElementById("eletivasDestino").innerHTML = '<p style="color: var(--text-light); text-align: center;">Selecione um professor destino</p>';
 
   document.getElementById("modalTrocarEletivas").classList.add("active");
 };
@@ -528,22 +551,17 @@ window.toggleEletivaSelecionada = function (eletivaId) {
 window.carregarEletivasDestino = function () {
   const destinoId = document.getElementById("selectProfessorDestino")?.value;
   if (!destinoId) {
-    document.getElementById("eletivasDestino").innerHTML =
-      '<p style="color: var(--text-light); text-align: center;">Selecione um professor destino</p>';
+    document.getElementById("eletivasDestino").innerHTML = '<p style="color: var(--text-light); text-align: center;">Selecione um professor destino</p>';
     return;
   }
 
-  const professor = state.professores?.find(
-    (p) => p.id === parseInt(destinoId),
-  );
-  const eletivasDestino =
-    state.eletivas?.filter((e) => e.professorId === parseInt(destinoId)) || [];
+  const professor = state.professores?.find((p) => p.id === parseInt(destinoId));
+  const eletivasDestino = state.eletivas?.filter((e) => e.professorId === parseInt(destinoId)) || [];
 
   let destinoHTML = "";
   if (eletivasDestino.length > 0) {
     eletivasDestino.forEach((e) => {
-      const matriculas =
-        state.matriculas?.filter((m) => m.eletivaId === e.id) || [];
+      const matriculas = state.matriculas?.filter((m) => m.eletivaId === e.id) || [];
       destinoHTML += `
         <div style="padding: 0.3rem;">
           <strong>${e.nome}</strong> (${e.codigo}) - ${e.horario?.diaSemana} ${e.horario?.codigoTempo} - ${matriculas.length} alunos
@@ -551,8 +569,7 @@ window.carregarEletivasDestino = function () {
       `;
     });
   } else {
-    destinoHTML =
-      '<p style="color: var(--text-light);">Nenhuma eletiva vinculada</p>';
+    destinoHTML = '<p style="color: var(--text-light);">Nenhuma eletiva vinculada</p>';
   }
 
   document.getElementById("eletivasDestino").innerHTML = destinoHTML;
@@ -572,9 +589,7 @@ window.confirmarTrocaEletivas = async function () {
     return;
   }
 
-  const professorDestino = state.professores?.find(
-    (p) => p.id === parseInt(destinoId),
-  );
+  const professorDestino = state.professores?.find((p) => p.id === parseInt(destinoId));
   if (!professorDestino) return;
 
   mostrarLoader(true);
@@ -590,20 +605,13 @@ window.confirmarTrocaEletivas = async function () {
         };
 
         if (window.FirebaseSync) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "eletivas",
-            state.eletivas[index],
-            state.eletivas[index].id,
-          );
+          await window.FirebaseSync.salvarDadosFirebase("eletivas", state.eletivas[index], state.eletivas[index].id);
         }
       }
     }
 
     salvarEstado();
-    showToast(
-      `${eletivasSelecionadasParaTroca.length} eletiva(s) transferida(s) com sucesso!`,
-      "success",
-    );
+    showToast(`${eletivasSelecionadasParaTroca.length} eletiva(s) transferida(s) com sucesso!`, "success");
 
     fecharModalTrocarEletivas();
     carregarProfessores();
@@ -649,8 +657,7 @@ function salvarLocais() {
 function carregarSelectsEletivas() {
   const selectProf = document.getElementById("filtroProfessorEletiva");
   if (selectProf) {
-    const professores =
-      state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+    const professores = state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
     selectProf.innerHTML = '<option value="">Todos os professores</option>';
     professores.forEach((p) => {
       selectProf.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
@@ -667,10 +674,8 @@ function carregarSelectsEletivas() {
 
   const selectModalProf = document.getElementById("selectProfessorEletiva");
   if (selectModalProf) {
-    const professores =
-      state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-    selectModalProf.innerHTML =
-      '<option value="">Selecione um professor</option>';
+    const professores = state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+    selectModalProf.innerHTML = '<option value="">Selecione um professor</option>';
     professores.forEach((p) => {
       selectModalProf.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
     });
@@ -695,10 +700,8 @@ function carregarSelectsEletivas() {
 
   const selectNovoProf = document.getElementById("selectNovoProfessor");
   if (selectNovoProf) {
-    const professores =
-      state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-    selectNovoProf.innerHTML =
-      '<option value="">Selecione um professor</option>';
+    const professores = state.professores?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+    selectNovoProf.innerHTML = '<option value="">Selecione um professor</option>';
     professores.forEach((p) => {
       selectNovoProf.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
     });
@@ -739,15 +742,18 @@ window.filtrarEletivas = function () {
   carregarEletivas();
 };
 
+// ========== FUNÇÃO CORRIGIDA: carregarEletivas (sem duplicatas) ==========
 function carregarEletivas() {
   const container = document.getElementById("eletivasGrid");
   if (!container) return;
 
-  const busca =
-    document.getElementById("buscaEletiva")?.value?.toLowerCase() || "";
+  const busca = document.getElementById("buscaEletiva")?.value?.toLowerCase() || "";
   const professorId = document.getElementById("filtroProfessorEletiva")?.value;
   const local = document.getElementById("filtroLocalEletiva")?.value;
 
+  // Garantir que não há duplicatas
+  removerDuplicatasEletivas();
+  
   let eletivas = state.eletivas || [];
 
   if (filtroTempoEletiva !== "TODOS") {
@@ -767,8 +773,7 @@ function carregarEletivas() {
 
   if (busca) {
     eletivas = eletivas.filter((e) => {
-      const professor =
-        state.professores?.find((p) => p.id === e.professorId)?.nome || "";
+      const professor = state.professores?.find((p) => p.id === e.professorId)?.nome || "";
       return (
         e.nome?.toLowerCase().includes(busca) ||
         e.codigo?.toLowerCase().includes(busca) ||
@@ -777,26 +782,33 @@ function carregarEletivas() {
     });
   }
 
+  // Remover duplicatas por código
+  const eletivasUnicas = [];
+  const codigosVistos = new Set();
+  eletivas.forEach(e => {
+    if (!codigosVistos.has(e.codigo)) {
+      codigosVistos.add(e.codigo);
+      eletivasUnicas.push(e);
+    }
+  });
+  eletivas = eletivasUnicas;
+
   eletivas.sort((a, b) => a.nome.localeCompare(b.nome));
 
-  document.getElementById("contadorEletivas").textContent =
-    `(${eletivas.length} eletivas encontradas)`;
+  const contador = document.getElementById("contadorEletivas");
+  if (contador) contador.textContent = `(${eletivas.length} eletivas encontradas)`;
 
   if (eletivas.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhuma eletiva encontrada</p>';
+    container.innerHTML = '<p class="empty-state">Nenhuma eletiva encontrada</p>';
     return;
   }
 
   container.innerHTML = "";
 
   eletivas.forEach((eletiva) => {
-    const professor =
-      state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-      "Não atribuído";
+    const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
     const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
-    const matriculas =
-      state.matriculas?.filter((m) => m.eletivaId === eletiva.id) || [];
+    const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletiva.id) || [];
     const totalAlunos = matriculas.length;
 
     const card = document.createElement("div");
@@ -836,8 +848,7 @@ function carregarEletivas() {
 // ========== FUNÇÕES DO MODAL DE ELETIVA ==========
 window.abrirModalCriarEletiva = function () {
   eletivaEmEdicao = null;
-  document.getElementById("modalEletivaTitulo").textContent =
-    "➕ CRIAR NOVA ELETIVA";
+  document.getElementById("modalEletivaTitulo").textContent = "➕ CRIAR NOVA ELETIVA";
 
   document.getElementById("eletivaNome").value = "";
   document.getElementById("eletivaCodigo").value = "";
@@ -848,9 +859,7 @@ window.abrirModalCriarEletiva = function () {
   document.getElementById("horarioFim").value = "08:40";
   document.getElementById("eletivaTipoMista").checked = true;
 
-  document
-    .querySelectorAll(".turma-checkbox")
-    .forEach((cb) => (cb.checked = false));
+  document.querySelectorAll(".turma-checkbox").forEach((cb) => (cb.checked = false));
 
   document.getElementById("modalEletiva").classList.add("active");
 };
@@ -860,21 +869,16 @@ window.abrirModalEditarEletiva = function (eletivaId) {
   if (!eletiva) return;
 
   eletivaEmEdicao = eletiva;
-  document.getElementById("modalEletivaTitulo").textContent =
-    "✏️ EDITAR ELETIVA";
+  document.getElementById("modalEletivaTitulo").textContent = "✏️ EDITAR ELETIVA";
 
   document.getElementById("eletivaNome").value = eletiva.nome;
   document.getElementById("eletivaCodigo").value = eletiva.codigo;
-  document.getElementById("selectProfessorEletiva").value =
-    eletiva.professorId || "";
+  document.getElementById("selectProfessorEletiva").value = eletiva.professorId || "";
   document.getElementById("selectLocalEletiva").value = eletiva.local || "";
-  document.getElementById("selectDiaEletiva").value =
-    eletiva.horario?.diaSemana || "segunda";
+  document.getElementById("selectDiaEletiva").value = eletiva.horario?.diaSemana || "segunda";
 
   const tempo = eletiva.horario?.codigoTempo || "T1";
-  const horario =
-    Object.entries(mapaTempoEletiva).find(([h, t]) => t === tempo)?.[0] ||
-    "07:00-08:40";
+  const horario = Object.entries(mapaTempoEletiva).find(([h, t]) => t === tempo)?.[0] || "07:00-08:40";
   const [hInicio, hFim] = horario.split("-");
   document.getElementById("horarioInicio").value = hInicio;
   document.getElementById("horarioFim").value = hFim;
@@ -906,18 +910,13 @@ window.selecionarTodasTurmas = function (selecionar) {
 
 window.salvarEletiva = async function () {
   const nome = document.getElementById("eletivaNome")?.value.trim();
-  const codigo = document
-    .getElementById("eletivaCodigo")
-    ?.value.trim()
-    .toUpperCase();
+  const codigo = document.getElementById("eletivaCodigo")?.value.trim().toUpperCase();
   const professorId = document.getElementById("selectProfessorEletiva")?.value;
   const local = document.getElementById("selectLocalEletiva")?.value;
   const dia = document.getElementById("selectDiaEletiva")?.value;
   const horarioInicio = document.getElementById("horarioInicio")?.value;
   const horarioFim = document.getElementById("horarioFim")?.value;
-  const tipo =
-    document.querySelector('input[name="tipoEletiva"]:checked')?.value ||
-    "MISTA";
+  const tipo = document.querySelector('input[name="tipoEletiva"]:checked')?.value || "MISTA";
 
   const turmasSelecionadas = [];
   document.querySelectorAll(".turma-checkbox:checked").forEach((cb) => {
@@ -945,60 +944,26 @@ window.salvarEletiva = async function () {
   }
 
   if (tipo === "FIXA" && turmasSelecionadas.length > 1) {
-    showToast(
-      "Eletivas FIXAS só podem ter UMA turma. Selecione apenas uma turma.",
-      "error",
-    );
+    showToast("Eletivas FIXAS só podem ter UMA turma. Selecione apenas uma turma.", "error");
     return;
   }
 
-  if (
-    !eletivaEmEdicao ||
-    (eletivaEmEdicao && eletivaEmEdicao.codigo !== codigo)
-  ) {
-    const codigoExistente = state.eletivas?.some((e) => e.codigo === codigo);
-    if (codigoExistente) {
-      showToast(`Já existe uma eletiva com o código ${codigo}`, "error");
-      return;
-    }
-  }
-
-  if (eletivaEmEdicao && tipo === "FIXA" && eletivaEmEdicao.tipo !== "FIXA") {
-    const matriculas =
-      state.matriculas?.filter((m) => m.eletivaId === eletivaEmEdicao.id) || [];
-    const alunos =
-      state.alunos?.filter((a) => matriculas.some((m) => m.alunoId === a.id)) ||
-      [];
-
-    if (alunos.length > 0) {
-      const primeiraTurma = alunos[0].turmaOrigem;
-      const todosMesmaTurma = alunos.every(
-        (a) => a.turmaOrigem === primeiraTurma,
-      );
-
-      if (!todosMesmaTurma) {
-        showToast(
-          "Não é possível alterar para FIXA pois existem alunos de diferentes turmas nesta eletiva.",
-          "error",
-        );
-        return;
-      }
-    }
+  // Verificar se código já existe (ignorando a própria eletiva em edição)
+  const codigoExistente = state.eletivas?.some(e => e.codigo === codigo && e.id !== eletivaEmEdicao?.id);
+  if (codigoExistente) {
+    showToast(`Já existe uma eletiva com o código ${codigo}`, "error");
+    return;
   }
 
   mostrarLoader(true);
 
   try {
-    const professor = state.professores?.find(
-      (p) => p.id === parseInt(professorId),
-    );
+    const professor = state.professores?.find((p) => p.id === parseInt(professorId));
     const horarioCompleto = `${horarioInicio}-${horarioFim}`;
     const codigoTempo = mapaTempoEletiva[horarioCompleto] || "T1";
 
     if (eletivaEmEdicao) {
-      const index = state.eletivas.findIndex(
-        (e) => e.id === eletivaEmEdicao.id,
-      );
+      const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
       if (index !== -1) {
         state.eletivas[index] = {
           ...state.eletivas[index],
@@ -1016,11 +981,7 @@ window.salvarEletiva = async function () {
         };
 
         if (window.FirebaseSync) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "eletivas",
-            state.eletivas[index],
-            state.eletivas[index].id,
-          );
+          await window.FirebaseSync.salvarDadosFirebase("eletivas", state.eletivas[index], state.eletivas[index].id);
         }
 
         showToast("Eletiva atualizada com sucesso!", "success");
@@ -1051,11 +1012,7 @@ window.salvarEletiva = async function () {
       state.eletivas.push(novaEletiva);
 
       if (window.FirebaseSync) {
-        await window.FirebaseSync.salvarDadosFirebase(
-          "eletivas",
-          novaEletiva,
-          novoId,
-        );
+        await window.FirebaseSync.salvarDadosFirebase("eletivas", novaEletiva, novoId);
       }
 
       showToast("Eletiva criada com sucesso!", "success");
@@ -1079,10 +1036,8 @@ window.abrirModalEditarCategoria = function (eletivaId) {
 
   eletivaEmEdicao = eletiva;
 
-  document.getElementById("modalCategoriaTitulo").textContent =
-    `📋 EDITAR CATEGORIA - ${eletiva.nome}`;
-  document.getElementById("categoriaAtual").textContent =
-    eletiva.tipo || "MISTA";
+  document.getElementById("modalCategoriaTitulo").textContent = `📋 EDITAR CATEGORIA - ${eletiva.nome}`;
+  document.getElementById("categoriaAtual").textContent = eletiva.tipo || "MISTA";
 
   if (eletiva.tipo === "FIXA") {
     document.getElementById("categoriaFixa").checked = true;
@@ -1117,70 +1072,16 @@ window.fecharModalEditarCategoria = function () {
 window.salvarCategoriaEletiva = async function () {
   if (!eletivaEmEdicao) return;
 
-  const novaCategoria = document.querySelector(
-    'input[name="categoriaEletiva"]:checked',
-  )?.value;
+  const novaCategoria = document.querySelector('input[name="categoriaEletiva"]:checked')?.value;
   if (!novaCategoria) {
     showToast("Selecione uma categoria", "error");
     return;
   }
 
-  if (eletivaEmEdicao.tipo === "MISTA" && novaCategoria === "FIXA") {
-    const matriculas =
-      state.matriculas?.filter((m) => m.eletivaId === eletivaEmEdicao.id) || [];
-    const alunos =
-      state.alunos?.filter((a) => matriculas.some((m) => m.alunoId === a.id)) ||
-      [];
-
-    if (alunos.length > 0) {
-      const primeiraTurma = alunos[0].turmaOrigem;
-      const todosMesmaTurma = alunos.every(
-        (a) => a.turmaOrigem === primeiraTurma,
-      );
-
-      if (!todosMesmaTurma) {
-        const confirmBody = document.getElementById("confirmBody");
-        const confirmTitle = document.getElementById("confirmTitle");
-        const confirmBtn = document.getElementById("confirmActionBtn");
-
-        confirmTitle.textContent = "⚠️ ATENÇÃO - ALTERAÇÃO DE CATEGORIA";
-        confirmBody.innerHTML = `
-          <p>Esta eletiva possui alunos de diferentes turmas:</p>
-          <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
-            ${alunos
-              .slice(0, 5)
-              .map((a) => `<li>${a.nome} - ${a.turmaOrigem}</li>`)
-              .join("")}
-            ${alunos.length > 5 ? `<li>... e mais ${alunos.length - 5} alunos</li>` : ""}
-          </ul>
-          <p style="margin-top: 1rem; color: var(--danger); font-weight: bold;">
-            ⚠️ Eletivas FIXAS só permitem alunos da MESMA TURMA!
-          </p>
-          <p>Deseja continuar mesmo assim?</p>
-        `;
-
-        const originalOnClick = confirmBtn.onclick;
-        confirmBtn.onclick = function () {
-          confirmBtn.onclick = originalOnClick;
-          fecharModalConfirmacao();
-          executarAlteracaoCategoria(eletivaEmEdicao.id, novaCategoria);
-        };
-
-        document.getElementById("modalConfirmacao").classList.add("active");
-        fecharModalEditarCategoria();
-        return;
-      }
-    }
-  }
-
-  await executarAlteracaoCategoria(eletivaEmEdicao.id, novaCategoria);
-};
-
-async function executarAlteracaoCategoria(eletivaId, novaCategoria) {
   mostrarLoader(true);
 
   try {
-    const index = state.eletivas.findIndex((e) => e.id === eletivaId);
+    const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
     if (index !== -1) {
       const categoriaAntiga = state.eletivas[index].tipo;
 
@@ -1190,19 +1091,12 @@ async function executarAlteracaoCategoria(eletivaId, novaCategoria) {
       };
 
       if (window.FirebaseSync) {
-        await window.FirebaseSync.salvarDadosFirebase(
-          "eletivas",
-          state.eletivas[index],
-          state.eletivas[index].id,
-        );
+        await window.FirebaseSync.salvarDadosFirebase("eletivas", state.eletivas[index], state.eletivas[index].id);
       }
 
       salvarEstado();
 
-      showToast(
-        `Categoria alterada de ${categoriaAntiga} para ${novaCategoria} com sucesso!`,
-        "success",
-      );
+      showToast(`Categoria alterada de ${categoriaAntiga} para ${novaCategoria} com sucesso!`, "success");
 
       fecharModalEditarCategoria();
       carregarEletivas();
@@ -1213,37 +1107,27 @@ async function executarAlteracaoCategoria(eletivaId, novaCategoria) {
   } finally {
     mostrarLoader(false);
   }
-}
+};
 
 // ========== FUNÇÕES DE TROCA RÁPIDA DE PROFESSOR ==========
 window.abrirModalTrocarProfessor = function (eletivaId) {
-  console.log("🔄 Abrindo modal de troca de professor para eletiva ID:", eletivaId);
-
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) {
-    console.error("❌ Eletiva não encontrada:", eletivaId);
     showToast("Eletiva não encontrada", "error");
     return;
   }
 
   eletivaEmEdicao = eletiva;
 
-  const professorAtual =
-    state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-    "Não atribuído";
+  const professorAtual = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
 
-  document.getElementById("modalTrocaTitulo").textContent =
-    `🔄 TROCAR PROFESSOR - ${eletiva.nome}`;
+  document.getElementById("modalTrocaTitulo").textContent = `🔄 TROCAR PROFESSOR - ${eletiva.nome}`;
   document.getElementById("professorAtualTroca").textContent = professorAtual;
 
   const select = document.getElementById("selectNovoProfessor");
-  if (!select) {
-    console.error("❌ Elemento selectNovoProfessor não encontrado");
-    return;
-  }
+  if (!select) return;
 
-  const professores =
-    state.professores?.filter((p) => p.id !== eletiva.professorId) || [];
+  const professores = state.professores?.filter((p) => p.id !== eletiva.professorId) || [];
 
   select.innerHTML = '<option value="">Selecione um professor</option>';
   professores.forEach((p) => {
@@ -1251,22 +1135,18 @@ window.abrirModalTrocarProfessor = function (eletivaId) {
   });
 
   if (professores.length === 0) {
-    select.innerHTML =
-      '<option value="">Nenhum outro professor disponível</option>';
+    select.innerHTML = '<option value="">Nenhum outro professor disponível</option>';
   }
 
   document.getElementById("modalTrocarProfessor").classList.add("active");
 };
 
 window.fecharModalTrocarProfessor = function () {
-  console.log("❌ Fechando modal de troca de professor");
   document.getElementById("modalTrocarProfessor").classList.remove("active");
   eletivaEmEdicao = null;
 };
 
 window.confirmarTrocaProfessor = async function () {
-  console.log("✅ Confirmando troca de professor");
-
   if (!eletivaEmEdicao) {
     showToast("Nenhuma eletiva selecionada", "error");
     return;
@@ -1278,9 +1158,7 @@ window.confirmarTrocaProfessor = async function () {
     return;
   }
 
-  const professor = state.professores?.find(
-    (p) => p.id === parseInt(novoProfessorId),
-  );
+  const professor = state.professores?.find((p) => p.id === parseInt(novoProfessorId));
   if (!professor) {
     showToast("Professor não encontrado", "error");
     return;
@@ -1289,13 +1167,6 @@ window.confirmarTrocaProfessor = async function () {
   mostrarLoader(true);
 
   try {
-    console.log(
-      "🔄 Transferindo eletiva",
-      eletivaEmEdicao.id,
-      "para professor",
-      professor.id,
-    );
-
     const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
     if (index !== -1) {
       const professorAntigo = state.eletivas[index].professorNome;
@@ -1309,28 +1180,19 @@ window.confirmarTrocaProfessor = async function () {
       salvarEstado();
 
       if (window.FirebaseSync) {
-        await window.FirebaseSync.salvarDadosFirebase(
-          "eletivas",
-          state.eletivas[index],
-          state.eletivas[index].id,
-        );
+        await window.FirebaseSync.salvarDadosFirebase("eletivas", state.eletivas[index], state.eletivas[index].id);
       }
 
-      showToast(
-        `Professor alterado de ${professorAntigo || "Não atribuído"} para ${professor.nome} com sucesso!`,
-        "success",
-      );
+      showToast(`Professor alterado de ${professorAntigo || "Não atribuído"} para ${professor.nome} com sucesso!`, "success");
 
       fecharModalTrocarProfessor();
 
-      if (
-        document.getElementById("tab-eletivas")?.classList.contains("active")
-      ) {
+      if (document.getElementById("tab-eletivas")?.classList.contains("active")) {
         carregarEletivas();
       }
     }
   } catch (error) {
-    console.error("❌ Erro ao trocar professor:", error);
+    console.error("Erro ao trocar professor:", error);
     showToast("Erro ao trocar professor: " + error.message, "error");
   } finally {
     mostrarLoader(false);
@@ -1381,28 +1243,31 @@ window.salvarNovoLocal = async function () {
   }
 };
 
-// ========== FUNÇÕES DE REMOÇÃO DE ELETIVA (CORRIGIDAS) ==========
+// ========== FUNÇÕES DE REMOÇÃO DE ELETIVA ==========
 async function removerEletiva(eletivaId) {
   mostrarLoader(true);
-  console.log(`🗑️ Iniciando exclusão atômica da eletiva ID: ${eletivaId}`);
+  console.log(`🗑️ Removendo eletiva ID: ${eletivaId}`);
 
   try {
     const idString = String(eletivaId);
     
-    // Usar a função do FirebaseSync para exclusão atômica
-    let dadosExcluidos = null;
-    if (window.FirebaseSync && window.FirebaseSync.excluirEletivaCompleta) {
-      dadosExcluidos = await window.FirebaseSync.excluirEletivaCompleta(eletivaId);
-      console.log(`✅ Exclusão no Firebase concluída:`, dadosExcluidos);
-    }
-    
-    // Atualizar estado local APÓS confirmação
+    // Atualizar estado local
     state.eletivas = state.eletivas.filter(e => String(e.id) !== idString);
     state.matriculas = state.matriculas.filter(m => String(m.eletivaId) !== idString);
     state.registros = state.registros.filter(r => String(r.eletivaId) !== idString);
     state.notas = state.notas.filter(n => String(n.eletivaId) !== idString);
     
     salvarEstado();
+    
+    // Tentar remover do Firebase
+    if (window.FirebaseSync) {
+      try {
+        await window.FirebaseSync.deletarDadosFirebase("eletivas", eletivaId);
+      } catch(e) {
+        console.warn("⚠️ Erro ao deletar do Firebase, adicionando à fila:", e);
+        window.FirebaseSync.adicionarOperacaoFila('deletar', 'eletivas', null, eletivaId);
+      }
+    }
     
     // Recarregar interface
     carregarEletivas();
@@ -1413,26 +1278,10 @@ async function removerEletiva(eletivaId) {
     }
     
     showToast(`✅ Eletiva removida com sucesso!`, "success");
-    console.log(`✅ Eletiva ${idString} removida completamente do sistema`);
     
   } catch (error) {
-    console.error(`❌ Erro na exclusão da eletiva ${eletivaId}:`, error);
-    
-    // Fallback: adicionar à fila de pendências
-    if (window.FirebaseSync && window.FirebaseSync.adicionarOperacaoFila) {
-      window.FirebaseSync.adicionarOperacaoFila('deletar', 'eletivas', null, eletivaId);
-      console.log(`📦 Operação adicionada à fila de pendências`);
-      showToast(
-        `⚠️ A eletiva será removida em breve. Operação foi agendada.`, 
-        "warning"
-      );
-      
-      state.eletivas = state.eletivas.filter(e => String(e.id) !== String(eletivaId));
-      salvarEstado();
-      carregarEletivas();
-    } else {
-      showToast(`❌ Erro ao remover eletiva: ${error.message}`, "error");
-    }
+    console.error(`❌ Erro na exclusão da eletiva:`, error);
+    showToast(`❌ Erro ao remover eletiva: ${error.message}`, "error");
   } finally {
     mostrarLoader(false);
   }
@@ -1442,12 +1291,9 @@ window.confirmarRemoverEletiva = function (eletivaId) {
   const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
   if (!eletiva) return;
 
-  const matriculas =
-    state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-  const registrosFrequencia =
-    state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
-  const registrosNotas =
-    state.notas?.filter((n) => n.eletivaId === eletivaId) || [];
+  const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
+  const registrosFrequencia = state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
+  const registrosNotas = state.notas?.filter((n) => n.eletivaId === eletivaId) || [];
 
   const confirmBody = document.getElementById("confirmBody");
   const confirmTitle = document.getElementById("confirmTitle");
@@ -1509,16 +1355,12 @@ window.imprimirListaProfessores = function () {
 
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
-      align: "center",
-    });
+    doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, { align: "center" });
     y += 8;
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, {
-      align: "center",
-    });
+    doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, { align: "center" });
     y += 10;
 
     doc.setFontSize(14);
@@ -1541,27 +1383,20 @@ window.imprimirListaProfessores = function () {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
 
-    professores
-      .sort((a, b) => a.nome.localeCompare(b.nome))
-      .forEach((professor) => {
-        const eletivas =
-          state.eletivas?.filter((e) => e.professorId === professor.id) || [];
+    professores.sort((a, b) => a.nome.localeCompare(b.nome)).forEach((professor) => {
+      const eletivas = state.eletivas?.filter((e) => e.professorId === professor.id) || [];
 
-        if (y > 180) {
-          doc.addPage();
-          y = 20;
-        }
+      if (y > 180) {
+        doc.addPage();
+        y = 20;
+      }
 
-        doc.text(professor.nome, margin, y);
-        doc.text(professor.email, margin + colWidths[0], y);
-        doc.text(
-          eletivas.length.toString(),
-          margin + colWidths[0] + colWidths[1],
-          y,
-        );
+      doc.text(professor.nome, margin, y);
+      doc.text(professor.email, margin + colWidths[0], y);
+      doc.text(eletivas.length.toString(), margin + colWidths[0] + colWidths[1], y);
 
-        y += 6;
-      });
+      y += 6;
+    });
 
     y += 10;
 
@@ -1617,16 +1452,12 @@ window.imprimirListaEletivas = function () {
 
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
-      align: "center",
-    });
+    doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, { align: "center" });
     y += 8;
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, {
-      align: "center",
-    });
+    doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, { align: "center" });
     y += 10;
 
     doc.setFontSize(14);
@@ -1642,11 +1473,7 @@ window.imprimirListaEletivas = function () {
     doc.text("CÓDIGO", margin + colWidths[0], y);
     doc.text("PROFESSOR", margin + colWidths[0] + colWidths[1], y);
     doc.text("TEMPO", margin + colWidths[0] + colWidths[1] + colWidths[2], y);
-    doc.text(
-      "LOCAL",
-      margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3],
-      y,
-    );
+    doc.text("LOCAL", margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], y);
 
     y += 5;
     doc.line(margin, y, pageWidth - margin, y);
@@ -1655,31 +1482,33 @@ window.imprimirListaEletivas = function () {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
 
-    eletivas
-      .sort((a, b) => a.nome.localeCompare(b.nome))
-      .forEach((eletiva) => {
-        const professor =
-          state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-          "Não atribuído";
-        const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
+    // Remover duplicatas antes de imprimir
+    const eletivasUnicas = [];
+    const codigosVistos = new Set();
+    eletivas.forEach(e => {
+      if (!codigosVistos.has(e.codigo)) {
+        codigosVistos.add(e.codigo);
+        eletivasUnicas.push(e);
+      }
+    });
 
-        if (y > 180) {
-          doc.addPage();
-          y = 20;
-        }
+    eletivasUnicas.sort((a, b) => a.nome.localeCompare(b.nome)).forEach((eletiva) => {
+      const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
+      const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
 
-        doc.text(eletiva.nome, margin, y);
-        doc.text(eletiva.codigo, margin + colWidths[0], y);
-        doc.text(professor, margin + colWidths[0] + colWidths[1], y);
-        doc.text(tempo, margin + colWidths[0] + colWidths[1] + colWidths[2], y);
-        doc.text(
-          eletiva.local || "-",
-          margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3],
-          y,
-        );
+      if (y > 180) {
+        doc.addPage();
+        y = 20;
+      }
 
-        y += 6;
-      });
+      doc.text(eletiva.nome, margin, y);
+      doc.text(eletiva.codigo, margin + colWidths[0], y);
+      doc.text(professor, margin + colWidths[0] + colWidths[1], y);
+      doc.text(tempo, margin + colWidths[0] + colWidths[1] + colWidths[2], y);
+      doc.text(eletiva.local || "-", margin + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], y);
+
+      y += 6;
+    });
 
     y += 10;
 
@@ -1688,7 +1517,7 @@ window.imprimirListaEletivas = function () {
 
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text(`Total de Eletivas: ${eletivas.length}`, margin, y);
+    doc.text(`Total de Eletivas: ${eletivasUnicas.length}`, margin, y);
     y += 5;
     doc.text(`Total de Professores: ${totalProfessores}`, margin, y);
     y += 5;
@@ -1714,15 +1543,9 @@ function carregarSelectsEstudantes() {
   const selectTurma = document.getElementById("filtroTurmaEstudante");
   if (selectTurma) {
     const turmas = CONFIG.turmas || [
-      "1ª SÉRIE A",
-      "1ª SÉRIE B",
-      "1ª SÉRIE C",
-      "2ª SÉRIE A",
-      "2ª SÉRIE B",
-      "2ª SÉRIE C",
-      "3ª SÉRIE A",
-      "3ª SÉRIE B",
-      "3ª SÉRIE C",
+      "1ª SÉRIE A", "1ª SÉRIE B", "1ª SÉRIE C",
+      "2ª SÉRIE A", "2ª SÉRIE B", "2ª SÉRIE C",
+      "3ª SÉRIE A", "3ª SÉRIE B", "3ª SÉRIE C",
     ];
 
     selectTurma.innerHTML = '<option value="">Todas as turmas</option>';
@@ -1733,10 +1556,19 @@ function carregarSelectsEstudantes() {
 
   const selectEletiva = document.getElementById("filtroEletivaEstudante");
   if (selectEletiva) {
-    const eletivas =
-      state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+    // Remover duplicatas
+    const eletivasUnicas = [];
+    const codigosVistos = new Set();
+    (state.eletivas || []).forEach(e => {
+      if (!codigosVistos.has(e.codigo)) {
+        codigosVistos.add(e.codigo);
+        eletivasUnicas.push(e);
+      }
+    });
+    eletivasUnicas.sort((a, b) => a.nome.localeCompare(b.nome));
+    
     selectEletiva.innerHTML = '<option value="">Todas as eletivas</option>';
-    eletivas.forEach((e) => {
+    eletivasUnicas.forEach((e) => {
       selectEletiva.innerHTML += `<option value="${e.id}">${e.nome} (${e.codigo})</option>`;
     });
   }
@@ -1744,19 +1576,12 @@ function carregarSelectsEstudantes() {
   const selectTurmaModal = document.getElementById("selectTurmaEstudante");
   if (selectTurmaModal) {
     const turmas = CONFIG.turmas || [
-      "1ª SÉRIE A",
-      "1ª SÉRIE B",
-      "1ª SÉRIE C",
-      "2ª SÉRIE A",
-      "2ª SÉRIE B",
-      "2ª SÉRIE C",
-      "3ª SÉRIE A",
-      "3ª SÉRIE B",
-      "3ª SÉRIE C",
+      "1ª SÉRIE A", "1ª SÉRIE B", "1ª SÉRIE C",
+      "2ª SÉRIE A", "2ª SÉRIE B", "2ª SÉRIE C",
+      "3ª SÉRIE A", "3ª SÉRIE B", "3ª SÉRIE C",
     ];
 
-    selectTurmaModal.innerHTML =
-      '<option value="">Selecione uma turma</option>';
+    selectTurmaModal.innerHTML = '<option value="">Selecione uma turma</option>';
     turmas.forEach((t) => {
       selectTurmaModal.innerHTML += `<option value="${t}">${t}</option>`;
     });
@@ -1795,8 +1620,7 @@ window.limparFiltrosEstudantes = function () {
 };
 
 function estudanteTemEletivaNoTempo(estudanteId, tempo) {
-  const matriculas =
-    state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
+  const matriculas = state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
 
   for (const matricula of matriculas) {
     const eletiva = state.eletivas?.find((e) => e.id === matricula.eletivaId);
@@ -1816,17 +1640,17 @@ function estudanteEstaNaEletiva(estudanteId, eletivaId) {
   );
 }
 
+// ========== FUNÇÃO CORRIGIDA: getEletivasEstudante (retorna array sem duplicatas) ==========
 function getEletivasEstudante(estudanteId) {
-  const matriculas =
-    state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
+  const matriculas = state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
   const eletivas = [];
-
+  const eletivasVistas = new Set();
+  
   matriculas.forEach((m) => {
     const eletiva = state.eletivas?.find((e) => e.id === m.eletivaId);
-    if (eletiva) {
-      const professor =
-        state.professores?.find((p) => p.id === eletiva.professorId)?.nome ||
-        "Não atribuído";
+    if (eletiva && !eletivasVistas.has(eletiva.codigo)) {
+      eletivasVistas.add(eletiva.codigo);
+      const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
       const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
       eletivas.push({
         ...eletiva,
@@ -1840,8 +1664,7 @@ function getEletivasEstudante(estudanteId) {
 }
 
 window.filtrarEstudantes = function () {
-  const busca =
-    document.getElementById("buscaEstudante")?.value?.toLowerCase() || "";
+  const busca = document.getElementById("buscaEstudante")?.value?.toLowerCase() || "";
   const turma = document.getElementById("filtroTurmaEstudante")?.value;
   const eletivaId = document.getElementById("filtroEletivaEstudante")?.value;
 
@@ -1852,23 +1675,29 @@ window.filtrarEstudantes = function () {
   }
 
   if (eletivaId) {
-    estudantes = estudantes.filter((e) =>
-      estudanteEstaNaEletiva(e.id, eletivaId),
-    );
+    estudantes = estudantes.filter((e) => estudanteEstaNaEletiva(e.id, eletivaId));
   }
 
   if (filtroTempoEstudante !== "TODOS") {
-    estudantes = estudantes.filter((e) =>
-      estudanteTemEletivaNoTempo(e.id, filtroTempoEstudante),
-    );
+    estudantes = estudantes.filter((e) => estudanteTemEletivaNoTempo(e.id, filtroTempoEstudante));
   }
 
   if (busca) {
     estudantes = estudantes.filter(
-      (e) =>
-        e.nome?.toLowerCase().includes(busca) || e.codigoSige?.includes(busca),
+      (e) => e.nome?.toLowerCase().includes(busca) || e.codigoSige?.includes(busca)
     );
   }
+
+  // Remover duplicatas por ID
+  const estudantesUnicos = [];
+  const idsVistos = new Set();
+  estudantes.forEach(e => {
+    if (!idsVistos.has(e.id)) {
+      idsVistos.add(e.id);
+      estudantesUnicos.push(e);
+    }
+  });
+  estudantes = estudantesUnicos;
 
   estudantes.sort((a, b) => a.nome.localeCompare(b.nome));
 
@@ -1878,6 +1707,7 @@ window.filtrarEstudantes = function () {
   atualizarTabelaEstudantes();
 };
 
+// ========== FUNÇÃO CORRIGIDA: atualizarTabelaEstudantes (cada estudante aparece uma vez) ==========
 function atualizarTabelaEstudantes() {
   const tbody = document.getElementById("tabelaEstudantesBody");
   if (!tbody) return;
@@ -1885,18 +1715,13 @@ function atualizarTabelaEstudantes() {
   const totalEstudantes = estudantesFiltrados.length;
   const totalPaginas = Math.ceil(totalEstudantes / ITENS_POR_PAGINA);
 
-  document.getElementById("contadorEstudantes").textContent =
-    `(${totalEstudantes} estudantes encontrados)`;
-  document.getElementById("infoPaginaEstudantes").textContent =
-    `Página ${paginaAtualEstudantes} de ${totalPaginas || 1}`;
-  document.getElementById("btnPaginaAnterior").disabled =
-    paginaAtualEstudantes <= 1;
-  document.getElementById("btnPaginaProxima").disabled =
-    paginaAtualEstudantes >= totalPaginas;
+  document.getElementById("contadorEstudantes").textContent = `(${totalEstudantes} estudantes encontrados)`;
+  document.getElementById("infoPaginaEstudantes").textContent = `Página ${paginaAtualEstudantes} de ${totalPaginas || 1}`;
+  document.getElementById("btnPaginaAnterior").disabled = paginaAtualEstudantes <= 1;
+  document.getElementById("btnPaginaProxima").disabled = paginaAtualEstudantes >= totalPaginas;
 
   if (totalEstudantes === 0) {
-    tbody.innerHTML =
-      '}<td colspan="5" class="empty-state">Nenhum estudante encontrado</td>';
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum estudante encontrado</td></tr>';
     return;
   }
 
@@ -1908,7 +1733,7 @@ function atualizarTabelaEstudantes() {
 
   estudantesPagina.forEach((estudante) => {
     const eletivas = getEletivasEstudante(estudante.id);
-
+    
     let eletivasHTML = "";
     if (eletivas.length > 0) {
       eletivasHTML = eletivas.map((e) => `${e.nome} (${e.tempo})`).join(", ");
@@ -1918,21 +1743,21 @@ function atualizarTabelaEstudantes() {
 
     const row = document.createElement("tr");
     row.innerHTML = `
-        <td><strong>${escapeHtml(estudante.nome)}</strong></td>
-        <td>${escapeHtml(estudante.turmaOrigem)}</td>
-        <td>${escapeHtml(estudante.codigoSige)}</td>
-        <td>${eletivasHTML}</td>
-        <td>
-          <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante(${estudante.id})" title="Editar">
-            <i class="fas fa-edit"></i>
-          </button>
-          <button class="btn-secondary btn-small" onclick="abrirModalTrocarEletivaEstudante(${estudante.id})" title="Trocar eletiva">
-            <i class="fas fa-exchange-alt"></i>
-          </button>
-          <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante(${estudante.id})" title="Remover">
-            <i class="fas fa-trash"></i>
-          </button>
-        </td>
+      <td><strong>${escapeHtml(estudante.nome)}</strong></td>
+      <td>${escapeHtml(estudante.turmaOrigem)}</td>
+      <td>${escapeHtml(estudante.codigoSige)}</td>
+      <td>${eletivasHTML}</td>
+      <td>
+        <button class="btn-primary btn-small" onclick="abrirModalEditarEstudante(${estudante.id})" title="Editar">
+          <i class="fas fa-edit"></i>
+        </button>
+        <button class="btn-secondary btn-small" onclick="abrirModalTrocarEletivaEstudante(${estudante.id})" title="Trocar eletiva">
+          <i class="fas fa-exchange-alt"></i>
+        </button>
+        <button class="btn-danger btn-small" onclick="confirmarRemoverEstudante(${estudante.id})" title="Remover">
+          <i class="fas fa-trash"></i>
+        </button>
+      </td>
     `;
     tbody.appendChild(row);
   });
@@ -1959,7 +1784,16 @@ function carregarEletivasCheckbox(estudanteId = null) {
     ? (state.matriculas || []).filter(m => m.alunoId === estudanteId).map(m => m.eletivaId)
     : [];
 
-  const eletivas = state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  // Remover duplicatas de eletivas
+  const eletivasUnicas = [];
+  const codigosVistos = new Set();
+  (state.eletivas || []).forEach(e => {
+    if (!codigosVistos.has(e.codigo)) {
+      codigosVistos.add(e.codigo);
+      eletivasUnicas.push(e);
+    }
+  });
+  const eletivas = eletivasUnicas.sort((a, b) => a.nome.localeCompare(b.nome));
 
   const eletivasPorTempo = {};
   eletivas.forEach(e => {
@@ -2010,8 +1844,7 @@ function carregarEletivasCheckbox(estudanteId = null) {
 
 window.abrirModalAdicionarEstudante = function () {
   estudanteEmEdicao = null;
-  document.getElementById("modalEstudanteTitulo").textContent =
-    "➕ ADICIONAR ESTUDANTE";
+  document.getElementById("modalEstudanteTitulo").textContent = "➕ ADICIONAR ESTUDANTE";
   document.getElementById("estudanteNome").value = "";
   document.getElementById("estudanteSige").value = "";
   document.getElementById("estudanteSige").disabled = false;
@@ -2031,8 +1864,7 @@ window.abrirModalEditarEstudante = function (estudanteId) {
   }
 
   estudanteEmEdicao = estudante;
-  document.getElementById("modalEstudanteTitulo").textContent =
-    "✏️ EDITAR ESTUDANTE";
+  document.getElementById("modalEstudanteTitulo").textContent = "✏️ EDITAR ESTUDANTE";
   document.getElementById("estudanteNome").value = estudante.nome;
   document.getElementById("estudanteSige").value = estudante.codigoSige;
   document.getElementById("estudanteSige").disabled = true;
@@ -2081,6 +1913,7 @@ window.salvarEstudante = async function () {
         throw new Error("Estudante não encontrado");
       }
       
+      // Atualizar dados básicos
       state.alunos[index] = {
         ...state.alunos[index],
         nome: nome,
@@ -2091,45 +1924,14 @@ window.salvarEstudante = async function () {
         await window.FirebaseSync.salvarDadosFirebase("alunos", state.alunos[index], state.alunos[index].id);
       }
       
+      // Processar alterações nas matrículas
       const matriculasAtuais = state.matriculas.filter(m => m.alunoId === estudanteEmEdicao.id);
       const eletivasAtuais = matriculasAtuais.map(m => m.eletivaId);
       
       const idsParaAdicionar = eletivasSelecionadas.filter(id => !eletivasAtuais.includes(id));
       const idsParaRemover = eletivasAtuais.filter(id => !eletivasSelecionadas.includes(id));
       
-      console.log(`📝 Alterações nas matrículas: +${idsParaAdicionar.length} / -${idsParaRemover.length}`);
-      
-      if (window.FirebaseSync && window.FirebaseConfig?.firestore && (idsParaAdicionar.length > 0 || idsParaRemover.length > 0)) {
-        const db = window.FirebaseConfig.firestore;
-        const batch = db.batch();
-        
-        const matriculasParaRemover = matriculasAtuais.filter(m => idsParaRemover.includes(m.eletivaId));
-        matriculasParaRemover.forEach(mat => {
-          const matRef = db.collection("matriculas").doc(String(mat.id));
-          batch.delete(matRef);
-        });
-        
-        let nextId = (state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
-        
-        for (const eletivaId of idsParaAdicionar) {
-          const novaMatricula = {
-            id: nextId++,
-            eletivaId: eletivaId,
-            alunoId: estudanteEmEdicao.id,
-            tipoMatricula: "manual",
-            dataMatricula: new Date().toISOString().split("T")[0],
-            semestreId: "2026-1",
-          };
-          const matRef = db.collection("matriculas").doc();
-          batch.set(matRef, novaMatricula);
-        }
-        
-        if (batch._ops.length > 0) {
-          await batch.commit();
-          console.log(`✅ Batch de matrículas executado: ${batch._ops.length} operações`);
-        }
-      }
-      
+      // Atualizar estado local
       state.matriculas = state.matriculas.filter(m => !idsParaRemover.includes(m.eletivaId) || m.alunoId !== estudanteEmEdicao.id);
       
       let nextIdLocal = (state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
@@ -2142,6 +1944,35 @@ window.salvarEstudante = async function () {
           dataMatricula: new Date().toISOString().split("T")[0],
           semestreId: "2026-1",
         });
+      }
+      
+      // Atualizar Firebase
+      if (window.FirebaseSync && window.FirebaseConfig?.firestore && (idsParaAdicionar.length > 0 || idsParaRemover.length > 0)) {
+        const db = window.FirebaseConfig.firestore;
+        const batch = db.batch();
+        
+        const matriculasParaRemover = matriculasAtuais.filter(m => idsParaRemover.includes(m.eletivaId));
+        matriculasParaRemover.forEach(mat => {
+          const matRef = db.collection("matriculas").doc(String(mat.id));
+          batch.delete(matRef);
+        });
+        
+        for (const eletivaId of idsParaAdicionar) {
+          const novaMatricula = {
+            id: nextIdLocal++,
+            eletivaId: eletivaId,
+            alunoId: estudanteEmEdicao.id,
+            tipoMatricula: "manual",
+            dataMatricula: new Date().toISOString().split("T")[0],
+            semestreId: "2026-1",
+          };
+          const matRef = db.collection("matriculas").doc();
+          batch.set(matRef, novaMatricula);
+        }
+        
+        if (batch._ops.length > 0) {
+          await batch.commit();
+        }
       }
       
       salvarEstado();
@@ -2211,10 +2042,8 @@ window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
 
   estudanteParaTroca = estudante;
 
-  document.getElementById("modalTrocaEstudanteTitulo").textContent =
-    `🔄 TROCAR ELETIVA - ${estudante.nome}`;
-  document.getElementById("estudanteTrocaInfo").textContent =
-    `${estudante.nome} (SIGE: ${estudante.codigoSige})`;
+  document.getElementById("modalTrocaEstudanteTitulo").textContent = `🔄 TROCAR ELETIVA - ${estudante.nome}`;
+  document.getElementById("estudanteTrocaInfo").textContent = `${estudante.nome} (SIGE: ${estudante.codigoSige})`;
 
   const eletivasAtuais = getEletivasEstudante(estudante.id);
 
@@ -2230,17 +2059,23 @@ window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
 
   carregarEletivasDisponiveisTroca(estudante.id);
 
-  document
-    .getElementById("modalTrocarEletivaEstudante")
-    .classList.add("active");
+  document.getElementById("modalTrocarEletivaEstudante").classList.add("active");
 };
 
 function carregarEletivasDisponiveisTroca(estudanteId = null) {
   const container = document.getElementById("eletivasDisponiveisContainer");
   if (!container) return;
 
-  const eletivas =
-    state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+  // Remover duplicatas
+  const eletivasUnicas = [];
+  const codigosVistos = new Set();
+  (state.eletivas || []).forEach(e => {
+    if (!codigosVistos.has(e.codigo)) {
+      codigosVistos.add(e.codigo);
+      eletivasUnicas.push(e);
+    }
+  });
+  const eletivas = eletivasUnicas.sort((a, b) => a.nome.localeCompare(b.nome));
 
   const eletivasPorTempo = {};
   eletivas.forEach((e) => {
@@ -2259,11 +2094,8 @@ function carregarEletivasDisponiveisTroca(estudanteId = null) {
     html += `<div style="margin-top: 1rem;"><strong>TEMPO ${tempo}:</strong></div>`;
 
     eletivasDoTempo.forEach((e) => {
-      const professor =
-        state.professores?.find((p) => p.id === e.professorId)?.nome ||
-        "Não atribuído";
-      const matriculados =
-        state.matriculas?.filter((m) => m.eletivaId === e.id).length || 0;
+      const professor = state.professores?.find((p) => p.id === e.professorId)?.nome || "Não atribuído";
+      const matriculados = state.matriculas?.filter((m) => m.eletivaId === e.id).length || 0;
 
       html += `
         <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border-bottom: 1px solid var(--bg-light);">
@@ -2277,34 +2109,27 @@ function carregarEletivasDisponiveisTroca(estudanteId = null) {
   });
 
   if (eletivas.length === 0) {
-    html =
-      '<p style="color: var(--text-light);">Nenhuma eletiva cadastrada</p>';
+    html = '<p style="color: var(--text-light);">Nenhuma eletiva cadastrada</p>';
   }
 
   container.innerHTML = html;
 }
 
 window.fecharModalTrocarEletivaEstudante = function () {
-  document
-    .getElementById("modalTrocarEletivaEstudante")
-    .classList.remove("active");
+  document.getElementById("modalTrocarEletivaEstudante").classList.remove("active");
   estudanteParaTroca = null;
 };
 
 window.confirmarTrocaEletivaEstudante = async function () {
   if (!estudanteParaTroca) return;
 
-  const eletivaDestinoId = document.querySelector(
-    'input[name="eletivaDestino"]:checked',
-  )?.value;
+  const eletivaDestinoId = document.querySelector('input[name="eletivaDestino"]:checked')?.value;
   if (!eletivaDestinoId) {
     showToast("Selecione uma eletiva de destino", "error");
     return;
   }
 
-  const eletivaDestino = state.eletivas?.find(
-    (e) => e.id === parseInt(eletivaDestinoId),
-  );
+  const eletivaDestino = state.eletivas?.find((e) => e.id === parseInt(eletivaDestinoId));
   if (!eletivaDestino) return;
 
   mostrarLoader(true);
@@ -2323,19 +2148,12 @@ window.confirmarTrocaEletivaEstudante = async function () {
     state.matriculas.push(novaMatricula);
 
     if (window.FirebaseSync) {
-      await window.FirebaseSync.salvarDadosFirebase(
-        "matriculas",
-        novaMatricula,
-        novaMatricula.id,
-      );
+      await window.FirebaseSync.salvarDadosFirebase("matriculas", novaMatricula, novaMatricula.id);
     }
 
     salvarEstado();
 
-    showToast(
-      `Estudante adicionado à eletiva ${eletivaDestino.nome}!`,
-      "success",
-    );
+    showToast(`Estudante adicionado à eletiva ${eletivaDestino.nome}!`, "success");
 
     fecharModalTrocarEletivaEstudante();
     filtrarEstudantes();
@@ -2356,14 +2174,7 @@ window.confirmarRemoverEstudante = function (estudanteId) {
     return;
   }
 
-  const matriculas =
-    state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
-  const eletivas = matriculas
-    .map((m) => {
-      const e = state.eletivas?.find((el) => el.id === m.eletivaId);
-      return e?.nome || "Eletiva desconhecida";
-    })
-    .join(", ");
+  const matriculas = state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
 
   const confirmBody = document.getElementById("confirmBody");
   const confirmTitle = document.getElementById("confirmTitle");
@@ -2378,7 +2189,6 @@ window.confirmarRemoverEstudante = function (estudanteId) {
       <li>Manter os registros de frequência e notas já existentes</li>
       <li>O estudante não poderá mais ser vinculado a novas eletivas (a menos que seja adicionado novamente)</li>
     </ul>
-    ${matriculas.length > 0 ? `<p style="margin-top: 0.5rem; color: var(--warning);">Eletivas atuais: ${eletivas.substring(0, 100)}</p>` : ""}
   `;
 
   const originalOnClick = confirmBtn.onclick;
@@ -2397,13 +2207,9 @@ async function removerEstudante(estudanteId) {
   mostrarLoader(true);
 
   try {
-    const matriculasEstudante = state.matriculas.filter(
-      (m) => m.alunoId === estudanteId,
-    );
+    const matriculasEstudante = state.matriculas.filter((m) => m.alunoId === estudanteId);
     
-    state.matriculas = state.matriculas.filter(
-      (m) => m.alunoId !== estudanteId,
-    );
+    state.matriculas = state.matriculas.filter((m) => m.alunoId !== estudanteId);
     state.alunos = state.alunos.filter((a) => a.id !== estudanteId);
 
     salvarEstado();
@@ -2464,16 +2270,12 @@ window.imprimirListaEstudantes = function () {
 
     doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, {
-      align: "center",
-    });
+    doc.text("DIÁRIO DOS COMPONENTES CURRICULARES ELETIVAS", pageWidth / 2, y, { align: "center" });
     y += 8;
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, {
-      align: "center",
-    });
+    doc.text("EEMTI Filgueiras Lima - Inep: 23142804", pageWidth / 2, y, { align: "center" });
     y += 10;
 
     doc.setFontSize(14);
@@ -2482,8 +2284,7 @@ window.imprimirListaEstudantes = function () {
     y += 6;
 
     const filtros = [];
-    if (filtroTempoEstudante !== "TODOS")
-      filtros.push(`Tempo ${filtroTempoEstudante}`);
+    if (filtroTempoEstudante !== "TODOS") filtros.push(`Tempo ${filtroTempoEstudante}`);
     const turma = document.getElementById("filtroTurmaEstudante")?.value;
     if (turma) filtros.push(`Turma ${turma}`);
     const eletivaId = document.getElementById("filtroEletivaEstudante")?.value;
@@ -2495,9 +2296,7 @@ window.imprimirListaEstudantes = function () {
     if (filtros.length > 0) {
       doc.setFontSize(10);
       doc.setFont("helvetica", "italic");
-      doc.text(`Filtros aplicados: ${filtros.join(" | ")}`, pageWidth / 2, y, {
-        align: "center",
-      });
+      doc.text(`Filtros aplicados: ${filtros.join(" | ")}`, pageWidth / 2, y, { align: "center" });
       y += 6;
     }
 
@@ -2510,11 +2309,7 @@ window.imprimirListaEstudantes = function () {
     doc.text("NOME", margin, y);
     doc.text("TURMA", margin + colWidths[0], y);
     doc.text("SIGE", margin + colWidths[0] + colWidths[1], y);
-    doc.text(
-      "ELETIVAS",
-      margin + colWidths[0] + colWidths[1] + colWidths[2],
-      y,
-    );
+    doc.text("ELETIVAS", margin + colWidths[0] + colWidths[1] + colWidths[2], y);
 
     y += 5;
     doc.line(margin, y, pageWidth - margin, y);
@@ -2525,9 +2320,7 @@ window.imprimirListaEstudantes = function () {
 
     estudantesFiltrados.forEach((estudante) => {
       const eletivas = getEletivasEstudante(estudante.id);
-      const eletivasStr = eletivas
-        .map((e) => `${e.nome} (${e.tempo})`)
-        .join(", ");
+      const eletivasStr = eletivas.map((e) => `${e.nome} (${e.tempo})`).join(", ");
 
       if (y > 180) {
         doc.addPage();
@@ -2537,11 +2330,7 @@ window.imprimirListaEstudantes = function () {
       doc.text(estudante.nome, margin, y);
       doc.text(estudante.turmaOrigem, margin + colWidths[0], y);
       doc.text(estudante.codigoSige, margin + colWidths[0] + colWidths[1], y);
-      doc.text(
-        eletivasStr,
-        margin + colWidths[0] + colWidths[1] + colWidths[2],
-        y,
-      );
+      doc.text(eletivasStr, margin + colWidths[0] + colWidths[1] + colWidths[2], y);
 
       y += 6;
     });
@@ -2580,80 +2369,51 @@ function atualizarStatusDados() {
   const dados = state.dados || {};
   const conflitos = state.conflitos || { pendentes: [] };
 
-  document.getElementById("ultimaImportacao").textContent =
-    metadata.ultimaImportacao
-      ? new Date(metadata.ultimaImportacao).toLocaleString()
-      : "Nunca";
-  document.getElementById("totalAlunosDados").textContent =
-    estatisticas.alunos || state.alunos?.length || 0;
-  document.getElementById("totalProfessoresDados").textContent =
-    estatisticas.professores || state.professores?.length || 0;
-  document.getElementById("totalFixas").textContent =
-    dados.eletivasFixas?.length ||
-    state.eletivas?.filter((e) => e.tipo === "FIXA").length ||
-    0;
-  document.getElementById("totalMistas").textContent =
-    dados.eletivasMistas?.length ||
-    state.eletivas?.filter((e) => e.tipo === "MISTA").length ||
-    0;
-  document.getElementById("totalConflitos").textContent =
-    conflitos.pendentes?.length || 0;
+  document.getElementById("ultimaImportacao").textContent = metadata.ultimaImportacao
+    ? new Date(metadata.ultimaImportacao).toLocaleString()
+    : "Nunca";
+  document.getElementById("totalAlunosDados").textContent = estatisticas.alunos || state.alunos?.length || 0;
+  document.getElementById("totalProfessoresDados").textContent = estatisticas.professores || state.professores?.length || 0;
+  
+  // Remover duplicatas para contagem
+  const eletivasUnicas = [];
+  const codigosVistos = new Set();
+  (state.eletivas || []).forEach(e => {
+    if (!codigosVistos.has(e.codigo)) {
+      codigosVistos.add(e.codigo);
+      eletivasUnicas.push(e);
+    }
+  });
+  
+  document.getElementById("totalFixas").textContent = eletivasUnicas.filter((e) => e.tipo === "FIXA").length;
+  document.getElementById("totalMistas").textContent = eletivasUnicas.filter((e) => e.tipo === "MISTA").length;
+  document.getElementById("totalConflitos").textContent = conflitos.pendentes?.length || 0;
 
   const lib = state.liberacaoNotas || liberacaoNotasPadrao;
-  document.getElementById("semestreAtual").textContent =
-    lib.semestre || "1º/2026";
-  document.getElementById("periodoLiberacao").textContent =
-    `${lib.periodo?.inicio ? new Date(lib.periodo.inicio).toLocaleDateString() : "10/03/2026"} a ${lib.periodo?.fim ? new Date(lib.periodo.fim).toLocaleDateString() : "20/03/2026"}`;
+  document.getElementById("semestreAtual").textContent = lib.semestre || "1º/2026";
+  document.getElementById("periodoLiberacao").textContent = `${lib.periodo?.inicio ? new Date(lib.periodo.inicio).toLocaleDateString() : "10/03/2026"} a ${lib.periodo?.fim ? new Date(lib.periodo.fim).toLocaleDateString() : "20/03/2026"}`;
 
-  const totalEletivas = state.eletivas?.length || 0;
+  const totalEletivas = eletivasUnicas.length;
   const liberadas = lib.eletivasLiberadas?.length || 0;
-  document.getElementById("eletivasLiberadas").textContent =
-    `${liberadas} de ${totalEletivas}`;
+  document.getElementById("eletivasLiberadas").textContent = `${liberadas} de ${totalEletivas}`;
 
   const secaoChoques = document.getElementById("secaoChoques");
   const choquesResolvidos = document.getElementById("choquesResolvidos");
   const choquesPendentes = document.getElementById("choquesPendentes");
   const btnVerConflitos = document.getElementById("btnVerConflitos");
 
-  if (
-    conflitos.resolvidosAutomaticamente?.length > 0 ||
-    conflitos.pendentes?.length > 0
-  ) {
+  if (conflitos.resolvidosAutomaticamente?.length > 0 || conflitos.pendentes?.length > 0) {
     secaoChoques.style.display = "block";
-
     if (conflitos.resolvidosAutomaticamente?.length > 0) {
-      choquesResolvidos.innerHTML = `
-        <p><strong>✅ ${conflitos.resolvidosAutomaticamente.length} conflitos resolvidos automaticamente:</strong></p>
-        <ul style="margin-left: 1.5rem;">
-          ${conflitos.resolvidosAutomaticamente
-            .slice(0, 5)
-            .map(
-              (c) => `
-            <li>${c.motivo || `Aluno removido de ${c.detalhes?.removidos?.length || 1} fixa(s) (prioridade mista) - Tempo ${c.tempo}`}</li>
-          `,
-            )
-            .join("")}
-          ${conflitos.resolvidosAutomaticamente.length > 5 ? `<li>... e mais ${conflitos.resolvidosAutomaticamente.length - 5}</li>` : ""}
-        </ul>
-      `;
+      choquesResolvidos.innerHTML = `<p><strong>✅ ${conflitos.resolvidosAutomaticamente.length} conflitos resolvidos automaticamente</strong></p>`;
       choquesResolvidos.style.display = "block";
     } else {
       choquesResolvidos.style.display = "none";
     }
-
     if (conflitos.pendentes?.length > 0) {
       const fixas = conflitos.pendentes.filter((c) => c.tipo === "fixa").length;
-      const mistas = conflitos.pendentes.filter(
-        (c) => c.tipo === "mista",
-      ).length;
-
-      choquesPendentes.innerHTML = `
-        <p><strong>⚠️ ${conflitos.pendentes.length} conflitos requerem atenção:</strong></p>
-        <ul style="margin-left: 1.5rem;">
-          ${fixas > 0 ? `<li>${fixas} conflitos entre eletivas FIXAS</li>` : ""}
-          ${mistas > 0 ? `<li>${mistas} conflitos entre eletivas MISTAS</li>` : ""}
-        </ul>
-      `;
+      const mistas = conflitos.pendentes.filter((c) => c.tipo === "mista").length;
+      choquesPendentes.innerHTML = `<p><strong>⚠️ ${conflitos.pendentes.length} conflitos requerem atenção:</strong></p><ul><li>${fixas} conflitos entre eletivas FIXAS</li><li>${mistas} conflitos entre eletivas MISTAS</li></ul>`;
       choquesPendentes.style.display = "block";
       btnVerConflitos.style.display = "inline-block";
     } else {
@@ -2678,9 +2438,9 @@ function carregarTabelaTempos() {
     const tempoConfig = config[tempo] || { diaSemana: "?", series: [] };
 
     row.innerHTML = `
-        <td><strong>${tempo}</strong></td>
-        <td>${tempoConfig.diaSemana || "?"}</td>
-        <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
+      <td><strong>${tempo}</strong></td>
+      <td>${tempoConfig.diaSemana || "?"}</td>
+      <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
     `;
 
     tbody.appendChild(row);
@@ -2692,9 +2452,7 @@ function carregarListaBackups() {
   if (!container) return;
 
   try {
-    const backupsSalvos = JSON.parse(
-      localStorage.getItem("sage_backups") || "[]",
-    );
+    const backupsSalvos = JSON.parse(localStorage.getItem("sage_backups") || "[]");
     backups = backupsSalvos;
   } catch (e) {
     backups = [];
@@ -2705,24 +2463,15 @@ function carregarListaBackups() {
     return;
   }
 
-  container.innerHTML = backups
-    .sort((a, b) => new Date(b.data) - new Date(a.data))
-    .map(
-      (backup) => `
+  container.innerHTML = backups.sort((a, b) => new Date(b.data) - new Date(a.data)).map((backup) => `
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--bg-gray);">
       <div>
         <strong>${backup.nome}</strong>
-        <span style="font-size: 0.85rem; color: var(--text-light); margin-left: 0.5rem;">
-          ${new Date(backup.data).toLocaleString()}
-        </span>
+        <span style="font-size: 0.85rem; color: var(--text-light); margin-left: 0.5rem;">${new Date(backup.data).toLocaleString()}</span>
       </div>
-      <button class="btn-secondary btn-small" onclick="restaurarBackup('${backup.id}')">
-        <i class="fas fa-undo"></i> Restaurar
-      </button>
+      <button class="btn-secondary btn-small" onclick="restaurarBackup('${backup.id}')"><i class="fas fa-undo"></i> Restaurar</button>
     </div>
-  `,
-    )
-    .join("");
+  `).join("");
 }
 
 // ========== FUNÇÕES DE IMPORTAÇÃO SAGE ==========
@@ -2770,70 +2519,36 @@ window.importarJSONSage = async function () {
     }));
 
     const todasEletivas = [...eletivasFixas, ...eletivasMistas];
-
     const configTempos = dadosAtuais.configTempos;
-    const resultadoChoques = resolverChoquesHorario(
-      todasEletivas,
-      dadosNovos.dados.alunos || [],
-      configTempos,
-    );
-
-    const eletivasProcessadas = aplicarResolucaoAutomatica(
-      todasEletivas,
-      resultadoChoques.remocoesAutomaticas,
-    );
+    const resultadoChoques = resolverChoquesHorario(todasEletivas, dadosNovos.dados.alunos || [], configTempos);
+    const eletivasProcessadas = aplicarResolucaoAutomatica(todasEletivas, resultadoChoques.remocoesAutomaticas);
 
     const estatisticas = {
       alunos: dadosNovos.estatisticas?.alunos || 0,
       professores: dadosNovos.estatisticas?.professores || 0,
-      eletivasFixas: eletivasProcessadas.filter((e) => e.tipo === "FIXA")
-        .length,
-      eletivasMistas: eletivasProcessadas.filter((e) => e.tipo === "MISTA")
-        .length,
+      eletivasFixas: eletivasProcessadas.filter((e) => e.tipo === "FIXA").length,
+      eletivasMistas: eletivasProcessadas.filter((e) => e.tipo === "MISTA").length,
     };
 
     const dadosMesclados = {
-      metadata: {
-        ...dadosAtuais.metadata,
-        ultimaImportacao: new Date().toISOString(),
-        ultimaSincronizacao: dadosNovos.timestamp || new Date().toISOString(),
-        versao: "2.0",
-        fonte: "SAGE ELETIVAS + Configurações Manuais",
-      },
-      dados: {
-        alunos: dadosNovos.dados.alunos || [],
-        professores: dadosNovos.dados.professores || [],
-        eletivasFixas: eletivasProcessadas.filter((e) => e.tipo === "FIXA"),
-        eletivasMistas: eletivasProcessadas.filter((e) => e.tipo === "MISTA"),
-      },
+      metadata: { ...dadosAtuais.metadata, ultimaImportacao: new Date().toISOString(), ultimaSincronizacao: dadosNovos.timestamp || new Date().toISOString(), versao: "2.0", fonte: "SAGE ELETIVAS + Configurações Manuais" },
+      dados: { alunos: dadosNovos.dados.alunos || [], professores: dadosNovos.dados.professores || [], eletivasFixas: eletivasProcessadas.filter((e) => e.tipo === "FIXA"), eletivasMistas: eletivasProcessadas.filter((e) => e.tipo === "MISTA") },
       configTempos: dadosAtuais.configTempos,
       liberacaoNotas: dadosAtuais.liberacaoNotas,
       estatisticas: estatisticas,
-      conflitos: {
-        resolvidosAutomaticamente: resultadoChoques.remocoesAutomaticas,
-        pendentes: resultadoChoques.conflitosPendentes,
-      },
+      conflitos: { resolvidosAutomaticamente: resultadoChoques.remocoesAutomaticas, pendentes: resultadoChoques.conflitosPendentes },
     };
 
-    dadosMesclados.eletivas = [
-      ...dadosMesclados.dados.eletivasFixas,
-      ...dadosMesclados.dados.eletivasMistas,
-    ];
+    dadosMesclados.eletivas = [...dadosMesclados.dados.eletivasFixas, ...dadosMesclados.dados.eletivasMistas];
 
     Object.assign(state, dadosMesclados);
     salvarEstado();
 
     if (window.FirebaseSync) {
-      setTimeout(() => {
-        window.FirebaseSync.salvarDadosFirebase(
-          "dados_completos",
-          dadosMesclados,
-        );
-      }, 100);
+      setTimeout(() => { window.FirebaseSync.salvarDadosFirebase("dados_completos", dadosMesclados); }, 100);
     }
 
     carregarAbaDados();
-
     if (typeof carregarEletivas === "function") carregarEletivas();
     if (typeof carregarProfessores === "function") carregarProfessores();
     if (typeof filtrarEstudantes === "function") filtrarEstudantes();
@@ -2841,24 +2556,9 @@ window.importarJSONSage = async function () {
     mostrarLoader(false);
 
     if (resultadoChoques.conflitosPendentes.length > 0) {
-      const fixas = resultadoChoques.conflitosPendentes.filter(
-        (c) => c.tipo === "fixa",
-      ).length;
-      const mistas = resultadoChoques.conflitosPendentes.filter(
-        (c) => c.tipo === "mista",
-      ).length;
-
-      showToast(
-        `⚠️ Importação concluída com ${resultadoChoques.conflitosPendentes.length} conflitos pendentes.\n` +
-          `${resultadoChoques.remocoesAutomaticas.length} conflitos resolvidos automaticamente (MISTA prioritária).`,
-        "warning",
-      );
+      showToast(`⚠️ Importação concluída com ${resultadoChoques.conflitosPendentes.length} conflitos pendentes.\n${resultadoChoques.remocoesAutomaticas.length} conflitos resolvidos automaticamente.`, "warning");
     } else {
-      showToast(
-        `✅ Dados importados com sucesso!\n` +
-          `${resultadoChoques.remocoesAutomaticas.length} conflitos resolvidos automaticamente.`,
-        "success",
-      );
+      showToast(`✅ Dados importados com sucesso!\n${resultadoChoques.remocoesAutomaticas.length} conflitos resolvidos automaticamente.`, "success");
     }
 
     document.getElementById("jsonInput").value = "";
@@ -2871,864 +2571,313 @@ window.importarJSONSage = async function () {
 
 function validarEstruturaSAGE(dados) {
   const erros = [];
-
   if (!dados.success) erros.push("Campo 'success' ausente ou false");
   if (!dados.timestamp) erros.push("Campo 'timestamp' ausente");
   if (!dados.estatisticas) erros.push("Campo 'estatisticas' ausente");
   if (!dados.dados) erros.push("Campo 'dados' ausente");
-
   if (dados.estatisticas) {
-    if (typeof dados.estatisticas.alunos !== "number")
-      erros.push("estatisticas.alunos deve ser número");
-    if (typeof dados.estatisticas.professores !== "number")
-      erros.push("estatisticas.professores deve ser número");
+    if (typeof dados.estatisticas.alunos !== "number") erros.push("estatisticas.alunos deve ser número");
+    if (typeof dados.estatisticas.professores !== "number") erros.push("estatisticas.professores deve ser número");
   }
-
   if (dados.dados) {
-    if (!Array.isArray(dados.dados.alunos))
-      erros.push("dados.alunos deve ser um array");
-    if (!Array.isArray(dados.dados.professores))
-      erros.push("dados.professores deve ser um array");
-    if (!Array.isArray(dados.dados.eletivasFixas))
-      erros.push("dados.eletivasFixas deve ser um array");
-    if (!Array.isArray(dados.dados.eletivasMistas))
-      erros.push("dados.eletivasMistas deve ser um array");
+    if (!Array.isArray(dados.dados.alunos)) erros.push("dados.alunos deve ser um array");
+    if (!Array.isArray(dados.dados.professores)) erros.push("dados.professores deve ser um array");
+    if (!Array.isArray(dados.dados.eletivasFixas)) erros.push("dados.eletivasFixas deve ser um array");
+    if (!Array.isArray(dados.dados.eletivasMistas)) erros.push("dados.eletivasMistas deve ser um array");
   }
-
   return erros;
 }
 
 function determinarTempo(horarioInicio, configTempos) {
   if (!horarioInicio) return "T1";
-
   const hora = horarioInicio.split(":")[0];
-  const mapaHorario = {
-    "07": "T1",
-    "08": "T1",
-    13: "T3",
-    14: "T2",
-    15: "T4",
-    16: "T5",
-  };
-
+  const mapaHorario = { "07": "T1", "08": "T1", 13: "T3", 14: "T2", 15: "T4", 16: "T5" };
   return mapaHorario[hora] || "T1";
 }
 
 function resolverChoquesHorario(eletivas, alunos, configTempos) {
   console.log("🔍 Resolvendo choques de horário (MISTA prioritária)...");
-
-  const eletivasComTempo = eletivas.map((e) => ({
-    ...e,
-    tempo: determinarTempo(
-      e.horarioInicio || e.horario?.split("-")[0],
-      configTempos,
-    ),
-  }));
-
+  const eletivasComTempo = eletivas.map((e) => ({ ...e, tempo: determinarTempo(e.horarioInicio || e.horario?.split("-")[0], configTempos) }));
   const eletivasPorTempo = {};
-  eletivasComTempo.forEach((e) => {
-    if (!eletivasPorTempo[e.tempo]) eletivasPorTempo[e.tempo] = [];
-    eletivasPorTempo[e.tempo].push(e);
-  });
-
+  eletivasComTempo.forEach((e) => { if (!eletivasPorTempo[e.tempo]) eletivasPorTempo[e.tempo] = []; eletivasPorTempo[e.tempo].push(e); });
   const remocoesAutomaticas = [];
   const conflitosPendentes = [];
-
   Object.entries(eletivasPorTempo).forEach(([tempo, eletivasDoTempo]) => {
     const alunoEletivas = {};
-
     eletivasDoTempo.forEach((eletiva) => {
       const alunosEletiva = eletiva.alunos || [];
-
       alunosEletiva.forEach((alunoRef) => {
-        const alunoId =
-          typeof alunoRef === "object"
-            ? alunoRef.id || alunoRef.sige
-            : alunoRef;
-
+        const alunoId = typeof alunoRef === "object" ? alunoRef.id || alunoRef.sige : alunoRef;
         if (!alunoEletivas[alunoId]) alunoEletivas[alunoId] = [];
-        alunoEletivas[alunoId].push({
-          eletivaId: eletiva.codigo || eletiva.id,
-          tipo: eletiva.tipo,
-          nome: eletiva.nome,
-          eletivaObj: eletiva,
-        });
+        alunoEletivas[alunoId].push({ eletivaId: eletiva.codigo || eletiva.id, tipo: eletiva.tipo, nome: eletiva.nome, eletivaObj: eletiva });
       });
     });
-
     Object.entries(alunoEletivas).forEach(([alunoId, eletivasDoAluno]) => {
       if (eletivasDoAluno.length <= 1) return;
-
       const fixas = eletivasDoAluno.filter((e) => e.tipo === "FIXA");
       const mistas = eletivasDoAluno.filter((e) => e.tipo === "MISTA");
-
       if (mistas.length > 0 && fixas.length > 0) {
         const fixasRemover = fixas;
-
-        remocoesAutomaticas.push({
-          alunoId,
-          tempo,
-          motivo: `Prioridade MISTA sobre FIXA (aluno removido de ${fixasRemover.length} fixa(s) e mantido em ${mistas.length} mista(s))`,
-          acao: `Removido de ${fixasRemover.length} fixa(s)`,
-          detalhes: {
-            mantidas: mistas.map((m) => ({
-              nome: m.nome,
-              eletivaId: m.eletivaId,
-            })),
-            removidos: fixasRemover.map((f) => ({
-              nome: f.nome,
-              eletivaId: f.eletivaId,
-            })),
-          },
-        });
-
-        console.log(
-          `✅ Conflito resolvido: Aluno ${alunoId} - Mantido em ${mistas.length} mista(s), removido de ${fixasRemover.length} fixa(s)`,
-        );
+        remocoesAutomaticas.push({ alunoId, tempo, motivo: `Prioridade MISTA sobre FIXA (aluno removido de ${fixasRemover.length} fixa(s) e mantido em ${mistas.length} mista(s))`, acao: `Removido de ${fixasRemover.length} fixa(s)`, detalhes: { mantidas: mistas.map((m) => ({ nome: m.nome, eletivaId: m.eletivaId })), removidos: fixasRemover.map((f) => ({ nome: f.nome, eletivaId: f.eletivaId })) } });
       } else if (fixas.length > 1 && mistas.length === 0) {
-        conflitosPendentes.push({
-          alunoId,
-          tempo,
-          tipo: "fixa",
-          eletivas: fixas.map((f) => ({
-            nome: f.nome,
-            eletivaId: f.eletivaId,
-          })),
-          gravidade: "alta",
-          descricao: `Aluno está em ${fixas.length} eletivas FIXAS no mesmo tempo`,
-        });
+        conflitosPendentes.push({ alunoId, tempo, tipo: "fixa", eletivas: fixas.map((f) => ({ nome: f.nome, eletivaId: f.eletivaId })), gravidade: "alta", descricao: `Aluno está em ${fixas.length} eletivas FIXAS no mesmo tempo` });
       } else if (mistas.length > 1 && fixas.length === 0) {
-        conflitosPendentes.push({
-          alunoId,
-          tempo,
-          tipo: "mista",
-          eletivas: mistas.map((m) => ({
-            nome: m.nome,
-            eletivaId: m.eletivaId,
-          })),
-          gravidade: "media",
-          descricao: `Aluno está em ${mistas.length} eletivas MISTAS no mesmo tempo`,
-        });
+        conflitosPendentes.push({ alunoId, tempo, tipo: "mista", eletivas: mistas.map((m) => ({ nome: m.nome, eletivaId: m.eletivaId })), gravidade: "media", descricao: `Aluno está em ${mistas.length} eletivas MISTAS no mesmo tempo` });
       }
     });
   });
-
-  return {
-    remocoesAutomaticas,
-    conflitosPendentes,
-  };
+  return { remocoesAutomaticas, conflitosPendentes };
 }
 
 function aplicarResolucaoAutomatica(eletivas, remocoesAutomaticas) {
   const eletivasProcessadas = JSON.parse(JSON.stringify(eletivas));
-
   remocoesAutomaticas.forEach((remocao) => {
     remocao.detalhes.removidos.forEach((item) => {
-      const eletiva = eletivasProcessadas.find(
-        (el) => el.codigo === item.eletivaId || el.id === item.eletivaId,
-      );
-
+      const eletiva = eletivasProcessadas.find((el) => el.codigo === item.eletivaId || el.id === item.eletivaId);
       if (eletiva && eletiva.alunos) {
-        eletiva.alunos = eletiva.alunos.filter((ref) => {
-          const alunoId = typeof ref === "object" ? ref.id || ref.sige : ref;
-          return alunoId !== remocao.alunoId;
-        });
+        eletiva.alunos = eletiva.alunos.filter((ref) => { const alunoId = typeof ref === "object" ? ref.id || ref.sige : ref; return alunoId !== remocao.alunoId; });
       }
     });
   });
-
   return eletivasProcessadas;
 }
 
 // ========== FUNÇÕES DE BACKUP ==========
 async function criarBackupAutomatico(nome) {
-  const backup = {
-    id: `backup_${Date.now()}`,
-    nome: nome,
-    data: new Date().toISOString(),
-    dados: JSON.parse(JSON.stringify(state)),
-  };
-
+  const backup = { id: `backup_${Date.now()}`, nome: nome, data: new Date().toISOString(), dados: JSON.parse(JSON.stringify(state)) };
   backups.push(backup);
-
-  if (backups.length > 10) {
-    backups = backups.slice(-10);
-  }
-
+  if (backups.length > 10) backups = backups.slice(-10);
   localStorage.setItem("sage_backups", JSON.stringify(backups));
 }
 
 window.criarBackup = async function () {
-  const nome = prompt(
-    "Digite um nome para o backup:",
-    `backup_${new Date().toLocaleDateString()}`,
-  );
+  const nome = prompt("Digite um nome para o backup:", `backup_${new Date().toLocaleDateString()}`);
   if (!nome) return;
-
   mostrarLoader(true);
-
   try {
     await criarBackupAutomatico(nome);
     carregarListaBackups();
     showToast("Backup criado com sucesso!", "success");
-  } catch (error) {
-    showToast("Erro ao criar backup", "error");
-  } finally {
-    mostrarLoader(false);
-  }
+  } catch (error) { showToast("Erro ao criar backup", "error"); } finally { mostrarLoader(false); }
 };
 
 window.restaurarBackup = function (backupId) {
   const backup = backups.find((b) => b.id === backupId);
   if (!backup) return;
-
-  const confirmBody = document.getElementById("confirmBody");
-  const confirmTitle = document.getElementById("confirmTitle");
-  const confirmBtn = document.getElementById("confirmActionBtn");
-
+  const confirmBody = document.getElementById("confirmBody"), confirmTitle = document.getElementById("confirmTitle"), confirmBtn = document.getElementById("confirmActionBtn");
   confirmTitle.textContent = "⚠️ RESTAURAR BACKUP";
-  confirmBody.innerHTML = `
-    <p>Tem certeza que deseja restaurar o backup <strong>${backup.nome}</strong>?</p>
-    <p style="margin-top: 1rem; color: var(--danger);">Esta ação irá sobrescrever todos os dados atuais!</p>
-  `;
-
+  confirmBody.innerHTML = `<p>Tem certeza que deseja restaurar o backup <strong>${backup.nome}</strong>?</p><p style="margin-top: 1rem; color: var(--danger);">Esta ação irá sobrescrever todos os dados atuais!</p>`;
   const originalOnClick = confirmBtn.onclick;
-  confirmBtn.onclick = function () {
-    executarRestauracao(backup);
-    fecharModalConfirmacao();
-    setTimeout(() => {
-      confirmBtn.onclick = originalOnClick;
-    }, 100);
-  };
-
+  confirmBtn.onclick = function () { executarRestauracao(backup); fecharModalConfirmacao(); setTimeout(() => { confirmBtn.onclick = originalOnClick; }, 100); };
   document.getElementById("modalConfirmacao").classList.add("active");
 };
 
 async function executarRestauracao(backup) {
   mostrarLoader(true);
-
   try {
     Object.assign(state, backup.dados);
     salvarEstado();
-
-    if (window.FirebaseSync) {
-      await window.FirebaseSync.salvarDadosFirebase("dados_completos", state);
-    }
-
+    if (window.FirebaseSync) await window.FirebaseSync.salvarDadosFirebase("dados_completos", state);
     carregarAbaDados();
     if (typeof carregarEletivas === "function") carregarEletivas();
     if (typeof carregarProfessores === "function") carregarProfessores();
     if (typeof filtrarEstudantes === "function") filtrarEstudantes();
-
     showToast("Backup restaurado com sucesso!", "success");
-  } catch (error) {
-    showToast("Erro ao restaurar backup", "error");
-  } finally {
-    mostrarLoader(false);
-  }
+  } catch (error) { showToast("Erro ao restaurar backup", "error"); } finally { mostrarLoader(false); }
 }
 
 // ========== MODAL DE EDIÇÃO DE TEMPOS ==========
 window.abrirModalEditarTempos = function () {
   console.log("⚙️ Abrindo modal de edição de tempos");
-
   const container = document.getElementById("temposEditContainer");
   if (!container) return;
-
   const config = state.configTempos || configTemposPadrao;
-
   let html = "";
-  const dias = [
-    "SEGUNDA",
-    "TERÇA",
-    "QUARTA",
-    "QUINTA",
-    "SEXTA",
-    "SÁBADO",
-    "DOMINGO",
-  ];
-
+  const dias = ["SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA", "SÁBADO", "DOMINGO"];
   ["T1", "T2", "T3", "T4", "T5"].forEach((tempo) => {
-    const tempoConfig = config[tempo] || {
-      diaSemana: "SEGUNDA",
-      series: ["1ª", "2ª", "3ª"],
-    };
-
-    html += `
-      <div class="tempo-edit-item" style="
-        display: flex;
-        gap: 1rem;
-        align-items: flex-start;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        background: var(--bg-light);
-        border-radius: 8px;
-        border-left: 4px solid var(--primary);
-      ">
-        <div class="tempo-label" style="min-width: 50px; font-weight: bold; color: var(--primary);">
-          ${tempo}
-        </div>
-        
-        <div class="tempo-dia" style="min-width: 150px;">
-          <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Dia da semana:</label>
-          <select id="tempo_dia_${tempo}" class="semestre-selector" style="width: 100%;">
-            ${dias.map((d) => `<option value="${d}" ${tempoConfig.diaSemana?.toUpperCase() === d ? "selected" : ""}>${d}-FEIRA</option>`).join("")}
-          </select>
-        </div>
-        
-        <div class="tempo-series" style="flex: 1;">
-          <label style="display: block; font-size: 0.85rem; margin-bottom: 0.3rem;">Séries participantes:</label>
-          <div style="display: flex; gap: 1rem;">
-            ${["1ª", "2ª", "3ª"]
-              .map(
-                (serie) => `
-              <label style="display: flex; align-items: center; gap: 0.3rem;">
-                <input type="checkbox" id="tempo_${tempo}_serie_${serie}" value="${serie}" 
-                  ${(tempoConfig.series || []).includes(serie) ? "checked" : ""}>
-                ${serie} SÉRIE
-              </label>
-            `,
-              )
-              .join("")}
-          </div>
-        </div>
-      </div>
-    `;
+    const tempoConfig = config[tempo] || { diaSemana: "SEGUNDA", series: ["1ª", "2ª", "3ª"] };
+    html += `<div class="tempo-edit-item"><div class="tempo-label">${tempo}</div><div class="tempo-dia"><label>Dia da semana:</label><select id="tempo_dia_${tempo}" class="semestre-selector">${dias.map((d) => `<option value="${d}" ${tempoConfig.diaSemana?.toUpperCase() === d ? "selected" : ""}>${d}-FEIRA</option>`).join("")}</select></div><div class="tempo-series"><label>Séries participantes:</label><div style="display: flex; gap: 1rem;">${["1ª", "2ª", "3ª"].map((serie) => `<label><input type="checkbox" id="tempo_${tempo}_serie_${serie}" value="${serie}" ${(tempoConfig.series || []).includes(serie) ? "checked" : ""}> ${serie} SÉRIE</label>`).join("")}</div></div></div>`;
   });
-
   container.innerHTML = html;
-
   document.getElementById("modalEditarTempos").classList.add("active");
 };
 
-window.fecharModalEditarTempos = function () {
-  document.getElementById("modalEditarTempos").classList.remove("active");
-};
+window.fecharModalEditarTempos = function () { document.getElementById("modalEditarTempos").classList.remove("active"); };
 
 window.salvarConfigTempos = async function () {
   mostrarLoader(true);
-
   try {
-    const novaConfig = {};
-    const diasUsados = new Set();
-    const erros = [];
-
+    const novaConfig = {}, diasUsados = new Set(), erros = [];
     ["T1", "T2", "T3", "T4", "T5"].forEach((tempo) => {
       const diaSelect = document.getElementById(`tempo_dia_${tempo}`);
       if (!diaSelect) return;
-
       const dia = diaSelect.value;
-
-      if (diasUsados.has(dia)) {
-        erros.push(`Tempo ${tempo}: dia ${dia} já utilizado por outro tempo`);
-      } else {
-        diasUsados.add(dia);
-      }
-
+      if (diasUsados.has(dia)) erros.push(`Tempo ${tempo}: dia ${dia} já utilizado por outro tempo`);
+      else diasUsados.add(dia);
       const series = [];
-      ["1ª", "2ª", "3ª"].forEach((serie) => {
-        const checkbox = document.getElementById(
-          `tempo_${tempo}_serie_${serie}`,
-        );
-        if (checkbox && checkbox.checked) {
-          series.push(serie);
-        }
-      });
-
-      if (series.length === 0) {
-        erros.push(`Tempo ${tempo}: selecione pelo menos uma série`);
-      }
-
-      novaConfig[tempo] = {
-        diaSemana: dia,
-        series: series,
-      };
+      ["1ª", "2ª", "3ª"].forEach((serie) => { const checkbox = document.getElementById(`tempo_${tempo}_serie_${serie}`); if (checkbox && checkbox.checked) series.push(serie); });
+      if (series.length === 0) erros.push(`Tempo ${tempo}: selecione pelo menos uma série`);
+      novaConfig[tempo] = { diaSemana: dia, series: series };
     });
-
-    if (erros.length > 0) {
-      showToast("Erros na configuração:\n" + erros.join("\n"), "error");
-      mostrarLoader(false);
-      return;
-    }
-
-    state.configTempos = novaConfig;
-    salvarEstado();
-
-    if (window.FirebaseSync) {
-      await window.FirebaseSync.salvarDadosFirebase(
-        "config_tempos",
-        novaConfig,
-      );
-    }
-
+    if (erros.length > 0) { showToast("Erros na configuração:\n" + erros.join("\n"), "error"); mostrarLoader(false); return; }
+    state.configTempos = novaConfig; salvarEstado();
+    if (window.FirebaseSync) await window.FirebaseSync.salvarDadosFirebase("config_tempos", novaConfig);
     carregarTabelaTempos();
-
     showToast("✅ Configuração dos tempos salva com sucesso!", "success");
     fecharModalEditarTempos();
-  } catch (error) {
-    console.error("Erro ao salvar configuração:", error);
-    showToast("Erro ao salvar configuração", "error");
-  } finally {
-    mostrarLoader(false);
-  }
+  } catch (error) { console.error("Erro ao salvar configuração:", error); showToast("Erro ao salvar configuração", "error"); } finally { mostrarLoader(false); }
 };
 
 // ========== MODAL DE LIBERAÇÃO DE NOTAS ==========
 window.abrirModalEditarLiberacao = function () {
   console.log("📊 Abrindo modal de liberação de notas");
-
   const hoje = new Date();
-  const inicioPadrao = new Date(
-    hoje.getFullYear(),
-    hoje.getMonth(),
-    hoje.getDate(),
-  );
-  const fimPadrao = new Date(
-    hoje.getFullYear(),
-    hoje.getMonth(),
-    hoje.getDate() + 10,
-  );
-
-  const formatarDataInput = (data) => {
-    return data.toISOString().split("T")[0];
-  };
-
-  const liberacao = state.liberacaoNotas || {
-    semestre: "1/2026",
-    periodo: {
-      inicio: formatarDataInput(inicioPadrao),
-      fim: formatarDataInput(fimPadrao),
-    },
-    eletivasLiberadas: [],
-  };
-
-  document.getElementById("selectSemestreLiberacao").value =
-    liberacao.semestre || "1/2026";
-  document.getElementById("dataInicioLiberacao").value =
-    liberacao.periodo?.inicio || formatarDataInput(inicioPadrao);
-  document.getElementById("dataFimLiberacao").value =
-    liberacao.periodo?.fim || formatarDataInput(fimPadrao);
-
+  const inicioPadrao = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const fimPadrao = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 10);
+  const formatarDataInput = (data) => data.toISOString().split("T")[0];
+  const liberacao = state.liberacaoNotas || { semestre: "1/2026", periodo: { inicio: formatarDataInput(inicioPadrao), fim: formatarDataInput(fimPadrao) }, eletivasLiberadas: [] };
+  document.getElementById("selectSemestreLiberacao").value = liberacao.semestre || "1/2026";
+  document.getElementById("dataInicioLiberacao").value = liberacao.periodo?.inicio || formatarDataInput(inicioPadrao);
+  document.getElementById("dataFimLiberacao").value = liberacao.periodo?.fim || formatarDataInput(fimPadrao);
   const container = document.getElementById("eletivasLiberacaoContainer");
   if (!container) return;
-
   const eletivas = state.eletivas || [];
-
-  if (eletivas.length === 0) {
-    container.innerHTML =
-      '<p class="empty-state">Nenhuma eletiva cadastrada</p>';
-    document.getElementById("modalLiberacaoNotas").classList.add("active");
-    return;
-  }
-
+  if (eletivas.length === 0) { container.innerHTML = '<p class="empty-state">Nenhuma eletiva cadastrada</p>'; document.getElementById("modalLiberacaoNotas").classList.add("active"); return; }
   const liberadasSet = new Set(liberacao.eletivasLiberadas || []);
-
   let html = "";
-  eletivas
-    .sort((a, b) => a.nome.localeCompare(b.nome))
-    .forEach((e) => {
-      const professor =
-        state.professores?.find((p) => p.id === e.professorId)?.nome ||
-        "Não atribuído";
-      const chave = `${e.id}_${liberacao.semestre}`;
-      const checked = liberadasSet.has(chave) ? "checked" : "";
-
-      html += `
-      <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border-bottom: 1px solid var(--bg-gray);">
-        <input type="checkbox" class="eletiva-liberacao-checkbox" value="${e.id}" data-chave="${chave}" ${checked}>
-        <div style="flex: 1;">
-          <strong>${e.nome}</strong> (${e.codigo}) - ${professor} - ${e.horario?.diaSemana} ${e.horario?.codigoTempo}
-        </div>
-      </div>
-    `;
-    });
-
+  const eletivasUnicas = [];
+  const codigosVistos = new Set();
+  eletivas.forEach(e => { if (!codigosVistos.has(e.codigo)) { codigosVistos.add(e.codigo); eletivasUnicas.push(e); } });
+  eletivasUnicas.sort((a, b) => a.nome.localeCompare(b.nome)).forEach((e) => {
+    const professor = state.professores?.find((p) => p.id === e.professorId)?.nome || "Não atribuído";
+    const chave = `${e.id}_${liberacao.semestre}`;
+    const checked = liberadasSet.has(chave) ? "checked" : "";
+    html += `<div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border-bottom: 1px solid var(--bg-gray);"><input type="checkbox" class="eletiva-liberacao-checkbox" value="${e.id}" data-chave="${chave}" ${checked}><div style="flex: 1;"><strong>${e.nome}</strong> (${e.codigo}) - ${professor} - ${e.horario?.diaSemana} ${e.horario?.codigoTempo}</div></div>`;
+  });
   container.innerHTML = html;
-
   document.getElementById("modalLiberacaoNotas").classList.add("active");
 };
 
-window.fecharModalLiberacaoNotas = function () {
-  document.getElementById("modalLiberacaoNotas").classList.remove("active");
-};
-
-window.selecionarTodasEletivasLiberacao = function (selecionar) {
-  document.querySelectorAll(".eletiva-liberacao-checkbox").forEach((cb) => {
-    cb.checked = selecionar;
-  });
-};
+window.fecharModalLiberacaoNotas = function () { document.getElementById("modalLiberacaoNotas").classList.remove("active"); };
+window.selecionarTodasEletivasLiberacao = function (selecionar) { document.querySelectorAll(".eletiva-liberacao-checkbox").forEach((cb) => { cb.checked = selecionar; }); };
 
 window.salvarLiberacaoNotas = async function () {
   const semestre = document.getElementById("selectSemestreLiberacao")?.value;
   const dataInicio = document.getElementById("dataInicioLiberacao")?.value;
   const dataFim = document.getElementById("dataFimLiberacao")?.value;
-
-  if (!semestre || !dataInicio || !dataFim) {
-    showToast("Preencha todos os campos", "error");
-    return;
-  }
-
-  if (new Date(dataInicio) > new Date(dataFim)) {
-    showToast("Data de início não pode ser maior que data de fim", "error");
-    return;
-  }
-
+  if (!semestre || !dataInicio || !dataFim) { showToast("Preencha todos os campos", "error"); return; }
+  if (new Date(dataInicio) > new Date(dataFim)) { showToast("Data de início não pode ser maior que data de fim", "error"); return; }
   mostrarLoader(true);
-
   try {
     const eletivasLiberadas = [];
-    document
-      .querySelectorAll(".eletiva-liberacao-checkbox:checked")
-      .forEach((cb) => {
-        eletivasLiberadas.push(cb.dataset.chave || `${cb.value}_${semestre}`);
-      });
-
-    const novaConfig = {
-      semestre: semestre,
-      periodo: {
-        inicio: dataInicio,
-        fim: dataFim,
-      },
-      eletivasLiberadas: eletivasLiberadas,
-    };
-
-    state.liberacaoNotas = novaConfig;
-    salvarEstado();
-
-    if (window.FirebaseSync) {
-      await window.FirebaseSync.salvarDadosFirebase(
-        "liberacao_notas",
-        novaConfig,
-      );
-    }
-
+    document.querySelectorAll(".eletiva-liberacao-checkbox:checked").forEach((cb) => { eletivasLiberadas.push(cb.dataset.chave || `${cb.value}_${semestre}`); });
+    const novaConfig = { semestre: semestre, periodo: { inicio: dataInicio, fim: dataFim }, eletivasLiberadas: eletivasLiberadas };
+    state.liberacaoNotas = novaConfig; salvarEstado();
+    if (window.FirebaseSync) await window.FirebaseSync.salvarDadosFirebase("liberacao_notas", novaConfig);
     document.getElementById("semestreAtual").textContent = novaConfig.semestre;
-    document.getElementById("periodoLiberacao").textContent =
-      `${new Date(dataInicio).toLocaleDateString()} a ${new Date(dataFim).toLocaleDateString()}`;
-
-    const totalEletivas = state.eletivas?.length || 0;
-    document.getElementById("eletivasLiberadas").textContent =
-      `${eletivasLiberadas.length} de ${totalEletivas}`;
-
+    document.getElementById("periodoLiberacao").textContent = `${new Date(dataInicio).toLocaleDateString()} a ${new Date(dataFim).toLocaleDateString()}`;
+    const totalEletivas = (state.eletivas || []).length;
+    document.getElementById("eletivasLiberadas").textContent = `${eletivasLiberadas.length} de ${totalEletivas}`;
     showToast("✅ Configuração de notas salva com sucesso!", "success");
     fecharModalLiberacaoNotas();
-  } catch (error) {
-    console.error("Erro ao salvar liberação:", error);
-    showToast("Erro ao salvar liberação", "error");
-  } finally {
-    mostrarLoader(false);
-  }
+  } catch (error) { console.error("Erro ao salvar liberação:", error); showToast("Erro ao salvar liberação", "error"); } finally { mostrarLoader(false); }
 };
 
 // ========== MODAL DE RESTAURAÇÃO DE BACKUP ==========
 window.abrirModalRestaurarBackup = function () {
   console.log("🔄 Abrindo modal de restauração de backup");
-
   const container = document.getElementById("listaBackupsRestaurar");
   if (!container) return;
-
-  try {
-    const backupsSalvos = JSON.parse(
-      localStorage.getItem("sage_backups") || "[]",
-    );
-    backups = backupsSalvos;
-  } catch (e) {
-    backups = [];
-  }
-
-  if (backups.length === 0) {
-    container.innerHTML = '<p class="empty-state">Nenhum backup encontrado</p>';
-    document.getElementById("btnConfirmarRestaurarBackup").disabled = true;
-    document.getElementById("modalRestaurarBackup").classList.add("active");
-    return;
-  }
-
-  const backupsOrdenados = backups.sort(
-    (a, b) => new Date(b.data) - new Date(a.data),
-  );
-
+  try { const backupsSalvos = JSON.parse(localStorage.getItem("sage_backups") || "[]"); backups = backupsSalvos; } catch (e) { backups = []; }
+  if (backups.length === 0) { container.innerHTML = '<p class="empty-state">Nenhum backup encontrado</p>'; document.getElementById("btnConfirmarRestaurarBackup").disabled = true; document.getElementById("modalRestaurarBackup").classList.add("active"); return; }
+  const backupsOrdenados = backups.sort((a, b) => new Date(b.data) - new Date(a.data));
   let html = "";
-  backupsOrdenados.forEach((backup) => {
-    const dataFormatada = new Date(backup.data).toLocaleString("pt-BR");
-    html += `
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; margin-bottom: 0.5rem; background: var(--bg-light); border-radius: 8px; border-left: 4px solid var(--info);">
-        <div>
-          <input type="radio" name="backupSelecionado" value="${backup.id}" id="backup_${backup.id}" style="margin-right: 0.5rem;">
-          <label for="backup_${backup.id}">
-            <strong>${backup.nome}</strong>
-            <span style="display: block; font-size: 0.85rem; color: var(--text-light);">${dataFormatada}</span>
-          </label>
-        </div>
-      </div>
-    `;
-  });
-
+  backupsOrdenados.forEach((backup) => { const dataFormatada = new Date(backup.data).toLocaleString("pt-BR"); html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; margin-bottom: 0.5rem; background: var(--bg-light); border-radius: 8px; border-left: 4px solid var(--info);"><div><input type="radio" name="backupSelecionado" value="${backup.id}" id="backup_${backup.id}" style="margin-right: 0.5rem;"><label for="backup_${backup.id}"><strong>${backup.nome}</strong><span style="display: block; font-size: 0.85rem; color: var(--text-light);">${dataFormatada}</span></label></div></div>`; });
   container.innerHTML = html;
-
   const radios = container.querySelectorAll('input[type="radio"]');
-  radios.forEach((radio) => {
-    radio.addEventListener("change", () => {
-      document.getElementById("btnConfirmarRestaurarBackup").disabled = false;
-    });
-  });
-
-  document.getElementById("btnConfirmarRestaurarBackup").onclick =
-    confirmarRestaurarBackup;
+  radios.forEach((radio) => { radio.addEventListener("change", () => { document.getElementById("btnConfirmarRestaurarBackup").disabled = false; }); });
+  document.getElementById("btnConfirmarRestaurarBackup").onclick = confirmarRestaurarBackup;
   document.getElementById("btnConfirmarRestaurarBackup").disabled = true;
-
   document.getElementById("modalRestaurarBackup").classList.add("active");
 };
 
-window.fecharModalRestaurarBackup = function () {
-  document.getElementById("modalRestaurarBackup").classList.remove("active");
-};
-
+window.fecharModalRestaurarBackup = function () { document.getElementById("modalRestaurarBackup").classList.remove("active"); };
 window.confirmarRestaurarBackup = async function () {
-  const radioSelecionado = document.querySelector(
-    'input[name="backupSelecionado"]:checked',
-  );
-  if (!radioSelecionado) {
-    showToast("Selecione um backup", "error");
-    return;
-  }
-
+  const radioSelecionado = document.querySelector('input[name="backupSelecionado"]:checked');
+  if (!radioSelecionado) { showToast("Selecione um backup", "error"); return; }
   const backupId = radioSelecionado.value;
   const backup = backups.find((b) => b.id === backupId);
-
-  if (!backup) {
-    showToast("Backup não encontrado", "error");
-    return;
-  }
-
-  const confirmBody = document.getElementById("confirmBody");
-  const confirmTitle = document.getElementById("confirmTitle");
-  const confirmBtn = document.getElementById("confirmActionBtn");
-
+  if (!backup) { showToast("Backup não encontrado", "error"); return; }
+  const confirmBody = document.getElementById("confirmBody"), confirmTitle = document.getElementById("confirmTitle"), confirmBtn = document.getElementById("confirmActionBtn");
   confirmTitle.textContent = "⚠️ CONFIRMAR RESTAURAÇÃO";
-  confirmBody.innerHTML = `
-    <p>Tem certeza que deseja restaurar o backup <strong>${backup.nome}</strong>?</p>
-    <p style="margin-top: 1rem; color: var(--danger); font-weight: bold;">
-      ⚠️ ESTA AÇÃO IRÁ SOBRESCREVER TODOS OS DADOS ATUAIS!
-    </p>
-    <p style="margin-top: 0.5rem;">Data do backup: ${new Date(backup.data).toLocaleString("pt-BR")}</p>
-  `;
-
+  confirmBody.innerHTML = `<p>Tem certeza que deseja restaurar o backup <strong>${backup.nome}</strong>?</p><p style="margin-top: 1rem; color: var(--danger); font-weight: bold;">⚠️ ESTA AÇÃO IRÁ SOBRESCREVER TODOS OS DADOS ATUAIS!</p><p style="margin-top: 0.5rem;">Data do backup: ${new Date(backup.data).toLocaleString("pt-BR")}</p>`;
   const originalOnClick = confirmBtn.onclick;
-  confirmBtn.onclick = async function () {
-    fecharModalConfirmacao();
-    await executarRestauracaoBackup(backup);
-    setTimeout(() => {
-      confirmBtn.onclick = originalOnClick;
-    }, 100);
-  };
-
+  confirmBtn.onclick = async function () { fecharModalConfirmacao(); await executarRestauracaoBackup(backup); setTimeout(() => { confirmBtn.onclick = originalOnClick; }, 100); };
   document.getElementById("modalConfirmacao").classList.add("active");
   fecharModalRestaurarBackup();
 };
 
 async function executarRestauracaoBackup(backup) {
   mostrarLoader(true);
-
   try {
     console.log("🔄 Restaurando backup:", backup.nome);
-
     Object.assign(state, backup.dados);
     salvarEstado();
-
     if (window.FirebaseSync) {
-      if (state.professores) {
-        for (const prof of state.professores) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "professores",
-            prof,
-            prof.id,
-          );
-        }
-      }
-      if (state.alunos) {
-        for (const aluno of state.alunos) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "alunos",
-            aluno,
-            aluno.id,
-          );
-        }
-      }
-      if (state.eletivas) {
-        for (const eletiva of state.eletivas) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "eletivas",
-            eletiva,
-            eletiva.id,
-          );
-        }
-      }
-      if (state.matriculas) {
-        for (const mat of state.matriculas) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "matriculas",
-            mat,
-            mat.id,
-          );
-        }
-      }
-      if (state.registros) {
-        for (const reg of state.registros) {
-          await window.FirebaseSync.salvarDadosFirebase(
-            "registros",
-            reg,
-            reg.id,
-          );
-        }
-      }
-      if (state.notas) {
-        for (const nota of state.notas) {
-          await window.FirebaseSync.salvarDadosFirebase("notas", nota, nota.id);
-        }
-      }
-
-      if (state.configTempos) {
-        await window.FirebaseSync.salvarDadosFirebase(
-          "config_tempos",
-          state.configTempos,
-        );
-      }
-      if (state.liberacaoNotas) {
-        await window.FirebaseSync.salvarDadosFirebase(
-          "liberacao_notas",
-          state.liberacaoNotas,
-        );
-      }
+      if (state.professores) for (const prof of state.professores) await window.FirebaseSync.salvarDadosFirebase("professores", prof, prof.id);
+      if (state.alunos) for (const aluno of state.alunos) await window.FirebaseSync.salvarDadosFirebase("alunos", aluno, aluno.id);
+      if (state.eletivas) for (const eletiva of state.eletivas) await window.FirebaseSync.salvarDadosFirebase("eletivas", eletiva, eletiva.id);
+      if (state.matriculas) for (const mat of state.matriculas) await window.FirebaseSync.salvarDadosFirebase("matriculas", mat, mat.id);
+      if (state.registros) for (const reg of state.registros) await window.FirebaseSync.salvarDadosFirebase("registros", reg, reg.id);
+      if (state.notas) for (const nota of state.notas) await window.FirebaseSync.salvarDadosFirebase("notas", nota, nota.id);
+      if (state.configTempos) await window.FirebaseSync.salvarDadosFirebase("config_tempos", state.configTempos);
+      if (state.liberacaoNotas) await window.FirebaseSync.salvarDadosFirebase("liberacao_notas", state.liberacaoNotas);
     }
-
     if (typeof carregarEletivas === "function") carregarEletivas();
     if (typeof carregarProfessores === "function") carregarProfessores();
     if (typeof filtrarEstudantes === "function") filtrarEstudantes();
-
     carregarAbaDados();
-
     showToast("✅ Backup restaurado com sucesso!", "success");
-  } catch (error) {
-    console.error("Erro ao restaurar backup:", error);
-    showToast("Erro ao restaurar backup: " + error.message, "error");
-  } finally {
-    mostrarLoader(false);
-  }
+  } catch (error) { console.error("Erro ao restaurar backup:", error); showToast("Erro ao restaurar backup: " + error.message, "error"); } finally { mostrarLoader(false); }
 }
 
 // ========== MODAL DE CONFLITOS DETALHADOS ==========
 window.abrirModalConflitos = function () {
   console.log("⚠️ Abrindo modal de conflitos");
-
   const container = document.getElementById("conflitosDetalhadosContainer");
   if (!container) return;
-
   const conflitos = state.conflitos?.pendentes || [];
-
-  if (conflitos.length === 0) {
-    container.innerHTML = '<p class="empty-state">Nenhum conflito pendente</p>';
-    document.getElementById("modalConflitos").classList.add("active");
-    return;
-  }
-
+  if (conflitos.length === 0) { container.innerHTML = '<p class="empty-state">Nenhum conflito pendente</p>'; document.getElementById("modalConflitos").classList.add("active"); return; }
   let html = "";
-
   conflitos.forEach((conflito, index) => {
-    const aluno = state.alunos?.find(
-      (a) =>
-        a.id === parseInt(conflito.alunoId) ||
-        a.codigoSige === conflito.alunoId,
-    );
+    const aluno = state.alunos?.find((a) => a.id === parseInt(conflito.alunoId) || a.codigoSige === conflito.alunoId);
     const nomeAluno = aluno ? aluno.nome : `Aluno ID: ${conflito.alunoId}`;
     const turmaAluno = aluno ? aluno.turmaOrigem : "Turma desconhecida";
-
     const tipoClasse = conflito.tipo === "fixa" ? "fixa" : "mista";
-    const tipoTexto =
-      conflito.tipo === "fixa" ? "FIXA x FIXA" : "MISTA x MISTA";
-    const corBorda =
-      conflito.tipo === "fixa" ? "var(--danger)" : "var(--warning)";
-
-    html += `
-      <div class="conflito-item ${tipoClasse}" style="
-        margin-bottom: 1rem;
-        padding: 1rem;
-        background: var(--bg-white);
-        border-radius: 8px;
-        border-left: 4px solid ${corBorda};
-        box-shadow: var(--shadow);
-      ">
-        <h4 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">
-          ⚠️ Conflito #${index + 1} - ${tipoTexto}
-        </h4>
-        
-        <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-light); border-radius: 4px;">
-          <p style="margin: 0.2rem 0;">
-            <strong>👤 Aluno:</strong> ${escapeHtml(nomeAluno)} (${turmaAluno} - SIGE: ${aluno?.codigoSige || "N/A"})
-          </p>
-          <p style="margin: 0.2rem 0;">
-            <strong>⏰ Tempo:</strong> ${conflito.tempo || "N/A"}
-          </p>
-        </div>
-        
-        <p style="margin: 0.5rem 0 0.2rem 0; font-weight: bold;">📚 Eletivas em conflito:</p>
-        <ul style="margin: 0 0 0.5rem 1.5rem;">
-          ${(conflito.eletivas || [])
-            .map((e) => {
-              const eletiva = state.eletivas?.find(
-                (el) => el.id === e.eletivaId || el.codigo === e.eletivaId,
-              );
-              const prof =
-                state.professores?.find((p) => p.id === eletiva?.professorId)
-                  ?.nome || "N/A";
-              return `<li><strong>${e.nome || eletiva?.nome}</strong> (${eletiva?.codigo || "N/A"}) - Prof. ${prof}</li>`;
-            })
-            .join("")}
-        </ul>
-        
-        <div style="margin-top: 0.5rem; padding: 0.5rem; background: ${corBorda}20; border-radius: 4px;">
-          <p style="margin: 0; font-size: 0.9rem;">
-            <strong>💡 Recomendação:</strong> 
-            ${conflito.tipo === "fixa"
-                ? "Eletivas FIXAS exigem que o aluno esteja em apenas UMA por tempo. Remova uma das matrículas."
-                : "Eletivas MISTAS também permitem apenas UMA por tempo. Remova uma das matrículas."}
-          </p>
-        </div>
-      </div>
-    `;
+    const tipoTexto = conflito.tipo === "fixa" ? "FIXA x FIXA" : "MISTA x MISTA";
+    const corBorda = conflito.tipo === "fixa" ? "var(--danger)" : "var(--warning)";
+    html += `<div class="conflito-item ${tipoClasse}" style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-white); border-radius: 8px; border-left: 4px solid ${corBorda}; box-shadow: var(--shadow);"><h4 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">⚠️ Conflito #${index + 1} - ${tipoTexto}</h4><div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-light); border-radius: 4px;"><p><strong>👤 Aluno:</strong> ${escapeHtml(nomeAluno)} (${turmaAluno} - SIGE: ${aluno?.codigoSige || "N/A"})</p><p><strong>⏰ Tempo:</strong> ${conflito.tempo || "N/A"}</p></div><p style="margin: 0.5rem 0 0.2rem 0; font-weight: bold;">📚 Eletivas em conflito:</p><ul style="margin: 0 0 0.5rem 1.5rem;">${(conflito.eletivas || []).map((e) => { const eletiva = state.eletivas?.find((el) => el.id === e.eletivaId || el.codigo === e.eletivaId); const prof = state.professores?.find((p) => p.id === eletiva?.professorId)?.nome || "N/A"; return `<li><strong>${e.nome || eletiva?.nome}</strong> (${eletiva?.codigo || "N/A"}) - Prof. ${prof}</li>`; }).join("")}</ul><div style="margin-top: 0.5rem; padding: 0.5rem; background: ${corBorda}20; border-radius: 4px;"><p style="margin: 0; font-size: 0.9rem;"><strong>💡 Recomendação:</strong> ${conflito.tipo === "fixa" ? "Eletivas FIXAS exigem que o aluno esteja em apenas UMA por tempo. Remova uma das matrículas." : "Eletivas MISTAS também permitem apenas UMA por tempo. Remova uma das matrículas."}</p></div></div>`;
   });
-
   container.innerHTML = html;
-
   document.getElementById("modalConflitos").classList.add("active");
 };
 
-window.fecharModalConflitos = function () {
-  document.getElementById("modalConflitos").classList.remove("active");
-};
+window.fecharModalConflitos = function () { document.getElementById("modalConflitos").classList.remove("active"); };
 
 // ========== MUDAR ABA GESTÃO ==========
 window.mudarTabGestao = function (tab) {
-  document
-    .querySelectorAll(".gestao-tab-btn")
-    .forEach((btn) => btn.classList.remove("active"));
-  document.querySelectorAll(".gestao-tab-btn").forEach((btn) => {
-    if (btn.getAttribute("onclick")?.includes(`'${tab}'`)) {
-      btn.classList.add("active");
-    }
-  });
-
-  document
-    .querySelectorAll(".gestao-tab-pane")
-    .forEach((pane) => pane.classList.remove("active"));
+  document.querySelectorAll(".gestao-tab-btn").forEach((btn) => btn.classList.remove("active"));
+  document.querySelectorAll(".gestao-tab-btn").forEach((btn) => { if (btn.getAttribute("onclick")?.includes(`'${tab}'`)) { btn.classList.add("active"); } });
+  document.querySelectorAll(".gestao-tab-pane").forEach((pane) => pane.classList.remove("active"));
   document.getElementById(`tab-${tab}`).classList.add("active");
-
-  if (tab === "professores") {
-    carregarProfessores();
-  } else if (tab === "eletivas") {
-    carregarEletivas();
-  } else if (tab === "estudantes") {
-    filtrarEstudantes();
-  } else if (tab === "dados") {
-    carregarAbaDados();
-  }
+  if (tab === "professores") carregarProfessores();
+  else if (tab === "eletivas") carregarEletivas();
+  else if (tab === "estudantes") filtrarEstudantes();
+  else if (tab === "dados") carregarAbaDados();
 };
+
+// ========== FUNÇÃO ESCAPE HTML ==========
+function escapeHtml(str) {
+  if (!str) return "";
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
