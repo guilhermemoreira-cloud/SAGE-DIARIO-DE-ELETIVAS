@@ -818,134 +818,162 @@ window.selecionarTodasTurmas = function (selecionar) {
   });
 };
 
+// ========== FUNÇÃO SALVAR ELETIVA CORRIGIDA (com prevenção de duplicatas e sincronização automática) ==========
+
 window.salvarEletiva = async function () {
-  const nome = document.getElementById("eletivaNome")?.value.trim();
-  const codigo = document.getElementById("eletivaCodigo")?.value.trim().toUpperCase();
-  const professorId = document.getElementById("selectProfessorEletiva")?.value;
-  const local = document.getElementById("selectLocalEletiva")?.value;
-  const dia = document.getElementById("selectDiaEletiva")?.value;
-  const tipo = document.querySelector('input[name="tipoEletiva"]:checked')?.value || "MISTA";
+    const nome = document.getElementById("eletivaNome")?.value.trim();
+    const codigo = document.getElementById("eletivaCodigo")?.value.trim().toUpperCase();
+    const professorId = document.getElementById("selectProfessorEletiva")?.value;
+    const local = document.getElementById("selectLocalEletiva")?.value;
+    const dia = document.getElementById("selectDiaEletiva")?.value;
+    const tipo = document.querySelector('input[name="tipoEletiva"]:checked')?.value || "MISTA";
 
-  const turmasSelecionadas = [];
-  document.querySelectorAll(".turma-checkbox:checked").forEach((cb) => {
-    turmasSelecionadas.push(cb.value);
-  });
+    const turmasSelecionadas = [];
+    document.querySelectorAll(".turma-checkbox:checked").forEach((cb) => {
+        turmasSelecionadas.push(cb.value);
+    });
 
-  if (!nome || nome.length < 3) {
-    showToast("Nome da eletiva é obrigatório (mínimo 3 caracteres)", "error");
-    return;
-  }
-
-  if (!codigo) {
-    showToast("Código da eletiva é obrigatório", "error");
-    return;
-  }
-
-  if (!professorId) {
-    showToast("Selecione um professor", "error");
-    return;
-  }
-
-  if (turmasSelecionadas.length === 0) {
-    showToast("Selecione pelo menos uma turma", "error");
-    return;
-  }
-
-  if (tipo === "FIXA" && turmasSelecionadas.length > 1) {
-    showToast("Eletivas FIXAS só podem ter UMA turma. Selecione apenas uma turma.", "error");
-    return;
-  }
-
-  if (!eletivaEmEdicao || (eletivaEmEdicao && eletivaEmEdicao.codigo !== codigo)) {
-    const codigoExistente = state.eletivas?.some((e) => e.codigo === codigo);
-    if (codigoExistente) {
-      showToast(`Já existe uma eletiva com o código ${codigo}`, "error");
-      return;
+    if (!nome || nome.length < 3) {
+        showToast("Nome da eletiva é obrigatório (mínimo 3 caracteres)", "error");
+        return;
     }
-  }
 
-  mostrarLoader(true);
+    if (!codigo) {
+        showToast("Código da eletiva é obrigatório", "error");
+        return;
+    }
 
-  try {
-    const professor = state.professores?.find(p => p.id === parseInt(professorId));
-    const codigoTempo = diaParaTempo[dia] || "T1";
+    if (!professorId) {
+        showToast("Selecione um professor", "error");
+        return;
+    }
 
-    let eletivaSalva;
+    if (turmasSelecionadas.length === 0) {
+        showToast("Selecione pelo menos uma turma", "error");
+        return;
+    }
 
-    if (eletivaEmEdicao) {
-      const index = state.eletivas.findIndex(e => e.id === eletivaEmEdicao.id);
-      if (index !== -1) {
-        state.eletivas[index] = {
-          ...state.eletivas[index],
-          nome: nome,
-          codigo: codigo,
-          professorId: parseInt(professorId),
-          professorNome: professor?.nome || "",
-          local: local,
-          horario: { diaSemana: dia, codigoTempo: codigoTempo },
-          tipo: tipo,
-          turmaOrigem: turmasSelecionadas.join(", ")
+    if (tipo === "FIXA" && turmasSelecionadas.length > 1) {
+        showToast("Eletivas FIXAS só podem ter UMA turma. Selecione apenas uma turma.", "error");
+        return;
+    }
+
+    // Verificar se já existe eletiva com mesmo nome para o mesmo professor
+    if (!eletivaEmEdicao) {
+        const eletivaExistente = state.eletivas.find(e => 
+            e.nome === nome && e.professorId === parseInt(professorId)
+        );
+        
+        if (eletivaExistente) {
+            showToast(`⚠️ Já existe uma eletiva com o nome "${nome}" para este professor!`, "warning");
+            mostrarLoader(false);
+            return;
+        }
+        
+        // Verificar código duplicado
+        const codigoExistente = state.eletivas.find(e => e.codigo === codigo);
+        if (codigoExistente) {
+            showToast(`⚠️ Já existe uma eletiva com o código "${codigo}"!`, "warning");
+            mostrarLoader(false);
+            return;
+        }
+    }
+
+    mostrarLoader(true);
+
+    try {
+        const professor = state.professores?.find(p => p.id === parseInt(professorId));
+        
+        // Mapear dia da semana para tempo
+        const diaParaTempo = {
+            "segunda": "T1",
+            "terca": "T3",
+            "quarta": "T5",
+            "quinta": "T2",
+            "sexta": "T4"
         };
-        eletivaSalva = state.eletivas[index];
-      }
-    } else {
-      const novoId = Date.now() + Math.floor(Math.random() * 1000);
-      const novaEletiva = {
-        id: novoId,
-        codigo: codigo,
-        nome: nome,
-        tipo: tipo,
-        professorId: parseInt(professorId),
-        professorNome: professor?.nome || "",
-        horario: { diaSemana: dia, codigoTempo: codigoTempo },
-        local: local,
-        vagas: 40,
-        seriesPermitidas: ["1ª", "2ª", "3ª"],
-        turmaOrigem: turmasSelecionadas.join(", "),
-        semestreId: "2026-1",
-        createdAt: new Date().toISOString(),
-        _syncTimestamp: new Date().toISOString()
-      };
+        const codigoTempo = diaParaTempo[dia] || "T1";
 
-      if (!state.eletivas) state.eletivas = [];
-      state.eletivas.push(novaEletiva);
-      eletivaSalva = novaEletiva;
-    }
+        let eletivaSalva;
 
-    salvarEstado();
+        if (eletivaEmEdicao) {
+            const index = state.eletivas.findIndex(e => e.id === eletivaEmEdicao.id);
+            if (index !== -1) {
+                state.eletivas[index] = {
+                    ...state.eletivas[index],
+                    nome: nome,
+                    codigo: codigo,
+                    professorId: parseInt(professorId),
+                    professorNome: professor?.nome || "",
+                    local: local,
+                    horario: { diaSemana: dia, codigoTempo: codigoTempo },
+                    tipo: tipo,
+                    turmaOrigem: turmasSelecionadas.join(", ")
+                };
+                eletivaSalva = state.eletivas[index];
+            }
+        } else {
+            const novoId = Date.now() + Math.floor(Math.random() * 1000);
+            const novaEletiva = {
+                id: novoId,
+                codigo: codigo,
+                nome: nome,
+                tipo: tipo,
+                professorId: parseInt(professorId),
+                professorNome: professor?.nome || "",
+                horario: { diaSemana: dia, codigoTempo: codigoTempo },
+                local: local,
+                vagas: 40,
+                seriesPermitidas: ["1ª", "2ª", "3ª"],
+                turmaOrigem: turmasSelecionadas.join(", "),
+                semestreId: "2026-1",
+                createdAt: new Date().toISOString(),
+                _syncTimestamp: new Date().toISOString()
+            };
 
-    if (window.FirebaseSync && window.FirebaseSync.salvarDadosFirebase) {
-      try {
-        if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
-          window.FirebaseConfig.initFirebase();
-          await new Promise(resolve => setTimeout(resolve, 500));
+            if (!state.eletivas) state.eletivas = [];
+            state.eletivas.push(novaEletiva);
+            eletivaSalva = novaEletiva;
         }
-        await window.FirebaseSync.salvarDadosFirebase("eletivas", eletivaSalva, eletivaSalva.id);
-        console.log("✅ Eletiva salva no Firebase");
-      } catch (error) {
-        console.error("❌ Erro ao salvar no Firebase:", error);
-        if (window.FirebaseSync.adicionarOperacaoFila) {
-          window.FirebaseSync.adicionarOperacaoFila("salvar", "eletivas", eletivaSalva, eletivaSalva.id);
+
+        // Salvar no localStorage
+        salvarEstado();
+        console.log("✅ Eletiva salva no localStorage:", eletivaSalva.nome);
+
+        // Salvar no Firebase
+        if (window.FirebaseSync && window.FirebaseSync.salvarDadosFirebase) {
+            try {
+                if (window.FirebaseConfig && !window.FirebaseConfig.isInitialized) {
+                    window.FirebaseConfig.initFirebase();
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                await window.FirebaseSync.salvarDadosFirebase("eletivas", eletivaSalva, eletivaSalva.id);
+                console.log("✅ Eletiva salva no Firebase");
+            } catch (error) {
+                console.error("❌ Erro ao salvar no Firebase:", error);
+                if (window.FirebaseSync.adicionarOperacaoFila) {
+                    window.FirebaseSync.adicionarOperacaoFila("salvar", "eletivas", eletivaSalva, eletivaSalva.id);
+                }
+            }
         }
-      }
+
+        // Forçar recarregamento global para sincronizar outras abas/páginas
+        if (typeof window.forcarRecarregamentoGlobal === 'function') {
+            await window.forcarRecarregamentoGlobal('criacao_eletiva');
+        }
+
+        showToast(eletivaEmEdicao ? "Eletiva atualizada com sucesso!" : "Eletiva criada com sucesso!", "success");
+
+        fecharModalEletiva();
+        carregarEletivas();
+        carregarSelectsEletivas();
+
+    } catch (error) {
+        console.error("Erro ao salvar eletiva:", error);
+        showToast("Erro ao salvar eletiva: " + error.message, "error");
+    } finally {
+        mostrarLoader(false);
     }
-
-    if (typeof window.forcarRecarregamentoGlobal === 'function') {
-      await window.forcarRecarregamentoGlobal('criacao_eletiva');
-    }
-
-    showToast(eletivaEmEdicao ? "Eletiva atualizada com sucesso!" : "Eletiva criada com sucesso!", "success");
-
-    fecharModalEletiva();
-    carregarEletivas();
-    carregarSelectsEletivas();
-
-  } catch (error) {
-    console.error("Erro ao salvar eletiva:", error);
-    showToast("Erro ao salvar eletiva: " + error.message, "error");
-  } finally {
-    mostrarLoader(false);
-  }
 };
 
 // ========== FUNÇÕES DE EDIÇÃO DE CATEGORIA ==========
@@ -1619,7 +1647,7 @@ function atualizarTabelaEstudantes() {
   document.getElementById("btnPaginaProxima").disabled = paginaAtualEstudantes >= totalPaginas;
 
   if (totalEstudantes === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum estudante encontrado</td></tr>';
+    tbody.innerHTML = '}<td colspan="5" class="empty-state">Nenhum estudante encontrado</td>';
     return;
   }
 
@@ -2270,9 +2298,9 @@ function carregarTabelaTempos() {
     const tempoConfig = config[tempo] || { diaSemana: "?", series: [] };
 
     row.innerHTML = `
-      <td><strong>${tempo}</strong></td>
-      <td>${tempoConfig.diaSemana || "?"}</td>
-      <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
+      <td><strong>${tempo}</strong>新闻
+      <td>${tempoConfig.diaSemana || "?"}新闻
+      <td>${tempoConfig.series?.join(", ") || "Todas"}新闻
     `;
 
     tbody.appendChild(row);
