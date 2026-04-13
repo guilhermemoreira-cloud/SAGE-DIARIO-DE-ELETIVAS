@@ -126,6 +126,7 @@ function processarDadosPlanilha(dados) {
     state.matriculas = [];
   }
 
+  // Criar matrículas apenas para eletivas FIXAS
   criarMatriculasBasicas();
 
   if (!state.nextId) {
@@ -144,20 +145,28 @@ function processarDadosPlanilha(dados) {
   }
 }
 
+// ========== FUNÇÃO CORRIGIDA: criarMatriculasBasicas ==========
+// CORREÇÃO: Só cria matrículas automáticas para eletivas do tipo FIXA
+// Eletivas MISTAS NUNCA devem receber matrículas automáticas
 function criarMatriculasBasicas() {
-  console.log("📝 Criando matrículas para eletivas fixas...");
+  console.log("📝 Criando matrículas para eletivas...");
+  console.log("   Regra: Apenas eletivas do tipo FIXA recebem matrículas automáticas");
+  console.log("   Eletivas MISTAS: NÃO recebem matrículas automáticas (devem ser enturmadas manualmente)");
 
   if (!state.matriculas) {
     state.matriculas = [];
   }
 
   let idCounter = state.matriculas.length + 1;
+  let matriculasCriadas = 0;
 
   state.eletivas?.forEach((eletiva) => {
+    // ✅ CRUCIAL: Só cria matrícula para eletivas do tipo FIXA
+    // MISTAS não devem ter matrículas automáticas
     if (eletiva.tipo === "FIXA" && eletiva.turmaOrigem) {
-      const alunosTurma =
-        state.alunos?.filter((a) => a.turmaOrigem === eletiva.turmaOrigem) ||
-        [];
+      console.log(`   Processando eletiva FIXA: ${eletiva.nome} (Turma: ${eletiva.turmaOrigem})`);
+      
+      const alunosTurma = state.alunos?.filter((a) => a.turmaOrigem === eletiva.turmaOrigem) || [];
 
       alunosTurma.forEach((aluno) => {
         const jaMatriculado = state.matriculas.some(
@@ -173,8 +182,11 @@ function criarMatriculasBasicas() {
             dataMatricula: new Date().toISOString().split("T")[0],
             semestreId: "2026-1",
           });
+          matriculasCriadas++;
         }
       });
+    } else if (eletiva.tipo === "MISTA") {
+      console.log(`   Ignorando eletiva MISTA: ${eletiva.nome} (NÃO gera matrículas automáticas)`);
     }
   });
 
@@ -182,7 +194,74 @@ function criarMatriculasBasicas() {
     CONFIG.storageKeys.matriculas,
     JSON.stringify(state.matriculas),
   );
-  console.log(`✅ ${state.matriculas.length} matrículas criadas`);
+  console.log(`✅ ${matriculasCriadas} matrículas automáticas criadas para eletivas FIXAS`);
+  console.log(`📊 Total de matrículas no sistema: ${state.matriculas.length}`);
+}
+
+// Função para recriar matrículas de uma eletiva específica (útil para correções)
+function recriarMatriculasEletiva(eletivaId) {
+  const eletiva = state.eletivas?.find(e => e.id === eletivaId);
+  if (!eletiva) {
+    console.error(`❌ Eletiva ${eletivaId} não encontrada`);
+    return false;
+  }
+
+  if (eletiva.tipo !== "FIXA") {
+    console.log(`⚠️ Eletiva ${eletiva.nome} é do tipo ${eletiva.tipo}. Não recriando matrículas automáticas.`);
+    return false;
+  }
+
+  if (!eletiva.turmaOrigem) {
+    console.log(`⚠️ Eletiva ${eletiva.nome} não tem turma de origem definida.`);
+    return false;
+  }
+
+  // Remover matrículas existentes
+  const matriculasRemovidas = state.matriculas.filter(m => m.eletivaId === eletivaId).length;
+  state.matriculas = state.matriculas.filter(m => m.eletivaId !== eletivaId);
+  console.log(`🗑️ Removidas ${matriculasRemovidas} matrículas antigas`);
+
+  // Criar novas matrículas
+  const alunosTurma = state.alunos?.filter((a) => a.turmaOrigem === eletiva.turmaOrigem) || [];
+  let matriculasCriadas = 0;
+
+  alunosTurma.forEach((aluno) => {
+    const novaMatricula = {
+      id: (state.matriculas?.map(m => m.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
+      eletivaId: eletiva.id,
+      alunoId: aluno.id,
+      tipoMatricula: "automática",
+      dataMatricula: new Date().toISOString().split("T")[0],
+      semestreId: "2026-1",
+    };
+    state.matriculas.push(novaMatricula);
+    matriculasCriadas++;
+  });
+
+  console.log(`✅ Recriadas ${matriculasCriadas} matrículas para ${eletiva.nome}`);
+  salvarEstado();
+  return true;
+}
+
+// Função para limpar todas as matrículas de eletivas MISTA (correção de dados corrompidos)
+function limparMatriculasMistas() {
+  console.log("🧹 Limpando matrículas de eletivas MISTA...");
+  
+  const eletivasMistas = state.eletivas?.filter(e => e.tipo === "MISTA") || [];
+  let totalRemovidas = 0;
+
+  eletivasMistas.forEach(eletiva => {
+    const matriculas = state.matriculas.filter(m => m.eletivaId === eletiva.id);
+    if (matriculas.length > 0) {
+      state.matriculas = state.matriculas.filter(m => m.eletivaId !== eletiva.id);
+      totalRemovidas += matriculas.length;
+      console.log(`   Removidas ${matriculas.length} matrículas de ${eletiva.nome}`);
+    }
+  });
+
+  console.log(`✅ Total de ${totalRemovidas} matrículas removidas de eletivas MISTA`);
+  salvarEstado();
+  return totalRemovidas;
 }
 
 function carregarDadosFallback() {
@@ -304,3 +383,6 @@ window.recarregarDados = async function () {
 
 window.carregarDadosDaPlanilha = carregarDadosDaPlanilha;
 window.carregarDadosFallback = carregarDadosFallback;
+window.criarMatriculasBasicas = criarMatriculasBasicas;
+window.recriarMatriculasEletiva = recriarMatriculasEletiva;
+window.limparMatriculasMistas = limparMatriculasMistas;
