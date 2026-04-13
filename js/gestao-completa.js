@@ -860,6 +860,7 @@ window.selecionarTodasTurmas = function (selecionar) {
 // CORREÇÃO: MISTA também tem turmaOrigem (filtro) mas NÃO gera matrícula automática
 // As matrículas automáticas são controladas pela função criarMatriculasBasicas() em sincronizacao.js
 // que só cria matrículas para FIXAS (quando tipo === "FIXA")
+// ========== FUNÇÃO CORRIGIDA: salvarEletiva (SEM verificação de código duplicado) ==========
 window.salvarEletiva = async function () {
   const nome = document.getElementById("eletivaNome")?.value.trim();
   const codigo = document.getElementById("eletivaCodigo")?.value.trim().toUpperCase();
@@ -900,12 +901,8 @@ window.salvarEletiva = async function () {
     return;
   }
 
-  // Verificar se código já existe
-  const codigoExistente = state.eletivas?.some(e => e.codigo === codigo && e.id !== eletivaEmEdicao?.id);
-  if (codigoExistente) {
-    showToast(`Já existe uma eletiva com o código ${codigo}`, "error");
-    return;
-  }
+  // REMOVIDO: Verificação de código duplicado
+  // Códigos podem ser repetidos - não são únicos
 
   mostrarLoader(true);
 
@@ -935,6 +932,7 @@ window.salvarEletiva = async function () {
     console.log(`📝 Salvando eletiva: ${nome} (${tipo}) - Turmas: ${dadosBase.turmaOrigem}`);
 
     if (eletivaEmEdicao) {
+      // EDIÇÃO
       const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
       if (index !== -1) {
         state.eletivas[index] = {
@@ -950,6 +948,7 @@ window.salvarEletiva = async function () {
         showToast("Eletiva atualizada com sucesso!", "success");
       }
     } else {
+      // NOVA ELETIVA
       const novoId = (state.eletivas?.map(e => e.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
       const novaEletiva = {
         id: novoId,
