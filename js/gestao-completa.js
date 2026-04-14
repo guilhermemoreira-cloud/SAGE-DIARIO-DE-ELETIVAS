@@ -101,7 +101,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     await carregarEstado();
   }
 
-  // Garantir que arrays existem
   if (!state.alunos) state.alunos = [];
   if (!state.professores) state.professores = [];
   if (!state.eletivas) state.eletivas = [];
@@ -111,7 +110,6 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   console.log("📊 Estado inicializado, aguardando Firebase...");
 
-  // 🔥 Sincronização com Firebase
   if (window.FirebaseConfig && typeof window.FirebaseConfig.initFirebase === "function") {
     try {
       console.log("🔥 Aguardando inicialização do Firebase...");
@@ -149,7 +147,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
-  // Carregar dados iniciais
   carregarProfessores();
   carregarLocais();
   carregarSelectsEletivas();
@@ -159,15 +156,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   carregarAbaDados();
 
   const turmas = CONFIG.turmas || [
-    "1ª SÉRIE A",
-    "1ª SÉRIE B",
-    "1ª SÉRIE C",
-    "2ª SÉRIE A",
-    "2ª SÉRIE B",
-    "2ª SÉRIE C",
-    "3ª SÉRIE A",
-    "3ª SÉRIE B",
-    "3ª SÉRIE C",
+    "1ª SÉRIE A", "1ª SÉRIE B", "1ª SÉRIE C",
+    "2ª SÉRIE A", "2ª SÉRIE B", "2ª SÉRIE C",
+    "3ª SÉRIE A", "3ª SÉRIE B", "3ª SÉRIE C",
   ];
 
   const containerTurmas = document.getElementById("turmasCheckboxContainer");
@@ -1741,29 +1732,17 @@ window.abrirModalAdicionarEstudante = function () {
 
 // ========== FUNÇÃO CORRIGIDA: abrirModalEditarEstudante ==========
 window.abrirModalEditarEstudante = function (estudanteId) {
-  console.log("🔧 EDITANDO ESTUDANTE - ID recebido:", estudanteId, "Tipo:", typeof estudanteId);
-  
-  // Converter para número corretamente
   const idNum = Number(estudanteId);
   if (isNaN(idNum)) {
-    console.error("❌ ID inválido:", estudanteId);
     showToast("ID do estudante inválido", "error");
     return;
   }
   
-  console.log("   ID convertido:", idNum);
-  
-  // Buscar o estudante (comparar como número)
   const estudante = state.alunos?.find((a) => Number(a.id) === idNum);
-  
   if (!estudante) {
-    console.error("❌ Estudante não encontrado! ID:", idNum);
-    console.log("📋 Primeiros IDs disponíveis:", state.alunos.slice(0, 5).map(a => `${a.id} (${typeof a.id})`));
-    showToast("Estudante não encontrado. Recarregue a página.", "error");
+    showToast("Estudante não encontrado", "error");
     return;
   }
-  
-  console.log("✅ Estudante encontrado:", estudante.nome);
   
   estudanteEmEdicao = estudante;
   document.getElementById("modalEstudanteTitulo").textContent = "✏️ EDITAR ESTUDANTE";
@@ -1773,11 +1752,8 @@ window.abrirModalEditarEstudante = function (estudanteId) {
   document.getElementById("selectTurmaEstudante").value = estudante.turmaOrigem;
   document.getElementById("sigeAviso").style.display = "block";
 
-  // Carregar eletivas do estudante
   if (typeof carregarEletivasCheckbox === 'function') {
     carregarEletivasCheckbox(estudante.id);
-  } else {
-    console.warn("⚠️ Função carregarEletivasCheckbox não encontrada");
   }
 
   document.getElementById("modalEstudante").classList.add("active");
@@ -1816,9 +1792,7 @@ window.salvarEstudante = async function () {
   try {
     if (estudanteEmEdicao) {
       const index = state.alunos.findIndex(a => a.id === estudanteEmEdicao.id);
-      if (index === -1) {
-        throw new Error("Estudante não encontrado");
-      }
+      if (index === -1) throw new Error("Estudante não encontrado");
       
       state.alunos[index] = {
         ...state.alunos[index],
@@ -1905,45 +1879,32 @@ window.salvarEstudante = async function () {
     filtrarEstudantes();
     
   } catch (error) {
-    console.error("❌ Erro ao salvar estudante:", error);
+    console.error("Erro ao salvar estudante:", error);
     showToast(`Erro ao salvar estudante: ${error.message}`, "error");
   } finally {
     mostrarLoader(false);
   }
 };
 
-// ========== FUNÇÃO CORRIGIDA: abrirModalTrocarEletivaEstudante ==========
+// ========== FUNÇÕES DO MODAL DE TROCA DE ELETIVA DO ESTUDANTE ==========
 window.abrirModalTrocarEletivaEstudante = function(estudanteId) {
-  console.log("🔄 TROCAR ELETIVA - ID recebido:", estudanteId, "Tipo:", typeof estudanteId);
-  
-  // Converter para número corretamente
   const idNum = Number(estudanteId);
   if (isNaN(idNum)) {
-    console.error("❌ ID inválido:", estudanteId);
     showToast("ID do estudante inválido", "error");
     return;
   }
   
-  console.log("   ID convertido:", idNum);
-  
-  // Buscar o estudante
   const estudante = state.alunos?.find((a) => Number(a.id) === idNum);
-  
   if (!estudante) {
-    console.error("❌ Estudante não encontrado! ID:", idNum);
-    console.log("📋 Primeiros IDs disponíveis:", state.alunos?.slice(0, 5).map(a => `${a.id} (${typeof a.id})`));
-    showToast("Estudante não encontrado. Recarregue a página.", "error");
+    showToast("Estudante não encontrado", "error");
     return;
   }
-  
-  console.log("✅ Estudante encontrado:", estudante.nome);
   
   estudanteParaTroca = estudante;
   
   document.getElementById("modalTrocaEstudanteTitulo").textContent = `🔄 TROCAR ELETIVA - ${estudante.nome}`;
   document.getElementById("estudanteTrocaInfo").textContent = `${estudante.nome} (SIGE: ${estudante.codigoSige})`;
   
-  // Carregar eletivas atuais do estudante
   const eletivasAtuais = getEletivasEstudante(estudante.id);
   
   let atuaisHTML = "";
@@ -1956,24 +1917,15 @@ window.abrirModalTrocarEletivaEstudante = function(estudanteId) {
   }
   document.getElementById("eletivasAtuaisEstudante").innerHTML = atuaisHTML;
   
-  // Carregar eletivas disponíveis
-  if (typeof window.carregarEletivasDisponiveisTroca === 'function') {
-    window.carregarEletivasDisponiveisTroca(estudante.id);
-  } else {
-    // Recriar a função se necessário
-    window.carregarEletivasDisponiveisTroca = function(alunoId) {
-      const container = document.getElementById("eletivasDisponiveisContainer");
-      if (!container) return;
-      
-      const matriculasAluno = state.matriculas?.filter(m => m.alunoId === alunoId) || [];
-      const idsMatriculados = new Set(matriculasAluno.map(m => m.eletivaId));
-      const eletivasDisponiveis = (state.eletivas || []).filter(e => !idsMatriculados.has(e.id));
-      
-      if (eletivasDisponiveis.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-light);">Nenhuma eletiva disponível para matrícula</p>';
-        return;
-      }
-      
+  const matriculasAluno = state.matriculas?.filter(m => m.alunoId === estudante.id) || [];
+  const idsMatriculados = new Set(matriculasAluno.map(m => m.eletivaId));
+  const eletivasDisponiveis = (state.eletivas || []).filter(e => !idsMatriculados.has(e.id));
+  
+  const container = document.getElementById("eletivasDisponiveisContainer");
+  if (container) {
+    if (eletivasDisponiveis.length === 0) {
+      container.innerHTML = '<p style="color: var(--text-light);">Nenhuma eletiva disponível para matrícula</p>';
+    } else {
       container.innerHTML = eletivasDisponiveis.map(e => {
         const professor = state.professores?.find(p => p.id === e.professorId)?.nome || "N/A";
         const matriculados = state.matriculas?.filter(m => m.eletivaId === e.id).length || 0;
@@ -1986,15 +1938,77 @@ window.abrirModalTrocarEletivaEstudante = function(estudanteId) {
           </div>
         `;
       }).join("");
-    };
-    window.carregarEletivasDisponiveisTroca(estudante.id);
+    }
   }
   
-  // Abrir modal
-  const modal = document.getElementById("modalTrocarEletivaEstudante");
-  if (modal) modal.classList.add("active");
+  document.getElementById("modalTrocarEletivaEstudante").classList.add("active");
+};
+
+window.fecharModalTrocarEletivaEstudante = function() {
+  document.getElementById("modalTrocarEletivaEstudante").classList.remove("active");
+  estudanteParaTroca = null;
+};
+
+window.confirmarTrocaEletivaEstudante = async function() {
+  if (!estudanteParaTroca) {
+    showToast("Nenhum estudante selecionado", "error");
+    return;
+  }
   
-  console.log("✅ Modal de troca aberto com sucesso!");
+  const eletivaDestinoId = document.querySelector('input[name="eletivaDestino"]:checked')?.value;
+  if (!eletivaDestinoId) {
+    showToast("Selecione uma eletiva de destino", "error");
+    return;
+  }
+  
+  const eletivaDestino = state.eletivas?.find((e) => e.id === parseInt(eletivaDestinoId));
+  if (!eletivaDestino) {
+    showToast("Eletiva não encontrada", "error");
+    return;
+  }
+  
+  mostrarLoader(true);
+  
+  try {
+    const jaMatriculado = state.matriculas.some(
+      m => m.alunoId === estudanteParaTroca.id && m.eletivaId === parseInt(eletivaDestinoId)
+    );
+    
+    if (jaMatriculado) {
+      showToast("Estudante já está matriculado nesta eletiva", "warning");
+      mostrarLoader(false);
+      return;
+    }
+    
+    const novaMatricula = {
+      id: (state.matriculas?.map(m => m.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
+      eletivaId: parseInt(eletivaDestinoId),
+      alunoId: estudanteParaTroca.id,
+      tipoMatricula: "troca",
+      dataMatricula: new Date().toISOString().split("T")[0],
+      semestreId: "2026-1",
+    };
+    
+    if (!state.matriculas) state.matriculas = [];
+    state.matriculas.push(novaMatricula);
+    
+    if (window.FirebaseSync) {
+      await window.FirebaseSync.salvarDadosFirebase("matriculas", novaMatricula, novaMatricula.id);
+    }
+    
+    salvarEstado();
+    
+    showToast(`Estudante adicionado à eletiva ${eletivaDestino.nome}!`, "success");
+    
+    window.fecharModalTrocarEletivaEstudante();
+    filtrarEstudantes();
+    
+  } catch (error) {
+    console.error("Erro ao adicionar estudante à eletiva:", error);
+    showToast("Erro ao adicionar estudante à eletiva", "error");
+  } finally {
+    mostrarLoader(false);
+  }
 };
 
 // ========== FUNÇÕES DE REMOÇÃO DE ESTUDANTE ==========
@@ -2007,7 +2021,7 @@ window.confirmarRemoverEstudante = function (estudanteId) {
   
   const estudante = state.alunos?.find((a) => Number(a.id) === idNum);
   if (!estudante) {
-    showToast("Estudante não encontrado. Recarregando lista...", "warning");
+    showToast("Estudante não encontrado", "warning");
     filtrarEstudantes();
     return;
   }
@@ -2226,7 +2240,7 @@ function carregarTabelaTempos() {
     const tempoConfig = config[tempo] || { diaSemana: "?", series: [] };
 
     row.innerHTML = `
-        <td><strong>${tempo}</strong></td>
+        <tr><strong>${tempo}</strong></td>
         <td>${tempoConfig.diaSemana || "?"}</td>
         <td>${tempoConfig.series?.join(", ") || "Todas"}</td>
     `;
