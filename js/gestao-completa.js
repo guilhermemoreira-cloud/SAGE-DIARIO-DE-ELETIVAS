@@ -1,4 +1,4 @@
-// js/gestao-completa.js - Lógica da página de gestão completa (VERSÃO CORRIGIDA COM MISTAS SEM MATRÍCULAS AUTOMÁTICAS)
+// js/gestao-completa.js - Lógica da página de gestão completa (VERSÃO COMPLETA CORRIGIDA)
 console.log("📋 gestao-completa.js carregado");
 
 let professorEmEdicao = null;
@@ -856,11 +856,7 @@ window.selecionarTodasTurmas = function (selecionar) {
   });
 };
 
-// ========== FUNÇÃO CORRIGIDA: salvarEletiva ==========
-// CORREÇÃO: MISTA também tem turmaOrigem (filtro) mas NÃO gera matrícula automática
-// As matrículas automáticas são controladas pela função criarMatriculasBasicas() em sincronizacao.js
-// que só cria matrículas para FIXAS (quando tipo === "FIXA")
-// ========== FUNÇÃO CORRIGIDA: salvarEletiva (SEM verificação de código duplicado) ==========
+// ========== FUNÇÃO salvarEletiva CORRIGIDA (sem verificação de código duplicado) ==========
 window.salvarEletiva = async function () {
   const nome = document.getElementById("eletivaNome")?.value.trim();
   const codigo = document.getElementById("eletivaCodigo")?.value.trim().toUpperCase();
@@ -901,8 +897,7 @@ window.salvarEletiva = async function () {
     return;
   }
 
-  // REMOVIDO: Verificação de código duplicado
-  // Códigos podem ser repetidos - não são únicos
+  // CORREÇÃO: Verificação de código duplicado REMOVIDA - códigos podem ser repetidos
 
   mostrarLoader(true);
 
@@ -911,7 +906,6 @@ window.salvarEletiva = async function () {
     const horarioCompleto = `${horarioInicio}-${horarioFim}`;
     const codigoTempo = mapaTempoEletiva[horarioCompleto] || "T1";
 
-    // Dados comuns a ambos os tipos
     const dadosBase = {
       nome: nome,
       codigo: codigo,
@@ -925,14 +919,11 @@ window.salvarEletiva = async function () {
       local: local,
       vagas: 40,
       seriesPermitidas: ["1ª", "2ª", "3ª"],
-      turmaOrigem: turmasSelecionadas.join(", "), // AMBOS os tipos têm turmaOrigem (filtro)
+      turmaOrigem: turmasSelecionadas.join(", "),
       semestreId: "2026-1",
     };
 
-    console.log(`📝 Salvando eletiva: ${nome} (${tipo}) - Turmas: ${dadosBase.turmaOrigem}`);
-
     if (eletivaEmEdicao) {
-      // EDIÇÃO
       const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
       if (index !== -1) {
         state.eletivas[index] = {
@@ -948,7 +939,6 @@ window.salvarEletiva = async function () {
         showToast("Eletiva atualizada com sucesso!", "success");
       }
     } else {
-      // NOVA ELETIVA
       const novoId = (state.eletivas?.map(e => e.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
       const novaEletiva = {
         id: novoId,
@@ -1198,7 +1188,6 @@ async function removerEletiva(eletivaId) {
   try {
     const idString = String(eletivaId);
     
-    // Atualizar estado local
     state.eletivas = state.eletivas.filter(e => String(e.id) !== idString);
     state.matriculas = state.matriculas.filter(m => String(m.eletivaId) !== idString);
     state.registros = state.registros.filter(r => String(r.eletivaId) !== idString);
@@ -1206,7 +1195,6 @@ async function removerEletiva(eletivaId) {
     
     salvarEstado();
     
-    // Tentar remover do Firebase
     if (window.FirebaseSync) {
       try {
         await window.FirebaseSync.deletarDadosFirebase("eletivas", eletivaId);
@@ -1751,14 +1739,32 @@ window.abrirModalAdicionarEstudante = function () {
   document.getElementById("modalEstudante").classList.add("active");
 };
 
+// ========== FUNÇÃO CORRIGIDA: abrirModalEditarEstudante ==========
 window.abrirModalEditarEstudante = function (estudanteId) {
-  const idNum = typeof estudanteId === 'string' ? parseInt(estudanteId) : estudanteId;
-  const estudante = state.alunos?.find((a) => a.id === idNum);
-  if (!estudante) {
-    showToast("Estudante não encontrado", "error");
+  console.log("🔧 EDITANDO ESTUDANTE - ID recebido:", estudanteId, "Tipo:", typeof estudanteId);
+  
+  // Converter para número corretamente
+  const idNum = Number(estudanteId);
+  if (isNaN(idNum)) {
+    console.error("❌ ID inválido:", estudanteId);
+    showToast("ID do estudante inválido", "error");
     return;
   }
-
+  
+  console.log("   ID convertido:", idNum);
+  
+  // Buscar o estudante (comparar como número)
+  const estudante = state.alunos?.find((a) => Number(a.id) === idNum);
+  
+  if (!estudante) {
+    console.error("❌ Estudante não encontrado! ID:", idNum);
+    console.log("📋 Primeiros IDs disponíveis:", state.alunos.slice(0, 5).map(a => `${a.id} (${typeof a.id})`));
+    showToast("Estudante não encontrado. Recarregue a página.", "error");
+    return;
+  }
+  
+  console.log("✅ Estudante encontrado:", estudante.nome);
+  
   estudanteEmEdicao = estudante;
   document.getElementById("modalEstudanteTitulo").textContent = "✏️ EDITAR ESTUDANTE";
   document.getElementById("estudanteNome").value = estudante.nome;
@@ -1767,7 +1773,12 @@ window.abrirModalEditarEstudante = function (estudanteId) {
   document.getElementById("selectTurmaEstudante").value = estudante.turmaOrigem;
   document.getElementById("sigeAviso").style.display = "block";
 
-  carregarEletivasCheckbox(estudante.id);
+  // Carregar eletivas do estudante
+  if (typeof carregarEletivasCheckbox === 'function') {
+    carregarEletivasCheckbox(estudante.id);
+  } else {
+    console.warn("⚠️ Função carregarEletivasCheckbox não encontrada");
+  }
 
   document.getElementById("modalEstudante").classList.add("active");
 };
@@ -1809,7 +1820,6 @@ window.salvarEstudante = async function () {
         throw new Error("Estudante não encontrado");
       }
       
-      // Atualizar dados básicos
       state.alunos[index] = {
         ...state.alunos[index],
         nome: nome,
@@ -1820,14 +1830,12 @@ window.salvarEstudante = async function () {
         await window.FirebaseSync.salvarDadosFirebase("alunos", state.alunos[index], state.alunos[index].id);
       }
       
-      // Processar alterações nas matrículas
       const matriculasAtuais = state.matriculas.filter(m => m.alunoId === estudanteEmEdicao.id);
       const eletivasAtuais = matriculasAtuais.map(m => m.eletivaId);
       
       const idsParaAdicionar = eletivasSelecionadas.filter(id => !eletivasAtuais.includes(id));
       const idsParaRemover = eletivasAtuais.filter(id => !eletivasSelecionadas.includes(id));
       
-      // Atualizar estado local
       state.matriculas = state.matriculas.filter(m => !idsParaRemover.includes(m.eletivaId) || m.alunoId !== estudanteEmEdicao.id);
       
       for (const eletivaId of idsParaAdicionar) {
@@ -1850,7 +1858,6 @@ window.salvarEstudante = async function () {
       showToast("Estudante atualizado com sucesso!", "success");
       
     } else {
-      // Adicionar novo estudante
       if (state.alunos?.some(a => a.codigoSige === sige)) {
         showToast(`Já existe um estudante com o SIGE ${sige}`, "error");
         mostrarLoader(false);
