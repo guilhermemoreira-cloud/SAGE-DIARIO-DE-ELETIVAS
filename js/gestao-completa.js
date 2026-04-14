@@ -242,7 +242,7 @@ function carregarProfessores() {
   container.innerHTML = "";
 
   professores.forEach((professor) => {
-    const eletivas = state.eletivas?.filter((e) => e.professorId === professor.id) || [];
+    const eletivas = state.eletivas?.filter((e) => Number(e.professorId) === Number(professor.id)) || [];
 
     const card = document.createElement("div");
     card.className = "professor-card";
@@ -251,7 +251,7 @@ function carregarProfessores() {
     if (eletivas.length > 0) {
       eletivasHTML = '<div class="eletivas-lista"><h4>📚 ELETIVAS:</h4>';
       eletivas.slice(0, 3).forEach((e) => {
-        const matriculas = state.matriculas?.filter((m) => m.eletivaId === e.id) || [];
+        const matriculas = state.matriculas?.filter((m) => Number(m.eletivaId) === Number(e.id)) || [];
         eletivasHTML += `
           <div class="eletiva-item">
             <span class="eletiva-nome">${e.nome || "?"} (${e.codigo || "?"})</span>
@@ -307,7 +307,8 @@ window.abrirModalAdicionarProfessor = function () {
 };
 
 window.abrirModalEditarProfessor = function (professorId) {
-  const professor = state.professores?.find((p) => p.id === professorId);
+  const idNum = Number(professorId);
+  const professor = state.professores?.find((p) => Number(p.id) === idNum);
   if (!professor) {
     showToast("Professor não encontrado", "error");
     return;
@@ -340,7 +341,7 @@ window.salvarProfessor = async function () {
 
   try {
     if (professorEmEdicao) {
-      const index = state.professores.findIndex((p) => p.id === professorEmEdicao.id);
+      const index = state.professores.findIndex((p) => Number(p.id) === Number(professorEmEdicao.id));
       if (index !== -1) {
         state.professores[index] = {
           ...state.professores[index],
@@ -355,7 +356,7 @@ window.salvarProfessor = async function () {
         showToast("Professor atualizado com sucesso!", "success");
       }
     } else {
-      const novoId = (state.professores?.map(p => p.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
+      const novoId = (state.professores?.map(p => Number(p.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
       const novoProfessor = {
         id: novoId,
         nome: nome,
@@ -386,10 +387,11 @@ window.salvarProfessor = async function () {
 
 // ========== FUNÇÕES DE REMOÇÃO DE PROFESSOR ==========
 window.confirmarRemoverProfessor = function (professorId) {
-  const professor = state.professores?.find((p) => p.id === professorId);
+  const idNum = Number(professorId);
+  const professor = state.professores?.find((p) => Number(p.id) === idNum);
   if (!professor) return;
 
-  const eletivas = state.eletivas?.filter((e) => e.professorId === professorId) || [];
+  const eletivas = state.eletivas?.filter((e) => Number(e.professorId) === idNum) || [];
 
   const confirmBody = document.getElementById("confirmBody");
   const confirmTitle = document.getElementById("confirmTitle");
@@ -409,7 +411,7 @@ window.confirmarRemoverProfessor = function (professorId) {
 
   const originalOnClick = confirmBtn.onclick;
   confirmBtn.onclick = function () {
-    removerProfessor(professorId);
+    removerProfessor(professor.id);
     fecharModalConfirmacao();
     setTimeout(() => {
       confirmBtn.onclick = originalOnClick;
@@ -423,9 +425,9 @@ async function removerProfessor(professorId) {
   mostrarLoader(true);
 
   try {
-    state.professores = state.professores.filter((p) => p.id !== professorId);
+    state.professores = state.professores.filter((p) => Number(p.id) !== Number(professorId));
     state.eletivas = state.eletivas.map((e) => {
-      if (e.professorId === professorId) {
+      if (Number(e.professorId) === Number(professorId)) {
         return { ...e, professorId: null, professorNome: "" };
       }
       return e;
@@ -451,7 +453,8 @@ async function removerProfessor(professorId) {
 
 // ========== FUNÇÕES DE TROCA DE ELETIVAS (PROFESSORES) ==========
 window.abrirModalTrocarEletivas = function (professorId) {
-  const professor = state.professores?.find((p) => p.id === professorId);
+  const idNum = Number(professorId);
+  const professor = state.professores?.find((p) => Number(p.id) === idNum);
   if (!professor) return;
 
   professorParaTroca = professor;
@@ -460,12 +463,12 @@ window.abrirModalTrocarEletivas = function (professorId) {
   document.getElementById("modalTrocarTitulo").textContent = `🔄 TROCAR ELETIVAS - ${professor.nome}`;
   document.getElementById("modalTrocarProfessor").textContent = `Professor: ${professor.nome}`;
 
-  const eletivasOrigem = state.eletivas?.filter((e) => e.professorId === professorId) || [];
+  const eletivasOrigem = state.eletivas?.filter((e) => Number(e.professorId) === idNum) || [];
 
   let origemHTML = "";
   if (eletivasOrigem.length > 0) {
     eletivasOrigem.forEach((e) => {
-      const matriculas = state.matriculas?.filter((m) => m.eletivaId === e.id) || [];
+      const matriculas = state.matriculas?.filter((m) => Number(m.eletivaId) === Number(e.id)) || [];
       origemHTML += `
         <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem;">
           <input type="checkbox" class="eletiva-checkbox" value="${e.id}" onchange="toggleEletivaSelecionada(${e.id})">
@@ -483,7 +486,7 @@ window.abrirModalTrocarEletivas = function (professorId) {
   const selectDestino = document.getElementById("selectProfessorDestino");
   selectDestino.innerHTML = '<option value="">Selecione um professor</option>';
 
-  const outrosProfessores = state.professores?.filter((p) => p.id !== professorId) || [];
+  const outrosProfessores = state.professores?.filter((p) => Number(p.id) !== idNum) || [];
   outrosProfessores.forEach((p) => {
     selectDestino.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
   });
@@ -509,13 +512,13 @@ window.carregarEletivasDestino = function () {
     return;
   }
 
-  const professor = state.professores?.find((p) => p.id === parseInt(destinoId));
-  const eletivasDestino = state.eletivas?.filter((e) => e.professorId === parseInt(destinoId)) || [];
+  const professor = state.professores?.find((p) => Number(p.id) === Number(destinoId));
+  const eletivasDestino = state.eletivas?.filter((e) => Number(e.professorId) === Number(destinoId)) || [];
 
   let destinoHTML = "";
   if (eletivasDestino.length > 0) {
     eletivasDestino.forEach((e) => {
-      const matriculas = state.matriculas?.filter((m) => m.eletivaId === e.id) || [];
+      const matriculas = state.matriculas?.filter((m) => Number(m.eletivaId) === Number(e.id)) || [];
       destinoHTML += `
         <div style="padding: 0.3rem;">
           <strong>${e.nome}</strong> (${e.codigo}) - ${e.horario?.diaSemana} ${e.horario?.codigoTempo} - ${matriculas.length} alunos
@@ -543,14 +546,14 @@ window.confirmarTrocaEletivas = async function () {
     return;
   }
 
-  const professorDestino = state.professores?.find((p) => p.id === parseInt(destinoId));
+  const professorDestino = state.professores?.find((p) => Number(p.id) === Number(destinoId));
   if (!professorDestino) return;
 
   mostrarLoader(true);
 
   try {
     for (const eletivaId of eletivasSelecionadasParaTroca) {
-      const index = state.eletivas.findIndex((e) => e.id === eletivaId);
+      const index = state.eletivas.findIndex((e) => Number(e.id) === Number(eletivaId));
       if (index !== -1) {
         state.eletivas[index] = {
           ...state.eletivas[index],
@@ -714,7 +717,7 @@ function carregarEletivas() {
   }
 
   if (professorId) {
-    eletivas = eletivas.filter((e) => e.professorId === parseInt(professorId));
+    eletivas = eletivas.filter((e) => Number(e.professorId) === Number(professorId));
   }
 
   if (local) {
@@ -723,7 +726,7 @@ function carregarEletivas() {
 
   if (busca) {
     eletivas = eletivas.filter((e) => {
-      const professor = state.professores?.find((p) => p.id === e.professorId)?.nome || "";
+      const professor = state.professores?.find((p) => Number(p.id) === Number(e.professorId))?.nome || "";
       return (
         e.nome?.toLowerCase().includes(busca) ||
         e.codigo?.toLowerCase().includes(busca) ||
@@ -745,9 +748,9 @@ function carregarEletivas() {
   container.innerHTML = "";
 
   eletivas.forEach((eletiva) => {
-    const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
+    const professor = state.professores?.find((p) => Number(p.id) === Number(eletiva.professorId))?.nome || "Não atribuído";
     const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
-    const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletiva.id) || [];
+    const matriculas = state.matriculas?.filter((m) => Number(m.eletivaId) === Number(eletiva.id)) || [];
     const totalAlunos = matriculas.length;
 
     const card = document.createElement("div");
@@ -803,36 +806,50 @@ window.abrirModalCriarEletiva = function () {
   document.getElementById("modalEletiva").classList.add("active");
 };
 
-window.abrirModalEditarEletiva = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  if (!eletiva) return;
-
+// ========== FUNÇÃO CORRIGIDA: abrirModalEditarEletiva ==========
+window.abrirModalEditarEletiva = function(eletivaId) {
+  console.log("✏️ EDITAR ELETIVA - ID recebido:", eletivaId);
+  
+  const idNum = Number(eletivaId);
+  if (isNaN(idNum)) {
+    showToast("ID da eletiva inválido", "error");
+    return;
+  }
+  
+  const eletiva = state.eletivas?.find((e) => Number(e.id) === idNum);
+  if (!eletiva) {
+    showToast("Eletiva não encontrada", "error");
+    return;
+  }
+  
+  console.log("✅ Eletiva encontrada:", eletiva.nome);
+  
   eletivaEmEdicao = eletiva;
   document.getElementById("modalEletivaTitulo").textContent = "✏️ EDITAR ELETIVA";
-
+  
   document.getElementById("eletivaNome").value = eletiva.nome;
   document.getElementById("eletivaCodigo").value = eletiva.codigo;
   document.getElementById("selectProfessorEletiva").value = eletiva.professorId || "";
   document.getElementById("selectLocalEletiva").value = eletiva.local || "";
   document.getElementById("selectDiaEletiva").value = eletiva.horario?.diaSemana || "segunda";
-
+  
   const tempo = eletiva.horario?.codigoTempo || "T1";
   const horario = Object.entries(mapaTempoEletiva).find(([h, t]) => t === tempo)?.[0] || "07:00-08:40";
   const [hInicio, hFim] = horario.split("-");
   document.getElementById("horarioInicio").value = hInicio;
   document.getElementById("horarioFim").value = hFim;
-
+  
   if (eletiva.tipo === "FIXA") {
     document.getElementById("eletivaTipoFixa").checked = true;
   } else {
     document.getElementById("eletivaTipoMista").checked = true;
   }
-
+  
   const turmas = eletiva.turmaOrigem?.split(", ") || [];
   document.querySelectorAll(".turma-checkbox").forEach((cb) => {
     cb.checked = turmas.includes(cb.value);
   });
-
+  
   document.getElementById("modalEletiva").classList.add("active");
 };
 
@@ -888,12 +905,10 @@ window.salvarEletiva = async function () {
     return;
   }
 
-  // CORREÇÃO: Verificação de código duplicado REMOVIDA - códigos podem ser repetidos
-
   mostrarLoader(true);
 
   try {
-    const professor = state.professores?.find((p) => p.id === parseInt(professorId));
+    const professor = state.professores?.find((p) => Number(p.id) === Number(professorId));
     const horarioCompleto = `${horarioInicio}-${horarioFim}`;
     const codigoTempo = mapaTempoEletiva[horarioCompleto] || "T1";
 
@@ -901,7 +916,7 @@ window.salvarEletiva = async function () {
       nome: nome,
       codigo: codigo,
       tipo: tipo,
-      professorId: parseInt(professorId),
+      professorId: Number(professorId),
       professorNome: professor?.nome || "",
       horario: {
         diaSemana: dia,
@@ -915,7 +930,7 @@ window.salvarEletiva = async function () {
     };
 
     if (eletivaEmEdicao) {
-      const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
+      const index = state.eletivas.findIndex((e) => Number(e.id) === Number(eletivaEmEdicao.id));
       if (index !== -1) {
         state.eletivas[index] = {
           ...state.eletivas[index],
@@ -930,7 +945,7 @@ window.salvarEletiva = async function () {
         showToast("Eletiva atualizada com sucesso!", "success");
       }
     } else {
-      const novoId = (state.eletivas?.map(e => e.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
+      const novoId = (state.eletivas?.map(e => Number(e.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
       const novaEletiva = {
         id: novoId,
         ...dadosBase,
@@ -957,22 +972,33 @@ window.salvarEletiva = async function () {
   }
 };
 
-// ========== FUNÇÃO PARA EDITAR CATEGORIA DA ELETIVA ==========
-window.abrirModalEditarCategoria = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
-  if (!eletiva) return;
-
+// ========== FUNÇÃO CORRIGIDA: abrirModalEditarCategoria ==========
+window.abrirModalEditarCategoria = function(eletivaId) {
+  console.log("📋 EDITAR CATEGORIA - ID recebido:", eletivaId);
+  
+  const idNum = Number(eletivaId);
+  if (isNaN(idNum)) {
+    showToast("ID da eletiva inválido", "error");
+    return;
+  }
+  
+  const eletiva = state.eletivas?.find((e) => Number(e.id) === idNum);
+  if (!eletiva) {
+    showToast("Eletiva não encontrada", "error");
+    return;
+  }
+  
   eletivaEmEdicao = eletiva;
-
+  
   document.getElementById("modalCategoriaTitulo").textContent = `📋 EDITAR CATEGORIA - ${eletiva.nome}`;
   document.getElementById("categoriaAtual").textContent = eletiva.tipo || "MISTA";
-
+  
   if (eletiva.tipo === "FIXA") {
     document.getElementById("categoriaFixa").checked = true;
   } else {
     document.getElementById("categoriaMista").checked = true;
   }
-
+  
   const infoDiv = document.getElementById("categoriaInfo");
   if (eletiva.tipo === "FIXA") {
     infoDiv.innerHTML = `
@@ -988,7 +1014,7 @@ window.abrirModalEditarCategoria = function (eletivaId) {
       <p>🔍 Verifique se os alunos atuais são da mesma turma antes de alterar!</p>
     `;
   }
-
+  
   document.getElementById("modalEditarCategoria").classList.add("active");
 };
 
@@ -1009,7 +1035,7 @@ window.salvarCategoriaEletiva = async function () {
   mostrarLoader(true);
 
   try {
-    const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
+    const index = state.eletivas.findIndex((e) => Number(e.id) === Number(eletivaEmEdicao.id));
     if (index !== -1) {
       const categoriaAntiga = state.eletivas[index].tipo;
 
@@ -1038,34 +1064,45 @@ window.salvarCategoriaEletiva = async function () {
 };
 
 // ========== FUNÇÕES DE TROCA RÁPIDA DE PROFESSOR ==========
-window.abrirModalTrocarProfessor = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+// ========== FUNÇÃO CORRIGIDA: abrirModalTrocarProfessor ==========
+window.abrirModalTrocarProfessor = function(eletivaId) {
+  console.log("🔄 TROCAR PROFESSOR - ID recebido:", eletivaId);
+  
+  const idNum = Number(eletivaId);
+  if (isNaN(idNum)) {
+    showToast("ID da eletiva inválido", "error");
+    return;
+  }
+  
+  const eletiva = state.eletivas?.find((e) => Number(e.id) === idNum);
   if (!eletiva) {
     showToast("Eletiva não encontrada", "error");
     return;
   }
-
+  
+  console.log("✅ Eletiva encontrada:", eletiva.nome);
+  
   eletivaEmEdicao = eletiva;
-
-  const professorAtual = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
-
+  
+  const professorAtual = state.professores?.find((p) => Number(p.id) === Number(eletiva.professorId))?.nome || "Não atribuído";
+  
   document.getElementById("modalTrocaTitulo").textContent = `🔄 TROCAR PROFESSOR - ${eletiva.nome}`;
   document.getElementById("professorAtualTroca").textContent = professorAtual;
-
+  
   const select = document.getElementById("selectNovoProfessor");
   if (!select) return;
-
-  const professores = state.professores?.filter((p) => p.id !== eletiva.professorId) || [];
-
+  
+  const professores = state.professores?.filter((p) => Number(p.id) !== Number(eletiva.professorId)) || [];
+  
   select.innerHTML = '<option value="">Selecione um professor</option>';
   professores.forEach((p) => {
     select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
   });
-
+  
   if (professores.length === 0) {
     select.innerHTML = '<option value="">Nenhum outro professor disponível</option>';
   }
-
+  
   document.getElementById("modalTrocarProfessor").classList.add("active");
 };
 
@@ -1086,7 +1123,7 @@ window.confirmarTrocaProfessor = async function () {
     return;
   }
 
-  const professor = state.professores?.find((p) => p.id === parseInt(novoProfessorId));
+  const professor = state.professores?.find((p) => Number(p.id) === Number(novoProfessorId));
   if (!professor) {
     showToast("Professor não encontrado", "error");
     return;
@@ -1095,7 +1132,7 @@ window.confirmarTrocaProfessor = async function () {
   mostrarLoader(true);
 
   try {
-    const index = state.eletivas.findIndex((e) => e.id === eletivaEmEdicao.id);
+    const index = state.eletivas.findIndex((e) => Number(e.id) === Number(eletivaEmEdicao.id));
     if (index !== -1) {
       const professorAntigo = state.eletivas[index].professorNome;
 
@@ -1177,12 +1214,12 @@ async function removerEletiva(eletivaId) {
   console.log(`🗑️ Removendo eletiva ID: ${eletivaId}`);
 
   try {
-    const idString = String(eletivaId);
+    const idNum = Number(eletivaId);
     
-    state.eletivas = state.eletivas.filter(e => String(e.id) !== idString);
-    state.matriculas = state.matriculas.filter(m => String(m.eletivaId) !== idString);
-    state.registros = state.registros.filter(r => String(r.eletivaId) !== idString);
-    state.notas = state.notas.filter(n => String(n.eletivaId) !== idString);
+    state.eletivas = state.eletivas.filter(e => Number(e.id) !== idNum);
+    state.matriculas = state.matriculas.filter(m => Number(m.eletivaId) !== idNum);
+    state.registros = state.registros.filter(r => Number(r.eletivaId) !== idNum);
+    state.notas = state.notas.filter(n => Number(n.eletivaId) !== idNum);
     
     salvarEstado();
     
@@ -1205,13 +1242,22 @@ async function removerEletiva(eletivaId) {
   }
 }
 
-window.confirmarRemoverEletiva = function (eletivaId) {
-  const eletiva = state.eletivas?.find((e) => e.id === eletivaId);
+// ========== FUNÇÃO CORRIGIDA: confirmarRemoverEletiva ==========
+window.confirmarRemoverEletiva = function(eletivaId) {
+  console.log("🗑️ REMOVER ELETIVA - ID recebido:", eletivaId);
+  
+  const idNum = Number(eletivaId);
+  if (isNaN(idNum)) {
+    showToast("ID da eletiva inválido", "error");
+    return;
+  }
+  
+  const eletiva = state.eletivas?.find((e) => Number(e.id) === idNum);
   if (!eletiva) return;
 
-  const matriculas = state.matriculas?.filter((m) => m.eletivaId === eletivaId) || [];
-  const registrosFrequencia = state.registros?.filter((r) => r.eletivaId === eletivaId) || [];
-  const registrosNotas = state.notas?.filter((n) => n.eletivaId === eletivaId) || [];
+  const matriculas = state.matriculas?.filter((m) => Number(m.eletivaId) === idNum) || [];
+  const registrosFrequencia = state.registros?.filter((r) => Number(r.eletivaId) === idNum) || [];
+  const registrosNotas = state.notas?.filter((n) => Number(n.eletivaId) === idNum) || [];
 
   const confirmBody = document.getElementById("confirmBody");
   const confirmTitle = document.getElementById("confirmTitle");
@@ -1232,7 +1278,7 @@ window.confirmarRemoverEletiva = function (eletivaId) {
 
   const originalOnClick = confirmBtn.onclick;
   confirmBtn.onclick = function () {
-    removerEletiva(eletivaId);
+    removerEletiva(eletiva.id);
     fecharModalConfirmacao();
     setTimeout(() => {
       confirmBtn.onclick = originalOnClick;
@@ -1302,7 +1348,7 @@ window.imprimirListaProfessores = function () {
     doc.setFontSize(9);
 
     professores.sort((a, b) => a.nome.localeCompare(b.nome)).forEach((professor) => {
-      const eletivas = state.eletivas?.filter((e) => e.professorId === professor.id) || [];
+      const eletivas = state.eletivas?.filter((e) => Number(e.professorId) === Number(professor.id)) || [];
 
       if (y > 180) {
         doc.addPage();
@@ -1401,7 +1447,7 @@ window.imprimirListaEletivas = function () {
     doc.setFontSize(9);
 
     eletivas.sort((a, b) => a.nome.localeCompare(b.nome)).forEach((eletiva) => {
-      const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
+      const professor = state.professores?.find((p) => Number(p.id) === Number(eletiva.professorId))?.nome || "Não atribuído";
       const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
 
       if (y > 180) {
@@ -1518,10 +1564,10 @@ window.limparFiltrosEstudantes = function () {
 };
 
 function estudanteTemEletivaNoTempo(estudanteId, tempo) {
-  const matriculas = state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
+  const matriculas = state.matriculas?.filter((m) => Number(m.alunoId) === Number(estudanteId)) || [];
 
   for (const matricula of matriculas) {
-    const eletiva = state.eletivas?.find((e) => e.id === matricula.eletivaId);
+    const eletiva = state.eletivas?.find((e) => Number(e.id) === Number(matricula.eletivaId));
     if (eletiva) {
       const tempoEletiva = getTempoFromHorario(eletiva.horario);
       if (tempoEletiva === tempo) {
@@ -1534,18 +1580,18 @@ function estudanteTemEletivaNoTempo(estudanteId, tempo) {
 
 function estudanteEstaNaEletiva(estudanteId, eletivaId) {
   return state.matriculas?.some(
-    (m) => m.alunoId === estudanteId && m.eletivaId === parseInt(eletivaId),
+    (m) => Number(m.alunoId) === Number(estudanteId) && Number(m.eletivaId) === Number(eletivaId),
   );
 }
 
 function getEletivasEstudante(estudanteId) {
-  const matriculas = state.matriculas?.filter((m) => m.alunoId === estudanteId) || [];
+  const matriculas = state.matriculas?.filter((m) => Number(m.alunoId) === Number(estudanteId)) || [];
   const eletivas = [];
   
   matriculas.forEach((m) => {
-    const eletiva = state.eletivas?.find((e) => e.id === m.eletivaId);
+    const eletiva = state.eletivas?.find((e) => Number(e.id) === Number(m.eletivaId));
     if (eletiva) {
-      const professor = state.professores?.find((p) => p.id === eletiva.professorId)?.nome || "Não atribuído";
+      const professor = state.professores?.find((p) => Number(p.id) === Number(eletiva.professorId))?.nome || "Não atribuído";
       const tempo = getTempoFromHorario(eletiva.horario) || "N/A";
       eletivas.push({
         ...eletiva,
@@ -1664,7 +1710,7 @@ function carregarEletivasCheckbox(estudanteId = null) {
   if (!container) return;
 
   const matriculasAtuais = estudanteId 
-    ? (state.matriculas || []).filter(m => m.alunoId === estudanteId).map(m => m.eletivaId)
+    ? (state.matriculas || []).filter(m => Number(m.alunoId) === Number(estudanteId)).map(m => m.eletivaId)
     : [];
 
   const eletivas = state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
@@ -1694,8 +1740,8 @@ function carregarEletivasCheckbox(estudanteId = null) {
     html += `<div style="margin-top: 1rem;"><strong>${nomesTempo[tempo]}:</strong></div>`;
     
     eletivasDoTempo.forEach(e => {
-      const professor = state.professores?.find(p => p.id === e.professorId)?.nome || "Não atribuído";
-      const matriculados = state.matriculas?.filter(m => m.eletivaId === e.id).length || 0;
+      const professor = state.professores?.find(p => Number(p.id) === Number(e.professorId))?.nome || "Não atribuído";
+      const matriculados = state.matriculas?.filter(m => Number(m.eletivaId) === Number(e.id)).length || 0;
       const checked = matriculasAtuais.includes(e.id) ? "checked" : "";
       
       html += `
@@ -1731,7 +1777,9 @@ window.abrirModalAdicionarEstudante = function () {
 };
 
 // ========== FUNÇÃO CORRIGIDA: abrirModalEditarEstudante ==========
-window.abrirModalEditarEstudante = function (estudanteId) {
+window.abrirModalEditarEstudante = function(estudanteId) {
+  console.log("🔧 EDITANDO ESTUDANTE - ID recebido:", estudanteId);
+  
   const idNum = Number(estudanteId);
   if (isNaN(idNum)) {
     showToast("ID do estudante inválido", "error");
@@ -1743,6 +1791,8 @@ window.abrirModalEditarEstudante = function (estudanteId) {
     showToast("Estudante não encontrado", "error");
     return;
   }
+  
+  console.log("✅ Estudante encontrado:", estudante.nome);
   
   estudanteEmEdicao = estudante;
   document.getElementById("modalEstudanteTitulo").textContent = "✏️ EDITAR ESTUDANTE";
@@ -1771,7 +1821,7 @@ window.salvarEstudante = async function () {
   
   const eletivasSelecionadas = [];
   document.querySelectorAll("#eletivasCheckboxContainer .eletiva-checkbox:checked").forEach(cb => {
-    eletivasSelecionadas.push(parseInt(cb.value));
+    eletivasSelecionadas.push(Number(cb.value));
   });
 
   if (!nome || nome.length < 3) {
@@ -1791,7 +1841,7 @@ window.salvarEstudante = async function () {
 
   try {
     if (estudanteEmEdicao) {
-      const index = state.alunos.findIndex(a => a.id === estudanteEmEdicao.id);
+      const index = state.alunos.findIndex(a => Number(a.id) === Number(estudanteEmEdicao.id));
       if (index === -1) throw new Error("Estudante não encontrado");
       
       state.alunos[index] = {
@@ -1804,17 +1854,17 @@ window.salvarEstudante = async function () {
         await window.FirebaseSync.salvarDadosFirebase("alunos", state.alunos[index], state.alunos[index].id);
       }
       
-      const matriculasAtuais = state.matriculas.filter(m => m.alunoId === estudanteEmEdicao.id);
+      const matriculasAtuais = state.matriculas.filter(m => Number(m.alunoId) === Number(estudanteEmEdicao.id));
       const eletivasAtuais = matriculasAtuais.map(m => m.eletivaId);
       
       const idsParaAdicionar = eletivasSelecionadas.filter(id => !eletivasAtuais.includes(id));
       const idsParaRemover = eletivasAtuais.filter(id => !eletivasSelecionadas.includes(id));
       
-      state.matriculas = state.matriculas.filter(m => !idsParaRemover.includes(m.eletivaId) || m.alunoId !== estudanteEmEdicao.id);
+      state.matriculas = state.matriculas.filter(m => !idsParaRemover.includes(Number(m.eletivaId)) || Number(m.alunoId) !== Number(estudanteEmEdicao.id));
       
       for (const eletivaId of idsParaAdicionar) {
         const novaMatricula = {
-          id: (state.matriculas?.map(m => m.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
+          id: (state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
           eletivaId: eletivaId,
           alunoId: estudanteEmEdicao.id,
           tipoMatricula: "manual",
@@ -1838,7 +1888,7 @@ window.salvarEstudante = async function () {
         return;
       }
       
-      const novoId = (state.alunos?.map(a => a.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
+      const novoId = (state.alunos?.map(a => Number(a.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1;
       const novoEstudante = {
         id: novoId,
         nome: nome,
@@ -1856,7 +1906,7 @@ window.salvarEstudante = async function () {
       
       for (const eletivaId of eletivasSelecionadas) {
         const novaMatricula = {
-          id: (state.matriculas?.map(m => m.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
+          id: (state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
           eletivaId: eletivaId,
           alunoId: novoId,
           tipoMatricula: "manual",
@@ -1879,7 +1929,7 @@ window.salvarEstudante = async function () {
     filtrarEstudantes();
     
   } catch (error) {
-    console.error("Erro ao salvar estudante:", error);
+    console.error("❌ Erro ao salvar estudante:", error);
     showToast(`Erro ao salvar estudante: ${error.message}`, "error");
   } finally {
     mostrarLoader(false);
@@ -1917,7 +1967,7 @@ window.abrirModalTrocarEletivaEstudante = function(estudanteId) {
   }
   document.getElementById("eletivasAtuaisEstudante").innerHTML = atuaisHTML;
   
-  const matriculasAluno = state.matriculas?.filter(m => m.alunoId === estudante.id) || [];
+  const matriculasAluno = state.matriculas?.filter(m => Number(m.alunoId) === estudante.id) || [];
   const idsMatriculados = new Set(matriculasAluno.map(m => m.eletivaId));
   const eletivasDisponiveis = (state.eletivas || []).filter(e => !idsMatriculados.has(e.id));
   
@@ -1927,8 +1977,8 @@ window.abrirModalTrocarEletivaEstudante = function(estudanteId) {
       container.innerHTML = '<p style="color: var(--text-light);">Nenhuma eletiva disponível para matrícula</p>';
     } else {
       container.innerHTML = eletivasDisponiveis.map(e => {
-        const professor = state.professores?.find(p => p.id === e.professorId)?.nome || "N/A";
-        const matriculados = state.matriculas?.filter(m => m.eletivaId === e.id).length || 0;
+        const professor = state.professores?.find(p => Number(p.id) === Number(e.professorId))?.nome || "N/A";
+        const matriculados = state.matriculas?.filter(m => Number(m.eletivaId) === Number(e.id)).length || 0;
         return `
           <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border-bottom: 1px solid var(--bg-light);">
             <input type="radio" name="eletivaDestino" value="${e.id}" id="eletiva_${e.id}">
@@ -1961,7 +2011,7 @@ window.confirmarTrocaEletivaEstudante = async function() {
     return;
   }
   
-  const eletivaDestino = state.eletivas?.find((e) => e.id === parseInt(eletivaDestinoId));
+  const eletivaDestino = state.eletivas?.find((e) => Number(e.id) === Number(eletivaDestinoId));
   if (!eletivaDestino) {
     showToast("Eletiva não encontrada", "error");
     return;
@@ -1971,7 +2021,7 @@ window.confirmarTrocaEletivaEstudante = async function() {
   
   try {
     const jaMatriculado = state.matriculas.some(
-      m => m.alunoId === estudanteParaTroca.id && m.eletivaId === parseInt(eletivaDestinoId)
+      m => Number(m.alunoId) === Number(estudanteParaTroca.id) && Number(m.eletivaId) === Number(eletivaDestinoId)
     );
     
     if (jaMatriculado) {
@@ -1981,8 +2031,8 @@ window.confirmarTrocaEletivaEstudante = async function() {
     }
     
     const novaMatricula = {
-      id: (state.matriculas?.map(m => m.id) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
-      eletivaId: parseInt(eletivaDestinoId),
+      id: (state.matriculas?.map(m => Number(m.id)) || []).reduce((max, id) => id > max ? id : max, 0) + 1,
+      eletivaId: Number(eletivaDestinoId),
       alunoId: estudanteParaTroca.id,
       tipoMatricula: "troca",
       dataMatricula: new Date().toISOString().split("T")[0],
@@ -2026,7 +2076,7 @@ window.confirmarRemoverEstudante = function (estudanteId) {
     return;
   }
 
-  const matriculas = state.matriculas?.filter((m) => m.alunoId === estudante.id) || [];
+  const matriculas = state.matriculas?.filter((m) => Number(m.alunoId) === estudante.id) || [];
 
   const confirmBody = document.getElementById("confirmBody");
   const confirmTitle = document.getElementById("confirmTitle");
@@ -2059,8 +2109,8 @@ async function removerEstudante(estudanteId) {
   mostrarLoader(true);
 
   try {
-    state.matriculas = state.matriculas.filter((m) => m.alunoId !== estudanteId);
-    state.alunos = state.alunos.filter((a) => a.id !== estudanteId);
+    state.matriculas = state.matriculas.filter((m) => Number(m.alunoId) !== Number(estudanteId));
+    state.alunos = state.alunos.filter((a) => Number(a.id) !== Number(estudanteId));
 
     salvarEstado();
 
@@ -2129,7 +2179,7 @@ window.imprimirListaEstudantes = function () {
     if (turma) filtros.push(`Turma ${turma}`);
     const eletivaId = document.getElementById("filtroEletivaEstudante")?.value;
     if (eletivaId) {
-      const eletiva = state.eletivas?.find((e) => e.id === parseInt(eletivaId));
+      const eletiva = state.eletivas?.find((e) => Number(e.id) === Number(eletivaId));
       if (eletiva) filtros.push(`Eletiva: ${eletiva.nome}`);
     }
 
@@ -2548,7 +2598,7 @@ window.abrirModalEditarLiberacao = function () {
   const liberadasSet = new Set(liberacao.eletivasLiberadas || []);
   let html = "";
   eletivas.sort((a, b) => a.nome.localeCompare(b.nome)).forEach((e) => {
-    const professor = state.professores?.find((p) => p.id === e.professorId)?.nome || "Não atribuído";
+    const professor = state.professores?.find((p) => Number(p.id) === Number(e.professorId))?.nome || "Não atribuído";
     const chave = `${e.id}_${liberacao.semestre}`;
     const checked = liberadasSet.has(chave) ? "checked" : "";
     html += `<div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border-bottom: 1px solid var(--bg-gray);"><input type="checkbox" class="eletiva-liberacao-checkbox" value="${e.id}" data-chave="${chave}" ${checked}><div style="flex: 1;"><strong>${e.nome}</strong> (${e.codigo}) - ${professor} - ${e.horario?.diaSemana} ${e.horario?.codigoTempo}</div></div>`;
@@ -2649,13 +2699,13 @@ window.abrirModalConflitos = function () {
   if (conflitos.length === 0) { container.innerHTML = '<p class="empty-state">Nenhum conflito pendente</p>'; document.getElementById("modalConflitos").classList.add("active"); return; }
   let html = "";
   conflitos.forEach((conflito, index) => {
-    const aluno = state.alunos?.find((a) => a.id === parseInt(conflito.alunoId) || a.codigoSige === conflito.alunoId);
+    const aluno = state.alunos?.find((a) => Number(a.id) === Number(conflito.alunoId) || a.codigoSige === conflito.alunoId);
     const nomeAluno = aluno ? aluno.nome : `Aluno ID: ${conflito.alunoId}`;
     const turmaAluno = aluno ? aluno.turmaOrigem : "Turma desconhecida";
     const tipoClasse = conflito.tipo === "fixa" ? "fixa" : "mista";
     const tipoTexto = conflito.tipo === "fixa" ? "FIXA x FIXA" : "MISTA x MISTA";
     const corBorda = conflito.tipo === "fixa" ? "var(--danger)" : "var(--warning)";
-    html += `<div class="conflito-item ${tipoClasse}" style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-white); border-radius: 8px; border-left: 4px solid ${corBorda}; box-shadow: var(--shadow);"><h4 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">⚠️ Conflito #${index + 1} - ${tipoTexto}</h4><div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-light); border-radius: 4px;"><p><strong>👤 Aluno:</strong> ${escapeHtml(nomeAluno)} (${turmaAluno} - SIGE: ${aluno?.codigoSige || "N/A"})</p><p><strong>⏰ Tempo:</strong> ${conflito.tempo || "N/A"}</p></div><p style="margin: 0.5rem 0 0.2rem 0; font-weight: bold;">📚 Eletivas em conflito:</p><ul style="margin: 0 0 0.5rem 1.5rem;">${(conflito.eletivas || []).map((e) => { const eletiva = state.eletivas?.find((el) => el.id === e.eletivaId || el.codigo === e.eletivaId); const prof = state.professores?.find((p) => p.id === eletiva?.professorId)?.nome || "N/A"; return `<li><strong>${e.nome || eletiva?.nome}</strong> (${eletiva?.codigo || "N/A"}) - Prof. ${prof}</li>`; }).join("")}</ul><div style="margin-top: 0.5rem; padding: 0.5rem; background: ${corBorda}20; border-radius: 4px;"><p style="margin: 0; font-size: 0.9rem;"><strong>💡 Recomendação:</strong> ${conflito.tipo === "fixa" ? "Eletivas FIXAS exigem que o aluno esteja em apenas UMA por tempo. Remova uma das matrículas." : "Eletivas MISTAS também permitem apenas UMA por tempo. Remova uma das matrículas."}</p></div></div>`;
+    html += `<div class="conflito-item ${tipoClasse}" style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-white); border-radius: 8px; border-left: 4px solid ${corBorda}; box-shadow: var(--shadow);"><h4 style="margin: 0 0 0.5rem 0; color: var(--text-dark);">⚠️ Conflito #${index + 1} - ${tipoTexto}</h4><div style="margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-light); border-radius: 4px;"><p><strong>👤 Aluno:</strong> ${escapeHtml(nomeAluno)} (${turmaAluno} - SIGE: ${aluno?.codigoSige || "N/A"})</p><p><strong>⏰ Tempo:</strong> ${conflito.tempo || "N/A"}</p></div><p style="margin: 0.5rem 0 0.2rem 0; font-weight: bold;">📚 Eletivas em conflito:</p><ul style="margin: 0 0 0.5rem 1.5rem;">${(conflito.eletivas || []).map((e) => { const eletiva = state.eletivas?.find((el) => el.id === e.eletivaId || el.codigo === e.eletivaId); const prof = state.professores?.find((p) => Number(p.id) === Number(eletiva?.professorId))?.nome || "N/A"; return `<li><strong>${e.nome || eletiva?.nome}</strong> (${eletiva?.codigo || "N/A"}) - Prof. ${prof}</li>`; }).join("")}</ul><div style="margin-top: 0.5rem; padding: 0.5rem; background: ${corBorda}20; border-radius: 4px;"><p style="margin: 0; font-size: 0.9rem;"><strong>💡 Recomendação:</strong> ${conflito.tipo === "fixa" ? "Eletivas FIXAS exigem que o aluno esteja em apenas UMA por tempo. Remova uma das matrículas." : "Eletivas MISTAS também permitem apenas UMA por tempo. Remova uma das matrículas."}</p></div></div>`;
   });
   container.innerHTML = html;
   document.getElementById("modalConflitos").classList.add("active");
