@@ -1913,21 +1913,40 @@ window.salvarEstudante = async function () {
 };
 
 // ========== FUNÇÕES DE TROCA DE ELETIVA DO ESTUDANTE ==========
-window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
-  const idNum = typeof estudanteId === 'string' ? parseInt(estudanteId) : estudanteId;
-  const estudante = state.alunos?.find((a) => a.id === idNum);
-  if (!estudante) {
-    showToast("Estudante não encontrado", "error");
+// CORRIGIR FUNÇÃO abrirModalTrocarEletivaEstudante
+window.abrirModalTrocarEletivaEstudante = function(estudanteId) {
+  console.log("🔄 TROCAR ELETIVA - ID recebido:", estudanteId, "Tipo:", typeof estudanteId);
+  
+  // Converter para número corretamente
+  const idNum = Number(estudanteId);
+  if (isNaN(idNum)) {
+    console.error("❌ ID inválido:", estudanteId);
+    showToast("ID do estudante inválido", "error");
     return;
   }
-
+  
+  console.log("   ID convertido:", idNum);
+  
+  // Buscar o estudante
+  const estudante = state.alunos?.find((a) => Number(a.id) === idNum);
+  
+  if (!estudante) {
+    console.error("❌ Estudante não encontrado! ID:", idNum);
+    console.log("📋 Primeiros IDs disponíveis:", state.alunos?.slice(0, 5).map(a => `${a.id} (${typeof a.id})`));
+    showToast("Estudante não encontrado. Recarregue a página.", "error");
+    return;
+  }
+  
+  console.log("✅ Estudante encontrado:", estudante.nome);
+  
   estudanteParaTroca = estudante;
-
+  
   document.getElementById("modalTrocaEstudanteTitulo").textContent = `🔄 TROCAR ELETIVA - ${estudante.nome}`;
   document.getElementById("estudanteTrocaInfo").textContent = `${estudante.nome} (SIGE: ${estudante.codigoSige})`;
-
+  
+  // Carregar eletivas atuais do estudante
   const eletivasAtuais = getEletivasEstudante(estudante.id);
-
+  
   let atuaisHTML = "";
   if (eletivasAtuais.length > 0) {
     eletivasAtuais.forEach((e) => {
@@ -1937,48 +1956,53 @@ window.abrirModalTrocarEletivaEstudante = function (estudanteId) {
     atuaisHTML = '<p style="color: var(--text-light);">Nenhuma eletiva</p>';
   }
   document.getElementById("eletivasAtuaisEstudante").innerHTML = atuaisHTML;
-
-  carregarEletivasDisponiveisTroca(estudante.id);
-
+  
+  // Carregar eletivas disponíveis
+  if (typeof carregarEletivasDisponiveisTroca === 'function') {
+    carregarEletivasDisponiveisTroca(estudante.id);
+  } else {
+    console.warn("⚠️ Função carregarEletivasDisponiveisTroca não encontrada");
+    // Recriar a função se não existir
+    window.carregarEletivasDisponiveisTroca = function(estudanteId) {
+      const container = document.getElementById("eletivasDisponiveisContainer");
+      if (!container) return;
+      
+      const eletivas = state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
+      const matriculasAtuais = state.matriculas?.filter(m => m.alunoId === estudanteId) || [];
+      const eletivasIdsAtuais = new Set(matriculasAtuais.map(m => m.eletivaId));
+      
+      // Filtrar eletivas que o aluno já não está matriculado
+      const eletivasDisponiveis = eletivas.filter(e => !eletivasIdsAtuais.has(e.id));
+      
+      if (eletivasDisponiveis.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-light);">Nenhuma eletiva disponível para matrícula</p>';
+        return;
+      }
+      
+      let html = "";
+      eletivasDisponiveis.forEach(e => {
+        const professor = state.professores?.find(p => p.id === e.professorId)?.nome || "Não atribuído";
+        const matriculados = state.matriculas?.filter(m => m.eletivaId === e.id).length || 0;
+        
+        html += `
+          <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border-bottom: 1px solid var(--bg-light);">
+            <input type="radio" name="eletivaDestino" value="${e.id}" id="eletiva_${e.id}">
+            <label for="eletiva_${e.id}" style="flex: 1;">
+              <strong>${e.nome}</strong> (${e.codigo}) - ${professor} - ${matriculados} alunos
+            </label>
+          </div>
+        `;
+      });
+      
+      container.innerHTML = html;
+    };
+    window.carregarEletivasDisponiveisTroca(estudante.id);
+  }
+  
   document.getElementById("modalTrocarEletivaEstudante").classList.add("active");
 };
 
-function carregarEletivasDisponiveisTroca(estudanteId = null) {
-  const container = document.getElementById("eletivasDisponiveisContainer");
-  if (!container) return;
-
-  const eletivas = state.eletivas?.sort((a, b) => a.nome.localeCompare(b.nome)) || [];
-
-  const eletivasPorTempo = {};
-  eletivas.forEach((e) => {
-    const tempo = getTempoFromHorario(e.horario) || "OUTROS";
-    if (!eletivasPorTempo[tempo]) eletivasPorTempo[tempo] = [];
-    eletivasPorTempo[tempo].push(e);
-  });
-
-  let html = "";
-  const tempos = ["T1", "T2", "T3", "T4", "T5", "OUTROS"];
-
-  tempos.forEach((tempo) => {
-    const eletivasDoTempo = eletivasPorTempo[tempo];
-    if (!eletivasDoTempo || eletivasDoTempo.length === 0) return;
-
-    html += `<div style="margin-top: 1rem;"><strong>TEMPO ${tempo}:</strong></div>`;
-
-    eletivasDoTempo.forEach((e) => {
-      const professor = state.professores?.find((p) => p.id === e.professorId)?.nome || "Não atribuído";
-      const matriculados = state.matriculas?.filter((m) => m.eletivaId === e.id).length || 0;
-
-      html += `
-        <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem; border-bottom: 1px solid var(--bg-light);">
-          <input type="radio" name="eletivaDestino" value="${e.id}" id="eletiva_${e.id}">
-          <label for="eletiva_${e.id}" style="flex: 1;">
-            <strong>${e.nome}</strong> (${e.codigo}) - ${professor} - ${matriculados} alunos
-          </label>
-        </div>
-      `;
-    });
-  });
+console.log("✅ Função abrirModalTrocarEletivaEstudante corrigida!");
 
   if (eletivas.length === 0) {
     html = '<p style="color: var(--text-light);">Nenhuma eletiva cadastrada</p>';
