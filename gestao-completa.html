@@ -732,14 +732,29 @@
 
     <div id="modalTrocarEletivaEstudante" class="modal">
       <div class="modal-content" style="max-width: 600px">
-        <div class="modal-header"><h3 id="modalTrocaEstudanteTitulo">🔄 TROCAR ELETIVA</h3><button class="close-modal" onclick="fecharModalTrocarEletivaEstudante()">&times;</button></div>
+        <div class="modal-header">
+          <h3 id="modalTrocaEstudanteTitulo">🔄 TROCAR ELETIVA</h3>
+          <button class="close-modal" onclick="fecharModalTrocarEletivaEstudante()">&times;</button>
+        </div>
         <div class="modal-body">
           <p id="estudanteTrocaInfo" style="font-weight: bold; margin-bottom: 1rem"></p>
-          <h4 style="margin-bottom: 0.5rem">ELETIVAS ATUAIS:</h4><div id="eletivasAtuaisEstudante" style="margin-bottom: 1.5rem; padding: 0.5rem; background: var(--bg-light); border-radius: 8px;"></div>
-          <h4 style="margin-bottom: 0.5rem">ELETIVAS DISPONÍVEIS:</h4><div id="eletivasDisponiveisContainer" style="max-height: 300px; overflow-y: auto; border: 2px solid var(--bg-gray); border-radius: 8px; padding: 0.5rem;"></div>
-          <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: 8px;"><p><strong>⚠️ INFORMAÇÕES:</strong></p><ul style="margin-left: 1.5rem"><li>Você pode adicionar o estudante a uma NOVA eletiva (além das atuais)</li><li>Não há limite de eletivas por estudante (desde que horários diferentes)</li><li>Registros anteriores são preservados</li></ul></div>
+          <h4 style="margin-bottom: 0.5rem">ELETIVAS ATUAIS:</h4>
+          <div id="eletivasAtuaisEstudante" style="margin-bottom: 1.5rem; padding: 0.5rem; background: var(--bg-light); border-radius: 8px;"></div>
+          <h4 style="margin-bottom: 0.5rem">ELETIVAS DISPONÍVEIS:</h4>
+          <div id="eletivasDisponiveisContainer" style="max-height: 300px; overflow-y: auto; border: 2px solid var(--bg-gray); border-radius: 8px; padding: 0.5rem;"></div>
+          <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-light); border-radius: 8px;">
+            <p><strong>⚠️ INFORMAÇÕES:</strong></p>
+            <ul style="margin-left: 1.5rem">
+              <li>Você pode adicionar o estudante a uma NOVA eletiva (além das atuais)</li>
+              <li>Não há limite de eletivas por estudante (desde que horários diferentes)</li>
+              <li>Registros anteriores são preservados</li>
+            </ul>
+          </div>
         </div>
-        <div class="modal-footer"><button class="btn-secondary" onclick="fecharModalTrocarEletivaEstudante()">❌ CANCELAR</button><button class="btn-success" onclick="confirmarTrocaEletivaEstudante()">✅ ADICIONAR À ELETIVA</button></div>
+        <div class="modal-footer">
+          <button class="btn-secondary" onclick="fecharModalTrocarEletivaEstudante()">❌ CANCELAR</button>
+          <button class="btn-success" onclick="confirmarTrocaEletivaEstudante()">✅ ADICIONAR À ELETIVA</button>
+        </div>
       </div>
     </div>
 
